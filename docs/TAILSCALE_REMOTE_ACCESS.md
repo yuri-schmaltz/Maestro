@@ -15,7 +15,7 @@ uses **Tailscale Serve**, never the public Tailscale Funnel feature.
 - Tailscale installed on both devices.
 - Both devices signed into the same Tailscale account or authorized in the same
   tailnet.
-- Maestro running in Pinokio whenever you want to use it remotely.
+- Maestro running (`./start_local.sh`) whenever you want to use it remotely.
 
 ## One-time setup
 
@@ -48,18 +48,20 @@ that Tailscale is connected.
 
 ### 4. Enable private Maestro access
 
-1. Start Maestro in Pinokio and wait for **Open Web UI** to appear.
-2. Return to Maestro's page in Pinokio.
-3. Select **Secure Remote Access (Tailscale)**.
+1. Start Maestro with `./start_local.sh` and wait for `Maestro UI: http://...`
+   to appear in the terminal output. Open the URL in your browser.
+2. Open **Settings → Notifications**.
+3. Under **Private phone access**, click **Enable private HTTPS access** (or
+   open the configuration block).
 4. Approve the one-time operating-system permission request. On Windows,
    Maestro also installs a narrowly scoped on-demand Task Scheduler helper for
    the selected local port. It lets later Maestro starts restore the same
    private route without another UAC prompt.
 5. If Tailscale opens a browser page asking to enable HTTPS for the tailnet,
    approve it.
-6. In Maestro, open **Settings → Notifications**.
-7. Under **Private phone access**, confirm that private HTTPS access is enabled.
-8. Copy the secure URL or scan the QR code with the remote device.
+6. Back in **Settings → Notifications**, confirm that private HTTPS access is
+   enabled.
+7. Copy the secure URL or scan the QR code with the remote device.
 
 The address looks similar to:
 
@@ -74,7 +76,7 @@ address. It is not a public Maestro link.
 
 1. Leave the Maestro computer powered on and connected to the internet.
 2. Make sure Tailscale is connected on the Maestro computer.
-3. Start Maestro normally in Pinokio.
+3. Start Maestro normally: `./start_local.sh` (or `./stop_local.sh` to stop).
 4. Connect Tailscale on the remote device.
 5. Open the saved Maestro HTTPS address.
 
@@ -131,8 +133,8 @@ or iPadOS 16.4 or later.
 - Confirm that both devices are in the same tailnet.
 - In Maestro, open **Settings → Notifications** and refresh **Private phone
   access**.
-- If the route is missing, run **Secure Remote Access (Tailscale)** from
-  Maestro's Pinokio page while Maestro is running.
+- If the route is missing, toggle **Private phone access** off and on again
+  inside **Settings → Notifications** while Maestro is running.
 - On Windows, if you configured Tailscale with an earlier Maestro v2 preview,
   run the setup action once after updating so the restart helper is installed.
 
@@ -153,9 +155,10 @@ or iPadOS 16.4 or later.
 
 ### Maestro reports only foreground notifications
 
-- Use Maestro's normal **Update** action once so the Web Push dependency is
-  installed.
-- Restart Maestro.
+- The Web Push dependency installs on first opt-in; if you declined it
+  earlier, toggle **System notifications** off and on again under
+  **Settings → Notifications**.
+- Restart Maestro (`./stop_local.sh` then `./start_local.sh`).
 - Reopen the installed Maestro app and enable **System notifications** again.
 
 ### Another Tailscale Serve route is already configured

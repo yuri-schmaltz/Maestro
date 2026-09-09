@@ -108,7 +108,7 @@ previous item.
 
 ## Updating
 
-Use **Update** from Maestro's Pinokio page, then start Maestro normally. Models,
-outputs, workspaces, presets, Director projects, and Editor projects are
-preserved. If a browser still has the v2.0.0 bundle open, perform one hard
+Run your normal update flow, then start Maestro normally. Models, outputs,
+workspaces, presets, Director projects, and Editor projects are preserved. If a
+browser still has the v2.0.0 bundle open, perform one hard
 refresh after Maestro restarts.

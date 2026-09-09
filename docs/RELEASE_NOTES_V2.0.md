@@ -245,16 +245,16 @@ See [Use Maestro Remotely with Tailscale](TAILSCALE_REMOTE_ACCESS.md).
   such as Omni, Turbo, PDD, Sol, First Block, and LoRA names.
 - Gallery activation follows the item being viewed or played; playback also
   activates and unmutes that media so Studio actions target the expected clip.
-- Cleaner Pinokio Start and LoRA-folder menus without normal Classic UI links.
-- Dynamic Pinokio ports remain the default unless a user explicitly enables
+- Cleaner **Start** and LoRA-folder menus without normal Classic UI links.
+- Dynamic launch ports remain the default unless a user explicitly enables
   persistent Tailscale access.
 - The v1.9.1 llama.cpp nightly-download hotfix is retained, with a newer runtime
   floor needed by Qwen3.8.
 
 ## Updating
 
-Use **Update** from Maestro's Pinokio page, then start Maestro normally. Existing
-models, outputs, workspaces, Director projects, presets, and local settings are
+Run your normal update flow, then start Maestro normally. Existing models,
+outputs, workspaces, Director projects, presets, and local settings are
 preserved. A hard browser refresh may be needed if an old UI bundle remains
 cached after the first v2.0 launch.
 

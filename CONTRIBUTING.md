@@ -2,55 +2,64 @@
 
 Thanks for your interest in improving Maestro! This is a local-first AI
 video/image/music studio built on the [Wan2GP](https://github.com/deepbeepmeep/Wan2GP)
-pipeline and distributed through [Pinokio](https://pinokio.computer).
+pipeline and distributed as a standalone Python application.
 
 ## Getting set up
 
-Maestro is a Pinokio app, so the easiest dev loop is:
+Maestro is a standalone (fork) release, so the easiest dev loop is:
 
-1. Install Maestro through Pinokio (see the [README](README.md)). This creates
-   the Python environment in `app/env/` and installs the app.
+1. Install the Python environment once:
+   ```bash
+   cd app
+   python3 -m venv env
+   env/bin/pip install -r requirements.txt
+   ```
+   This creates the venv in `app/env/` and installs all backend dependencies.
 2. Edit the source in place. The layout:
-   - **Launcher scripts** (`install.js`, `start.js`, `update.js`, `reset.js`,
-     `pinokio.js`) live at the repo root.
+   - **Launcher scripts** (`start_local.sh`, `stop_local.sh`) live at the repo
+     root.
    - **Backend** — `app/`: FastAPI endpoints in `app/launch.py`, the generation
      pipeline in `app/wgp.py`, and services (LLM, Director, recipes, etc.) in
      `app/services/`.
    - **Frontend** — `ui/`: a React + TypeScript + Tailwind app; global state in
      `ui/src/stores/useStore.ts`.
-3. After changing the UI, rebuild it:
+3. Start the backend (auto-builds the UI on first run if needed):
+   ```bash
+   ./start_local.sh
+   ```
+4. After changing the UI, rebuild it:
    ```
    cd ui
    npm install
    npm run build
    ```
-   Pinokio's **Update** flow does this automatically; during active dev you can
-   run it yourself.
+   `start_local.sh` rebuilds automatically when `ui/dist/` is missing.
 
 ## Before you open a PR
 
-CI runs three checks on every PR — please run them locally first:
+CI runs these checks on every PR — please run them locally first:
 
 ```bash
-# 1. Clean-repo guard (see below) — must pass
-python scripts/verify_clean_repo.py
+# 1. UI type-check + build
+cd ui && npm install && npm run build
 
 # 2. Python syntax on the modules you touched
-python -m compileall -q app/services app/launch.py scripts
+python -m compileall -q app/launch.py app/wgp.py app/services
 
-# 3. UI type-check + build
-cd ui && npm run build
+# 3. Backend smoke (after rebuild)
+./start_local.sh   # should bind in <30s and serve HTTP 200 on /
+./stop_local.sh
 ```
 
-### The clean-repo guard
+### Local data hygiene
 
-`scripts/verify_clean_repo.py` enforces that certain **locally-generated or
-machine-specific artifacts never get committed** — downloaded weights, CivitAI
-metadata sidecars, per-LoRA generated guides, and per-checkpoint finetune JSONs.
-These are all gitignored by design; the guard is the backstop that keeps them
-out of the published tree. If it fails, it prints exactly what leaked and where.
-Don't work around it — fix the leak (usually a file that should be gitignored
-got `git add`-ed).
+A handful of artifacts are **locally generated or machine-specific** and must
+never get committed — downloaded weights, CivitAI metadata sidecars, per-LoRA
+generated guides, per-checkpoint finetune JSONs, the `app/env/` venv, the
+`ui/node_modules/` tree, the `ui/dist/` build, and runtime logs under `logs/`.
+These are all gitignored by design. If a build artifact or a venv file ever
+shows up in `git status`, fix the leak (usually a path that should be
+gitignored got `git add`-ed).
 
 ## Conventions
 
@@ -66,8 +75,8 @@ got `git add`-ed).
 
 ## Reporting bugs
 
-Please use the **Bug report** issue template — it asks for your logs
-(`logs/api/latest` in the Pinokio app folder) and GPU/VRAM/OS, which is almost
+Please use the **Bug report** issue template — it asks for backend logs
+(typically the tail of `app/.launcher.log`) and GPU/VRAM/OS, which is almost
 always what's needed to reproduce a local-generation issue.
 
 ## License

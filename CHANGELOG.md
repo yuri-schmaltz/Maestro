@@ -257,7 +257,7 @@ filename searches.
 
 Launcher and polish: adopted the new orange Maestro icon, simplified Start and
 LoRA-folder actions, removed the normal Classic UI entry points, and kept the
-Pinokio launcher schema version independent from Maestro's application version.
+the launcher launcher schema version independent from Maestro's application version.
 The release also includes H3 continuation diagnostics, reference manifest and
 Turbo update coverage, safer remote-access persistence, and expanded Editor,
 Studio image, film-grain, character-library, and PDD regression tests. Final
@@ -445,7 +445,7 @@ asset when both exist, detects the checkpoint's QKV layout before loading, and
 prints the source of every H3 component. Differently published VAE artifacts
 remain separate rather than being treated as unsafe duplicates.
 
-Account-free installation: Install no longer starts Pinokio's Hugging Face
+Account-free installation: Install no longer starts the launcher's Hugging Face
 device-login flow. Maestro's default managed models download anonymously from
 public sources. A clearly labeled optional menu action remains available for
 custom gated assets or higher download limits, and missing LTX-2.5 components
@@ -783,7 +783,7 @@ weight readiness checks, and default visibility for all four Krea 2 models.
 This resolves #35 and #43.
 
 Studio and reliability: model visibility now persists server-side across
-Pinokio ports and restarts; newly installed CivitAI checkpoints appear without
+the launcher ports and restarts; newly installed CivitAI checkpoints appear without
 a restart; control-video motion is independent of generated, uploaded, or
 source audio; Temporal Depth assets are provisioned and verified on demand;
 and Voice Reference is enabled independently of experimental features.
@@ -1061,6 +1061,6 @@ built on the [Wan2GP](https://github.com/deepbeepmeep/Wan2GP) pipeline.
 ### Requirements
 
 NVIDIA GPU (6GB+ VRAM; 24GB recommended for the full experience), Windows or
-Linux, installed via [Pinokio](https://pinokio.computer). Models download on
+Linux, installed via `git clone` (or equivalent) and `start_local.sh`. Models download on
 first use per model (the default set is ~30GB; the full collection exceeds
 300GB).

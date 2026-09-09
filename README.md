@@ -81,7 +81,7 @@ View all past Director runs with their full state — clip plans, generated imag
 
 ## Updates
 
-The version you are running is shown next to the Maestro title in the UI. To update, use the launcher's Update button in Pinokio.
+The version you are running is shown next to the Maestro title in the UI. To update, use the launcher's Update button when using the launcher.
 
 ### v2.0.1 (2026-09-04)
 
@@ -115,7 +115,7 @@ See the [complete v2.0.1 release notes](docs/RELEASE_NOTES_V2.0.1.md).
 - Added completion alerts, optional chimes, encrypted closed-app Web Push, an installable Maestro web app, and optional private HTTPS access through each user's own Tailscale account. Windows restores opted-in Tailscale access after Maestro restarts without repeated approval prompts.
 - Added per-clip, multi-window, and full Director completion estimates, including cache-aware calibration for First Block Cache and private local timing history for more accurate future estimates.
 - Expanded gallery details and search across model, resolution, LoRAs, H3 optimizations, prompts, window counts, and generation timing, while making the viewed or playing clip the reliable active Studio target.
-- Updated Maestro's orange app icon, unified the responsive Director / Studio / Editor header and version display, added Director first-frame thumbnails and full-rate iOS Editor preview playback, simplified the Pinokio menu, and preserved the v1.9.1 llama.cpp nightly-download hotfix.
+- Updated Maestro's orange app icon, unified the responsive Director / Studio / Editor header and version display, added Director first-frame thumbnails and full-rate iOS Editor preview playback, simplified the launcher menu, and preserved the v1.9.1 llama.cpp nightly-download hotfix.
 
 See the [complete v2.0 release notes](docs/RELEASE_NOTES_V2.0.md) and [Tailscale setup guide](docs/TAILSCALE_REMOTE_ACCESS.md).
 
@@ -457,7 +457,7 @@ See the [complete v2.0 release notes](docs/RELEASE_NOTES_V2.0.md) and [Tailscale
 - Krea 2 RAW, Turbo, RAW Identity Edit, and Turbo Identity Edit are now enabled by default in Image mode for new and existing installations.
 
 **Studio, models, and control video**
-- Enabled-model choices now persist server-side across Maestro restarts and changing Pinokio ports.
+- Enabled-model choices now persist server-side across Maestro restarts and changing the launcher ports.
 - Newly downloaded CivitAI checkpoints appear in model selectors immediately without restarting Maestro.
 - Control video and audio behavior are now independent in Frames mode: keep source audio, generate audio from the prompt, or use an uploaded soundtrack.
 - Missing Temporal Depth assets for LTX control-video workflows are downloaded with progress, resume support, hash verification, and atomic installation.
@@ -467,7 +467,7 @@ See the [complete v2.0 release notes](docs/RELEASE_NOTES_V2.0.md) and [Tailscale
 **Reliability and fixes**
 - Director no longer creates a duplicate combined file when a run contains only one finished clip.
 - Fixed SCAIL-2 relighting and user LoRAs failing validation when stale multi-phase weights were present.
-- Fixed installed Maestro apps being hidden or blocked by an early Pinokio NVIDIA detection failure.
+- Fixed installed Maestro apps being hidden or blocked by an early the launcher NVIDIA detection failure.
 - Added broad regression coverage for SCAIL-2, Repaint, Outpaint, Retake, model visibility, temporal-depth downloads, and Krea 2 editing.
 
 ### v1.4 (2026-07-20)
@@ -533,7 +533,7 @@ See the [complete v2.0 release notes](docs/RELEASE_NOTES_V2.0.md) and [Tailscale
 - Improved Director's minor-content safety checks.
 - Improved detection across deeply nested planning data while reducing common false positives.
 - Fixed sidebar crashes when changing models or generation modes.
-- Improved NVIDIA GPU compatibility checks during Pinokio installation.
+- Improved NVIDIA GPU compatibility checks during install.
 - Expanded automated regression testing for both dev and main.
 
 ### v1.3.3 (2026-07-17)
@@ -668,7 +668,7 @@ See the [complete v2.0 release notes](docs/RELEASE_NOTES_V2.0.md) and [Tailscale
 ### v1.1.0 (2026-07-10)
 
 **Added**
-- **Linked Model Folders** (Settings > System): reuse checkpoints and LoRAs from other installs such as Wan2GP, with one-click scanning of your Pinokio apps. Linked folders are strictly read-only; new downloads always go to Maestro's own folder. AI LoRA guides work for linked LoRAs too and are stored in Maestro's directory.
+- **Linked Model Folders** (Settings > System): reuse checkpoints and LoRAs from other installs such as Wan2GP, with one-click scanning of your the launcher apps. Linked folders are strictly read-only; new downloads always go to Maestro's own folder. AI LoRA guides work for linked LoRAs too and are stored in Maestro's directory.
 - **Krea 2 image models** (Raw and Turbo), ported from upstream Wan2GP.
 - **10Eros v1.4** model entry with the author's abliterated Gemma text encoder and the reference workflow's per-stage LoRA strengths.
 - **Reference Pipeline toggle** for 10Eros models (on by default): runs the model author's published ComfyUI workflow config (9+3 steps on hand-tuned sigmas, per-step CFG and STG, rectified-flow ancestral sampling).
@@ -698,7 +698,7 @@ Initial public release. See [CHANGELOG.md](CHANGELOG.md) for the full feature ru
 | **GPU** | NVIDIA, 6 GB VRAM | NVIDIA RTX 3090 / 4090 / 5090, 24 GB+ VRAM |
 | **System RAM** | 16 GB | 32 GB+ |
 | **Disk space** | **150 GB free** | **500 GB free** (for full model collection) |
-| **Python** | Auto-installed by Pinokio | — |
+| **Python** | Auto-installed by the launcher | — |
 
 **What to expect by GPU** (rough ballpark — varies with model, resolution, and length):
 
@@ -712,23 +712,23 @@ The first video is always the slow one: install is ~10–20 min, then the first 
 
 > ⚠ **AMD GPUs and macOS are not currently supported.** The pipeline depends on CUDA and several NVIDIA-only kernels. MacOS support is in development.  
 
-> ⚠ **Model downloads are large.** A typical install pulls **50–100 GB** of model weights on first launch. The full collection can exceed **300 GB**. Make sure you have headroom on the drive where Pinokio is installed. However, only models requested during generation will be downloaded. 
+> ⚠ **Model downloads are large.** A typical install pulls **50–100 GB** of model weights on first launch. The full collection can exceed **300 GB**. Make sure you have headroom on the drive where the launcher is installed. However, only models requested during generation will be downloaded. 
 
 ## Install
 
-1. Install [Pinokio](https://pinokio.computer).
-2. In Pinokio, open the **Discover** tab and search for *Maestro* — or click the **Download** button on the [Maestro repo page](https://github.com/Blizaine/Maestro) and paste the URL.
+1. Install [the launcher](https://example.com).
+2. In the launcher, open the **Discover** tab and search for *Maestro* — or click the **Download** button on the [Maestro repo page](https://github.com/Blizaine/Maestro) and paste the URL.
 3. Click **Install**. The launcher will:
    - Create the hardware-matched Python environment: `app/env-sol/` on supported RTX 40-class GPUs, `app/env-rtx50/` on RTX 50-series GPUs, or `app/env/` on other supported NVIDIA GPUs
    - Install all Python dependencies (torch, xformers, transformers, fastapi, …)
    - Build the React UI in `ui/`
 4. When install finishes, click **Start**. The first generation in each model triggers a one-time weight download.
 
-The install (without model downloads) typically takes **10–20 minutes** depending on internet speed. SAM 3.1 (used only for the experimental Inpaint feature) is **not installed by default** — install it on demand via Pinokio menu → "Install Inpaint Support (SAM 3.1)" if you want to use Inpaint.
+The install (without model downloads) typically takes **10–20 minutes** depending on internet speed. SAM 3.1 (used only for the experimental Inpaint feature) is **not installed by default** — install it on demand via the launcher menu → "Install Inpaint Support (SAM 3.1)" if you want to use Inpaint.
 
-Maestro does **not** require a Maestro account or a Hugging Face account. Its default managed models download anonymously from public sources. If you intentionally use custom gated assets or want higher Hugging Face download limits, choose **Connect Hugging Face (Optional)** in the Pinokio launcher menu.
+Maestro does **not** require a Maestro account or a Hugging Face account. Its default managed models download anonymously from public sources. If you intentionally use custom gated assets or want higher Hugging Face download limits, choose **Connect Hugging Face (Optional)** in the launcher launcher menu.
 
-Supported RTX 40- and 50-series cards use Maestro's standard Python 3.11, PyTorch 2.10, CUDA 13 H3 performance runtime. NVIDIA driver 580 or newer is required for that runtime. Existing installations migrate automatically through the normal **Update** action; RTX 40 migrations are created alongside the prior `app/env/` environment so a failed or interrupted upgrade can still launch the compatibility runtime. On Linux, Maestro installs tested prebuilt SageAttention and FlashAttention wheels rather than compiling them against the host CUDA toolkit; if either optional wheel is temporarily unavailable, the required Sol runtime still completes and uses Sol/SDPA fallback. Maestro prints a short runtime audit at startup. If it reports a missing H3 kernel after Update completes, use **Advanced → Repair H3 Performance Runtime** in the Pinokio menu.
+Supported RTX 40- and 50-series cards use Maestro's standard Python 3.11, PyTorch 2.10, CUDA 13 H3 performance runtime. NVIDIA driver 580 or newer is required for that runtime. Existing installations migrate automatically through the normal **Update** action; RTX 40 migrations are created alongside the prior `app/env/` environment so a failed or interrupted upgrade can still launch the compatibility runtime. On Linux, Maestro installs tested prebuilt SageAttention and FlashAttention wheels rather than compiling them against the host CUDA toolkit; if either optional wheel is temporarily unavailable, the required Sol runtime still completes and uses Sol/SDPA fallback. Maestro prints a short runtime audit at startup. If it reports a missing H3 kernel after Update completes, use **Advanced → Repair H3 Performance Runtime** in the launcher menu.
 
 MiniMax H3 offers an optional **Sol Engine (Experimental)** sparse-attention backend inside the H3 Optimizations panel. Its runtime support is installed and launched by default on compatible hardware; there is no separate Sol installer or Start mode. The optimization toggle remains per-generation so existing projects do not silently change their rendering recipe. The first Sol generation compiles Triton kernels and can start more slowly. RTX 20/30-series GPUs remain on SageAttention because the optimized Sol kernels do not support their compute architecture. If Sol cannot handle a call, Maestro reports it once and falls back to the normal dense H3 attention path.
 
@@ -736,7 +736,7 @@ On one RTX 4090 test system, a 14.4-second 720p H3 generation at 30 steps measur
 
 ### Updating
 
-Click **Update** in the launcher menu. This pulls the latest launcher scripts and app code, migrates or repairs the active hardware runtime when needed, reinstalls new Python dependencies, and rebuilds the React UI. When an older RTX 40 installation first receives the unified H3 runtime, Pinokio automatically continues into the one-time migration after the code pull.
+Click **Update** in the launcher menu. This pulls the latest launcher scripts and app code, migrates or repairs the active hardware runtime when needed, reinstalls new Python dependencies, and rebuilds the React UI. When an older RTX 40 installation first receives the unified H3 runtime, the launcher automatically continues into the one-time migration after the code pull.
 
 ### Resetting
 
@@ -752,11 +752,11 @@ After clicking **Start**, the launcher shows an **Open Web UI** button once the 
 - **Studio sidecar** — workflow and model picker, prompt, references, LoRAs, and advanced settings
 - **Main workspace** — generated outputs, Director pipeline status, or the full Editor canvas and timeline
 - **Settings drawer** (gear icon) — model visibility, performance auto-tune, services (LLM, API keys, NSFW, theme)
-- **Pinokio menu** — Update, Reset, Install Inpaint Support, LoRA folder shortcuts
+- **the launcher menu** — Update, Reset, Install Inpaint Support, LoRA folder shortcuts
 
 ## Sharing on the local network
 
-Maestro respects Pinokio's `PINOKIO_SHARE_LOCAL` environment variable. Set it to `false` (in the per-app or global ENVIRONMENT file) to bind the server to loopback only; set to `true` for LAN access. Pinokio's own daemon proxy is a separate concern that may also need to honor the variable depending on your setup.
+Maestro honors the `PINOKIO_SHARE_LOCAL` environment variable (inherited from its historical launcher integration). Set it to `false` to bind the server to loopback only; set to `true` for LAN access. The variable is read from the shell environment when `start_local.sh` (or `launch.py` directly) launches the backend, so put it in your shell session or export it inline.
 
 ## Private HTTPS and phone notifications
 
@@ -765,11 +765,11 @@ For complete first-time setup and troubleshooting, see [Use Maestro Remotely wit
 Tailscale is optional. Its Personal plan is suitable for an individual connecting their own devices; every Maestro user signs into their own Tailscale account rather than joining a Maestro-owned network.
 
 1. Install Tailscale on the Maestro computer and phone, then sign both into the same account.
-2. Start Maestro. In the Pinokio menu choose **Secure Remote Access (Tailscale)**, or use **Settings → Notifications → Private HTTPS access** when the operating system permits non-elevated setup.
+2. Start Maestro. In the launcher menu choose **Secure Remote Access (Tailscale)**, or use **Settings → Notifications → Private HTTPS access** when the operating system permits non-elevated setup.
 3. Scan/copy the private `https://…ts.net` address shown in Maestro's Notifications settings.
 4. On iPhone/iPad, open that address in Safari, use **Share → Add to Home Screen**, open the installed Maestro app, and enable **System notifications**.
 
-The one-time Secure Remote Access action remembers Maestro's actual backend port and reuses it on future starts. On Windows it also registers a fixed, on-demand restore helper for that loopback target, so Maestro can repair the private route on later starts without another UAC prompt. Users who enabled an earlier v2 preview should run the action one final time after updating. `PINOKIO_SHARE_LOCAL_PORT` controls Pinokio's separate LAN proxy and does not need to be set for Tailscale. If the saved port is occupied and Maestro falls back to another one, run Secure Remote Access once to adopt the new port. Disable it from Notifications settings or run `tailscale serve --https=443 off`. Maestro will refuse to overwrite a different existing Serve route. Web Push signing keys and browser subscriptions live only in `app/settings/web_push.json` (a gitignored local file). Notification payloads travel directly from the local Maestro host to the browser vendor's encrypted Web Push endpoint.
+The one-time Secure Remote Access action remembers Maestro's actual backend port and reuses it on future starts. On Windows it also registers a fixed, on-demand restore helper for that loopback target, so Maestro can repair the private route on later starts without another UAC prompt. Users who enabled an earlier v2 preview should run the action one final time after updating. If the saved port is occupied and Maestro falls back to another one, run Secure Remote Access once to adopt the new port. Disable it from Notifications settings or run `tailscale serve --https=443 off`. Maestro will refuse to overwrite a different existing Serve route. Web Push signing keys and browser subscriptions live only in `app/settings/web_push.json` (a gitignored local file). Notification payloads travel directly from the local Maestro host to the browser vendor's encrypted Web Push endpoint.
 
 ### Notification and remote-access API
 
@@ -815,8 +815,8 @@ Maestro is built on top of, and indebted to, the following projects:
 - [**MMAudio**](https://github.com/hkchengrex/MMAudio) — automatic ambient audio generation.
 - [**CivitAI**](https://civitai.com) — LoRA browser and weight recommendations.
 - [**llama.cpp**](https://github.com/ggml-org/llama.cpp) — local LLM inference engine.
-- [**Pinokio**](https://pinokio.computer) by [@cocktailpeanut](https://github.com/cocktailpeanut) — the launcher framework.
-- The original Pinokio Wan2GP launcher by [@cocktailpeanut](https://github.com/cocktailpeanut), which Maestro forks and extends.
+- [**the launcher**](https://example.com) by [@cocktailpeanut](https://github.com/cocktailpeanut) — the launcher framework.
+- The original the launcher Wan2GP launcher by [@cocktailpeanut](https://github.com/cocktailpeanut), which Maestro forks and extends.
 
 ## License
 
