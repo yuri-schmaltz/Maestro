@@ -33,3 +33,37 @@ def apply_review_edits(original, submitted, locks=None):
                 raise ValueError(f'Scene {i + 1}: invalid prompt')
             result[i][key] = value
     return result
+
+
+def retime_scene_plan(timeline, plans, images, slots, fps=24, minimum=1, step=1):
+    """Apply an explicit edit decision without inventing or dropping soundtrack time."""
+    import math
+    if not timeline or not isinstance(slots, list) or not 1 <= len(slots) <= 200:
+        raise ValueError('A timeline needs between 1 and 200 scenes')
+    result, new_plans, new_images = [], [], []
+    previous = float(timeline[0]['start'])
+    for slot in slots:
+        if not isinstance(slot, dict) or not isinstance(slot.get('sources'), list) or not slot['sources']:
+            raise ValueError('Invalid scene source')
+        sources = slot['sources']
+        if any(type(i) is not int or not 0 <= i < len(timeline) for i in sources):
+            raise ValueError('Invalid scene source')
+        try:
+            start, end = float(slot['clip']['start']), float(slot['clip']['end'])
+        except (KeyError, TypeError, ValueError):
+            raise ValueError('Invalid scene interval')
+        if not math.isfinite(start) or not math.isfinite(end) or end <= start or abs(start - previous) > .001:
+            raise ValueError('Scene intervals must be continuous and positive')
+        if (end - start) * fps < minimum - 1:
+            raise ValueError('Scene is shorter than the model minimum')
+        previous = end
+        clip = copy.deepcopy(timeline[sources[0]])
+        clip.update(start=start, end=end, duration_frames=minimum + max(0, round(((end-start)*fps-minimum)/step))*step)
+        clip['beat_count'] = 0
+        result.append(clip)
+        new_plans.append({'_director_scene_interval': [start, end], 'image_prompt': plans[sources[0]].get('image_prompt', ''),
+                          'video_prompt': '\n'.join(dict.fromkeys(plans[i].get('video_prompt', '') for i in sources))})
+        new_images.append(images[sources[0]] if sources[0] < len(images) else '')
+    if abs(previous - float(timeline[-1]['end'])) > .001:
+        raise ValueError('Scene editing must preserve soundtrack duration')
+    return result, new_plans, new_images

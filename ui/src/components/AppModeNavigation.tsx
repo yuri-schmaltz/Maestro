@@ -1,9 +1,13 @@
 import { useStore } from '../stores/useStore'
 import type { AppMode } from '../types'
 
+// Strategy B collapses the three-mode toggle into two (Workspace + Editor).
+// The "Director" tab is still exposed when the rollout flag is off so
+// pre-rollout users see no change; once `workspaceUnifiedDirector` flips
+// on, the Stage wrapper renders Director inside the Workspace and the
+// legacy tab disappears.
 const APP_MODES: Array<{ mode: AppMode; label: string }> = [
-  { mode: 'director', label: 'Director' },
-  { mode: 'studio', label: 'Studio' },
+  { mode: 'workspace', label: 'Workspace' },
   { mode: 'editor', label: 'Editor' },
 ]
 

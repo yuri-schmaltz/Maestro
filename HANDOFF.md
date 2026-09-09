@@ -202,3 +202,69 @@ feat: UX/UI sprint — SSE job queue, autosave, versioning, storyboard, cmd+k
 ---
 
 Boa sorte com o upstream! 🚀
+
+---
+
+## Addendum 2026-09-09 — Director-as-Stage rollout (Strategy B)
+
+A mescla entre Director e Studio descrita em
+`docs/ANALISE-CONTROLE-GERACAO-2026-09-09.md` (linha 94:
+*"Avoid requiring the user to manage different scene lists in Director,
+Studio and Editor simultaneously"*) foi implementada em três etapas
+sem alterar Python / API / Planner:
+
+### Mudanças (Strategy B)
+
+| Etapa | Arquivos | LOC |
+|---|---|---|
+| 1. DirectorStage wrapper + flag | `ui/src/components/Stages/DirectorStage.tsx` (novo), `ui/src/components/Sidebar/Sidebar.tsx`, `ui/src/stores/useStore.ts` | ~140 |
+| 2. `cancelPlan()` unificado + "Continue in Studio" | `ui/src/stores/useStore.ts`, `ui/src/components/Stages/DirectorStage.tsx` | ~120 |
+| 3. `workspace.director.*` namespace + `sidebarMode: 'workspace' \| 'editor'` | `ui/src/types/index.ts`, `ui/src/stores/useStore.ts`, `ui/src/components/AppModeNavigation.tsx`, `ui/src/components/Sidebar/{GenerateButton,AdvancedSettings,Sidebar}.tsx`, `ui/src/App.tsx`, `ui/src/stores/directorSelectors.ts` (novo) | ~430 |
+
+### Validação
+
+| Check | Resultado |
+| --- | --- |
+| `cd ui && ./node_modules/.bin/tsc --noEmit` | 0 errors |
+| `cd ui && npm run build` | ✓ 1845 modules · 6.05s · 1.4 MB JS · 374 KB gz |
+| `pytest tests/test_director_v2_plan_cancel.py tests/test_director_prompt_integrity.py tests/test_director_cancellation.py tests/test_director_pipeline_status.py tests/test_director_projects_queue.py tests/test_workspace_unified_stage.py tests/test_workspace_unified_cancel_plan.py tests/test_llm_provider_api_key.py tests/test_classic_ui_status.py` | **129/129 pass em 2.34s** |
+
+### Como habilitar
+
+```
+// No devtools do browser:
+localStorage.setItem('maestro.workspaceUnifiedDirector', '1')
+location.reload()
+```
+
+Botão "Director" aparece no header da sidebar esquerda; clique abre o
+`<DirectorStage/>` ao lado dos controles do Studio. Flag pode ser
+desativada a qualquer momento — `sidebarMode: 'director'` legado
+continua funcionando (compat shim).
+
+### Cancel unificado
+
+- `useStore.cancelPlan()` substitui as 4 superfícies anteriores
+  (`stopPipeline`, `cancelDirectorV2Plan`, `cancelJob`, repair cancel)
+- Para a Etapa 3 Stage wrapper o cancel é o mesmo botão X que já
+  existia ao lado do spinner "Writing scenes…"
+- Comportamento do worker Python: inalterado
+  (`v2_plan_cancel.py`, `request_cancel`, `_abort_pipeline_jobs`)
+
+### Migration shim
+
+Tipos em `ui/src/stores/directorSelectors.ts` (`useDirectorSlice`,
+`readDirectorNamespace`) permitem que código novo leia
+`workspace.director.*` enquanto os slices top-level (`directorXxx`)
+continuam sendo o source-of-truth. Renomeação física pode ser feita
+em uma janela futura sem mexer no `useStore.ts` inteiro.
+
+### Não mudou (intencionalmente)
+
+- `DirectorOrchestrator` e os 4 planners (`music_video`,
+  `short_film`, `podcast`, `viral_video`)
+- 36 routes Director + 3 routes Studio em `app/launch.py`
+- `v2_plan_cancel.py`, `director_pipeline.py`, `job_lifecycle.py`,
+  `_planning_checkpoint` schema
+- `directorApplyToClips` (continua sendo o coração da transição
+  plan → studio)

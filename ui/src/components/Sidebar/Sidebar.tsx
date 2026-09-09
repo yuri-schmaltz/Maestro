@@ -18,6 +18,7 @@ import { GenerateButton } from './GenerateButton'
 import { ModelSelector } from './ModelSelector'
 import { MultiClipEditor } from './MultiClipEditor'
 import { DirectorChat } from './DirectorChat'
+import { DirectorStage } from '../Stages/DirectorStage'
 import { RestyleControls } from './RestyleControls'
 import { InpaintControls } from './InpaintControls'
 import { OutpaintControls } from './OutpaintControls'
@@ -85,7 +86,26 @@ export function Sidebar() {
   const isMultiClip = isVideo && imageMode === 2
   const isContinue = isVideo && imageMode === 3
   const isBlend = isVideo && imageMode === 4
-  const isDirector = sidebarMode === 'director'
+  // Strategy B (Director-as-Stage): when the rollout flag is on AND
+  // we're in Studio mode, the user can mount `<DirectorStage/>` as
+  // an in-Workspace stage. We expose this as an extra panel that
+  // sits next to the existing studio controls via `workspaceStage`.
+  // Pre-flag (default) behavior is unchanged.
+  const workspaceUnifiedDirector = useStore(s => s.workspaceUnifiedDirector)
+  const workspaceStage = useStore(s => s.workspaceStage)
+  const openDirectorStage = useStore(s => s.openDirectorStage)
+  const closeDirectorStage = useStore(s => s.closeDirectorStage)
+  // Legacy `isDirector` flag — the old top-level Director sidebar that
+  // bypassed the Studio. Strategy B collapses this into the in-Workspace
+  // Stage (`workspaceStage === 'director'`). When the rollout flag is on,
+  // the Stage is rendered instead of `<DirectorChat/>` directly.
+  const isLegacyDirectorSidebar = sidebarMode === 'director'
+    || (sidebarMode === 'workspace' && !workspaceUnifiedDirector && false)
+  const isDirector = isLegacyDirectorSidebar
+    || (sidebarMode === 'workspace' && workspaceUnifiedDirector && workspaceStage === 'director')
+  const showDirectorStage = workspaceUnifiedDirector
+    && sidebarMode === 'workspace'
+    && workspaceStage === 'director'
   const isI2vOnly = modelOptions?.i2v_class && !modelOptions?.t2v_class
 
   // Video Transform controls backed by the legacy edit-mode engines.
@@ -278,7 +298,13 @@ export function Sidebar() {
               </button>
             </div>
           </div>
-          {isDirector ? <DirectorChat /> : studioControls}
+          {isLegacyDirectorSidebar ? (
+            <DirectorChat />
+          ) : showDirectorStage ? (
+            <DirectorStage onClose={closeDirectorStage} />
+          ) : (
+            studioControls
+          )}
           <HardwareStatusBar />
         </aside>
       </>
@@ -292,6 +318,19 @@ export function Sidebar() {
       <div className="flex h-14 items-center justify-between border-b border-border px-4">
         <MaestroBrand />
         <div className="flex items-center gap-2">
+          {workspaceUnifiedDirector && (
+            <button
+              onClick={() => showDirectorStage ? closeDirectorStage() : openDirectorStage()}
+              className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+                showDirectorStage
+                  ? 'bg-accent-blue text-white'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              }`}
+              title={showDirectorStage ? 'Return to Studio' : 'Open Director planning stage'}
+            >
+              {showDirectorStage ? 'Studio' : 'Director'}
+            </button>
+          )}
           <AppModeToggle />
           <button
             onClick={toggleSettings}
@@ -302,7 +341,20 @@ export function Sidebar() {
           </button>
         </div>
       </div>
-      {isDirector ? <DirectorChat /> : studioControls}
+      {/* Strategy B rollout: when the Stage is open, the studio controls
+          collapse to make room for `<DirectorStage/>` on the right. The
+          Studio controls remain reachable through the toggle above. Pre-
+          flag behavior (sidebarMode === 'director' branch) is unchanged. */}
+      {isLegacyDirectorSidebar ? (
+        // Pre-rollout legacy path: keep `<DirectorChat/>` mounted
+        // directly so existing users see no change after disabling the
+        // workspace_unified_v1 flag.
+        <DirectorChat />
+      ) : showDirectorStage ? (
+        <DirectorStage onClose={closeDirectorStage} />
+      ) : (
+        studioControls
+      )}
       <HardwareStatusBar />
     </aside>
   )

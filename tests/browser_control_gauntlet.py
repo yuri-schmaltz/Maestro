@@ -43,6 +43,15 @@ async def main():
         await page.goto(base + '/tests/control.html')
         await page.get_by_role('heading', name='Review scene plan').wait_for()
         scenes = page.locator('article')
+        await scenes.nth(0).get_by_role('button', name='Reject scene', exact=True).click()
+        await scenes.nth(0).get_by_label('Reason for rejection (optional)').fill('Change the framing')
+        await page.reload()
+        await page.get_by_role('heading', name='Review scene plan').wait_for()
+        assert await scenes.nth(0).get_by_label('Reason for rejection (optional)').input_value() == 'Change the framing'
+        await page.get_by_role('button', name='Approve all scenes', exact=True).click()
+        assert await page.get_by_role('button', name='Continue with approved plan', exact=True).is_disabled()
+        assert await scenes.nth(0).get_by_role('button', name='Scene rejected', exact=True).count() == 1
+        await scenes.nth(1).get_by_role('button', name='Approved — click to reopen', exact=True).click()
         await scenes.nth(0).get_by_role('button', name='Approve scene', exact=True).click()
         await scenes.nth(0).locator('textarea').nth(1).fill('Ana says hello')
         assert await page.get_by_text('0/2 scenes approved', exact=True).count() == 1
@@ -87,6 +96,22 @@ async def main():
         assert await page.locator('video').count() == 2
         await page.get_by_role('button', name='Approve this take', exact=True).last.click()
         assert any(url.endswith('/take') and body.get('filename') == 'b.mp4' for _, url, body in requests)
+        await page.evaluate('window.controlHarness.showTiming()')
+        await page.get_by_role('button', name='Edit scene timing', exact=False).click()
+        await page.get_by_label('Scene 1 split time', exact=True).fill('2')
+        await page.get_by_role('button', name='Split scene 1', exact=True).click()
+        await page.get_by_label('Scene 1 end time', exact=True).fill('3')
+        await page.get_by_role('button', name='Move boundary', exact=True).first.click()
+        assert await page.get_by_text('Scene 2 · 3.000–5.000s', exact=False).count() == 1
+        await page.get_by_role('button', name='Undo', exact=True).click()
+        assert await page.get_by_text('Scene 2 · 2.000–5.000s', exact=False).count() == 1
+        await page.get_by_role('button', name='Apply scene timing', exact=True).click()
+        await page.get_by_role('dialog', name='Edit scene timing').wait_for(state='hidden')
+        timing = await page.evaluate('window.controlHarness.timingState()')
+        assert len(timing['clips']) == 3, timing
+        assert timing['clips'][-1]['end'] == 10
+        assert timing['images'] == [{'index': 0, 'name': 'first.jpg'}, {'index': 1, 'name': 'first.jpg'}]
+        assert timing['plans'][0]['video_prompt'] == timing['plans'][1]['video_prompt']
         assert not errors, errors
         await browser.close()
     print('Browser gauntlet passed: per-scene approval invalidation, locks, final request, mobile layout, edited revision submission, frozen request and take selection.')

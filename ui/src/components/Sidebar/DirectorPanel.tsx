@@ -1,3 +1,4 @@
+import { DirectorTimelineEditor } from './DirectorTimelineEditor'
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { Upload, Loader2, Music, Zap, RotateCcw, X, ChevronRight, ChevronDown, ImageIcon, Play } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
@@ -136,6 +137,7 @@ export function DirectorPanel() {
 
   return (
     <div className="bg-bg-tertiary/50 border border-accent-blue/30 rounded-lg p-3 space-y-3">
+      <DirectorTimelineEditor />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
@@ -766,15 +768,33 @@ export function DirectorPanel() {
 
       {/* Loading overlay for plan steps */}
       {step === 'plan' && loading && (
-        <div className="flex flex-col items-center gap-2 py-4">
+        <div className="relative flex flex-col items-center gap-2 py-4">
           <Loader2 size={20} className="animate-spin text-accent-blue" />
           <span className="text-[11px] text-text-muted">Writing image prompts...</span>
+          <button
+            type="button"
+            onClick={() => useStore.getState().cancelDirectorV2Plan()}
+            title="Stop planning"
+            aria-label="Stop planning"
+            className="absolute top-1 right-1 bg-bg-secondary rounded-full p-1 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
+          >
+            <X size={10} />
+          </button>
         </div>
       )}
       {step === 'plan_video' && loading && (
-        <div className="flex flex-col items-center gap-2 py-4">
+        <div className="relative flex flex-col items-center gap-2 py-4">
           <Loader2 size={20} className="animate-spin text-accent-blue" />
           <span className="text-[11px] text-text-muted">Writing video prompts...</span>
+          <button
+            type="button"
+            onClick={() => useStore.getState().cancelDirectorV2Plan()}
+            title="Stop planning"
+            aria-label="Stop planning"
+            className="absolute top-1 right-1 bg-bg-secondary rounded-full p-1 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
+          >
+            <X size={10} />
+          </button>
         </div>
       )}
     </div>

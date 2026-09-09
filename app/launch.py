@@ -6970,7 +6970,13 @@ def _mask_key(key: str) -> str:
     return key[:4] + "..." + key[-4:]
 
 
-_PUBLIC_LLM_PROVIDERS = {"openai", "anthropic"}
+_PUBLIC_LLM_PROVIDERS = {"openai", "anthropic", "minimax"}
+
+
+# Director v2 plan cancellation lives in its own module so the cancel
+# endpoint, the plan endpoint, and the unit tests all share the same
+# registry without the test pulling in the FastAPI app.
+from services.director import v2_plan_cancel as _v2_plan_cancel  # noqa: E402
 
 
 def _llm_api_key_for_provider(services: dict, provider: str) -> str:
@@ -6985,6 +6991,7 @@ def _llm_api_key_for_provider(services: dict, provider: str) -> str:
         "remote": "llm_remote_api_key",
         "openai": "openai_api_key",
         "anthropic": "anthropic_api_key",
+        "minimax": "minimax_api_key",
     }.get(str(provider or "").lower())
     return str(services.get(key_name, "") or "") if key_name else ""
 
@@ -7037,6 +7044,8 @@ def get_services_config():
         "openai_api_key_set": bool(services.get("openai_api_key", "")),
         "anthropic_api_key": _mask_key(services.get("anthropic_api_key", "")),
         "anthropic_api_key_set": bool(services.get("anthropic_api_key", "")),
+        "minimax_api_key": _mask_key(services.get("minimax_api_key", "")),
+        "minimax_api_key_set": bool(services.get("minimax_api_key", "")),
         # Director v2 (layered architecture: structured shot planning,
         # mode-specific renderers, prompt validation) is now the default
         # as of 2026-05-03 after weeks of real-world validation. v1 had
@@ -7116,6 +7125,7 @@ async def update_services_config(request: Request):
         "llm_model_id", "llm_device", "llm_provider", "llm_remote_url",
         "enhance_llm_model_id", "enhance_llm_device",
         "google_api_key", "llm_remote_api_key", "openai_api_key", "anthropic_api_key",
+        "minimax_api_key",
         "use_director_v2", "nsfw_mode", "nsfw_accepted_at", "director_prompt_polish",
         "civitai_api_key", "voice_reference_enabled", "ltx_progressive_pipeline",
         "show_experimental", "auto_performance", "storage_allow_linked_removal",
@@ -9684,6 +9694,17 @@ async def regenerate_review_image(pid: str, clip_index: int, request: Request):
         raise HTTPException(status_code=409, detail=str(exc))
 
 
+@api.put("/api/v1/director/pipeline/{pid}/timing")
+async def edit_pipeline_timing(pid: str, request: Request):
+    from services.director_pipeline import retime_pipeline_review
+    body = await request.json()
+    try:
+        await asyncio.to_thread(retime_pipeline_review, wgp.save_path, pid, body.get("slots"), body.get("review_digest"))
+        return {"status": "paused", "pipeline_id": pid}
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
 @api.put("/api/v1/director/pipelines/{pid}/clips/{clip_index}/take")
 async def select_pipeline_scene_take(pid: str, clip_index: int, request: Request):
     from services.director_pipeline import select_scene_take
@@ -9869,6 +9890,11 @@ async def director_v2_plan(request: Request):
     }
     skill_type = skill_map.get(skill_type, skill_type)
 
+    # Register a cancellation event up-front so the client can interrupt
+    # the LLM call mid-stream via /api/v1/director/v2/plan/cancel.
+    plan_id = str(uuid.uuid4())
+    cancel_event = _v2_plan_cancel.register(plan_id)
+
     try:
         _ensure_llm_loaded()
 
@@ -9917,9 +9943,11 @@ async def director_v2_plan(request: Request):
             if polish_block:
                 planner_kwargs["polish_block"] = polish_block
 
-        # Plan
+        # Plan — pass cancel_event as a keyword so DirectorOrchestrator.plan()
+        # wires it into the planner's _planning_cancelled_callback.
         plan = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: director.plan(skill_type, **planner_kwargs)
+            None,
+            lambda: director.plan(skill_type, cancel_event=cancel_event, **planner_kwargs),
         )
 
         # Render
@@ -9948,12 +9976,53 @@ async def director_v2_plan(request: Request):
             "clip_plans": clip_plans,
             "production_plan": plan.to_dict(),
             "skill_type": skill_type,
+            "plan_id": plan_id,
         }
 
+    except InterruptedError as exc:
+        # Planner noticed the cancel event and short-circuited. Return a
+        # 499-style payload so the client can surface "Planning cancelled"
+        # instead of treating it as a server-side error.
+        if "cancelled" in str(exc).lower():
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "clip_plans": [],
+                    "production_plan": None,
+                    "skill_type": skill_type,
+                    "plan_id": plan_id,
+                    "cancelled": True,
+                    "detail": str(exc),
+                },
+            )
+        raise HTTPException(status_code=500, detail=str(exc))
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        _v2_plan_cancel.release(cancel_event, plan_id)
+
+
+@api.post("/api/v1/director/v2/plan/cancel")
+async def cancel_director_v2_plan(request: Request):
+    """Signal the in-flight Director v2 plan to stop between LLM passes.
+
+    Best-effort: if no plan is currently running the endpoint returns
+    ``{"cancelled": False}`` without raising, so the client's catch-all
+    handler can swallow network errors without surfacing a confusing toast.
+    """
+    # Body is informational only right now — a future per-plan_id keying
+    # could come from a ``plan_id`` field but the active registry is keyed
+    # by the most recent call since the UI only triggers one plan at a time.
+    try:
+        await request.json()
+    except Exception:
+        pass
+    cancelled_id = _v2_plan_cancel.request_cancel()
+    if cancelled_id is None:
+        return {"cancelled": False, "plan_id": None}
+    return {"cancelled": True, "plan_id": cancelled_id}
 
 
 def _generation_request_uses_serial_auto_planner(body: dict) -> bool:

@@ -1,3 +1,4 @@
+import { DirectorTimelineEditor } from './DirectorTimelineEditor'
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Film, Mic, Sparkles, Send, Users, FileText, ListVideo } from 'lucide-react'
 import { useStore, directorModelUsesFixedMediaStrength, getFamiliesForMode, getModelsForFamily, resolveResolution } from '../../stores/useStore'
@@ -722,6 +723,7 @@ export function DirectorChat() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
+      <div className="px-4 pt-2"><DirectorTimelineEditor /></div>
       {/* Message list */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {/* Header with Start Over */}
@@ -1106,7 +1108,7 @@ export function DirectorChat() {
         {/* Plan loading with LLM thinking stream */}
         {atStep('plan') && loading && (
           <SystemBubble>
-            <div className="flex items-center gap-2 py-1">
+            <div className="flex items-center gap-2 py-1 pr-1">
               <Loader2 size={14} className="animate-spin text-accent-blue" />
               <span className="text-xs text-text-muted">
                 {pipelineStatus?.progress?.message
@@ -1118,6 +1120,15 @@ export function DirectorChat() {
                       ? `Writing ${usesShotImages ? 'scene prompts' : 'video prompts'}...`
                       : `Writing ${usesShotImages ? 'image and video prompts' : 'video prompts'}...`)}
               </span>
+              <button
+                type="button"
+                onClick={() => useStore.getState().cancelDirectorV2Plan()}
+                title="Stop planning"
+                aria-label="Stop planning"
+                className="ml-auto bg-bg-secondary rounded-full p-0.5 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
+              >
+                <X size={10} />
+              </button>
             </div>
             {pipelinePhase !== 'polishing_prompts' && <LlmThinkingStream stage="plan" />}
           </SystemBubble>
@@ -1161,9 +1172,18 @@ export function DirectorChat() {
         {/* Plan video loading */}
         {atStep('plan_video') && loading && (
           <SystemBubble>
-            <div className="flex items-center gap-2 py-1">
+            <div className="flex items-center gap-2 py-1 pr-1">
               <Loader2 size={14} className="animate-spin text-accent-blue" />
               <span className="text-xs text-text-muted">Writing video prompts...</span>
+              <button
+                type="button"
+                onClick={() => useStore.getState().cancelDirectorV2Plan()}
+                title="Stop planning"
+                aria-label="Stop planning"
+                className="ml-auto bg-bg-secondary rounded-full p-0.5 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
+              >
+                <X size={10} />
+              </button>
             </div>
             <LlmThinkingStream stage="plan_video" />
           </SystemBubble>

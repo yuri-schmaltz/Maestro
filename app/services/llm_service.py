@@ -45,10 +45,15 @@ def _is_benign_gemma_template_warning(line: str) -> bool:
 
     return _GEMMA_TEMPLATE_COMPAT_MARKER in str(line or "").lower()
 
-# Provider state: "local" | "remote" | "openai" | "anthropic"
+# Provider state: "local" | "remote" | "openai" | "anthropic" | "minimax"
+# ``minimax`` is the third-party Anthropic-compatible gateway used for
+# MiniMax M3 — same `/v1/messages` wire format as Anthropic but with a
+# different base URL (configurable via ``_remote_url``). The provider
+# reuses the Anthropic request/response handling and just points the
+# base URL at ``https://api.minimax.com`` (or whatever the user supplies).
 _provider: str = "local"
 _remote_url: str = ""       # Base URL for remote/OpenAI-compatible servers
-_api_key: str = ""           # API key for OpenAI/Anthropic
+_api_key: str = ""           # API key for OpenAI/Anthropic/MiniMax
 
 # Auto-unload idle timer
 _idle_timer: Optional[threading.Timer] = None
@@ -648,6 +653,14 @@ def get_available_models(provider: str = "local", remote_url: str = "", api_key:
             {"id": "claude-haiku-4-5-20251001", "label": "Claude Haiku 4.5", "size_hint": "anthropic", "provider": "anthropic"},
         ])
 
+    # MiniMax M3 — Anthropic-compatible wire format but no /v1/models
+    # endpoint exposed, so we curate the catalog here. Add more ids as
+    # MiniMax publishes them.
+    if provider == "minimax" and api_key:
+        remote_models.extend([
+            {"id": "minimax-m3", "label": "MiniMax M3", "size_hint": "minimax", "provider": "minimax"},
+        ])
+
     return local_models + remote_models
 
 
@@ -668,6 +681,7 @@ PROVIDER_API_KEY_SETTING = {
     "remote": "llm_remote_api_key",
     "openai": "openai_api_key",
     "anthropic": "anthropic_api_key",
+    "minimax": "minimax_api_key",
 }
 
 
@@ -740,8 +754,14 @@ def _server_url() -> str:
 def _api_headers() -> dict:
     """Build headers for API calls (adds auth for remote providers)."""
     headers = {"Content-Type": "application/json"}
-    if _provider in ("remote", "openai", "anthropic") and _api_key:
+    if _provider in ("remote", "openai", "anthropic", "minimax") and _api_key:
         if _provider == "anthropic":
+            headers["x-api-key"] = _api_key
+            headers["anthropic-version"] = "2023-06-01"
+        elif _provider == "minimax":
+            # MiniMax M3 is Anthropic-compatible on the wire: same headers,
+            # same /v1/messages endpoint. The only difference is the base
+            # URL — see _anthropic_base_url() and _generate_anthropic_at().
             headers["x-api-key"] = _api_key
             headers["anthropic-version"] = "2023-06-01"
         else:
@@ -1141,7 +1161,7 @@ def _log_generation_metrics(metrics: dict) -> None:
 
 
 def is_loaded() -> bool:
-    if _provider in ("remote", "openai", "anthropic"):
+    if _provider in ("remote", "openai", "anthropic", "minimax"):
         return bool(_model_id)
     return _process is not None and _process.poll() is None
 
@@ -1659,7 +1679,7 @@ def load_model(
     global _provider, _remote_url, _api_key
 
     # Handle remote/API providers — no subprocess needed
-    if provider in ("remote", "openai", "anthropic"):
+    if provider in ("remote", "openai", "anthropic", "minimax"):
         with _lock:
             if (
                 is_loaded()
@@ -2235,6 +2255,12 @@ def generate(
     if _provider == "anthropic":
         return _generate_anthropic(messages, total_tokens, max(temperature, 0.01), top_p)
 
+    # MiniMax M3 speaks the Anthropic Messages wire format, so reuse the
+    # Anthropic request body — only the base URL changes, which is handled
+    # inside _anthropic_base_url().
+    if _provider == "minimax":
+        return _generate_anthropic(messages, total_tokens, max(temperature, 0.01), top_p)
+
     try:
         resp = requests.post(
             f"{_server_url()}/v1/chat/completions",
@@ -2481,6 +2507,11 @@ def generate_streaming(
     if _provider == "anthropic":
         return _generate_streaming_anthropic(messages, total_tokens, max(temperature, 0.01), top_p)
 
+    # MiniMax M3 — Anthropic-compatible streaming; base URL resolved by
+    # _anthropic_base_url() (default https://api.minimax.com).
+    if _provider == "minimax":
+        return _generate_streaming_anthropic(messages, total_tokens, max(temperature, 0.01), top_p)
+
     raw_content = ""
     reasoning_content = ""
     in_reasoning = False
@@ -2601,6 +2632,22 @@ def generate_streaming(
     return content.strip()
 
 
+def _anthropic_base_url() -> str:
+    """Resolve the base URL for Anthropic-compatible providers.
+
+    Falls back to the public Anthropic endpoint when no remote URL has
+    been configured (e.g. when ``_provider == "anthropic"``). For
+    ``_provider == "minimax"``, ``_remote_url`` is the user's configured
+    MiniMax gateway — defaults to ``https://api.minimax.com`` when
+    unset.
+    """
+    if _remote_url:
+        return _remote_url.rstrip("/")
+    if _provider == "minimax":
+        return "https://api.minimax.com"
+    return "https://api.anthropic.com"
+
+
 def _generate_anthropic(messages: list, max_tokens: int, temperature: float, top_p: float) -> str:
     """Non-streaming generation via Anthropic Messages API."""
     import re as _re
@@ -2624,7 +2671,7 @@ def _generate_anthropic(messages: list, max_tokens: int, temperature: float, top
         payload["system"] = system_text
 
     resp = requests.post(
-        "https://api.anthropic.com/v1/messages",
+        f"{_anthropic_base_url()}/v1/messages",
         json=payload,
         headers=_api_headers(),
         timeout=600,
@@ -2673,7 +2720,7 @@ def _generate_streaming_anthropic(messages: list, max_tokens: int, temperature: 
     raw_content = ""
     try:
         resp = requests.post(
-            "https://api.anthropic.com/v1/messages",
+            f"{_anthropic_base_url()}/v1/messages",
             json=payload,
             headers=_api_headers(),
             timeout=600,

@@ -50,3 +50,21 @@ A bateria compreende 182 testes Python em oito suítes, verificações TypeScrip
 - Previews de baixo custo, presets criativos e bloqueios semânticos detalhados da análise inicial permanecem evoluções futuras; não fazem parte desta entrega.
 
 As alterações preexistentes no workspace foram preservadas. Nenhum commit, publicação ou envio externo foi realizado.
+
+## Ajuste: reprovação explícita de cenas
+
+O cartão de revisão agora oferece `Reject scene`, destaca a cena em vermelho e permite registrar um motivo opcional. Reprovar remove a aprovação; `Approve all scenes` ignora cenas reprovadas e o avanço fica bloqueado até aprová-las individualmente. A ação não exclui a cena nem dispara geração. O estado de reprovação e o motivo são salvos neste navegador por projeto, etapa e digest da revisão; não são sincronizados entre dispositivos nem enviados automaticamente ao gerador. Uma nova revisão precisa ser avaliada novamente.
+
+O teste de navegador cobre reprovação, recuperação do motivo após recarregar e impossibilidade de contornar a reprovação com aprovação em lote.
+
+## Edição manual da divisão de cenas
+
+Depois da análise da música, o Director exibe `Edit scene timing`, tanto no painel quanto na interface de conversa. A janela permite dividir no segundo escolhido, mover o limite entre duas cenas, unir com a próxima, subdividir todas por duração máxima e desfazer alterações antes de aplicar. Início/fim da trilha são preservados; mudar o início de uma cena corresponde a mover o fim da anterior. Tempos são absolutos, em segundos; não há arraste sobre waveform ou snap automático em batidas nesta versão.
+
+A subdivisão mantém os limites existentes e divide cada trecho em partes iguais que não ultrapassam a duração escolhida. Há um limite de 200 cenas. O modelo determina o mínimo de frames aceito; o tempo de montagem permanece contínuo enquanto os frames de geração são ajustados ao passo do modelo.
+
+Uma divisão herda prompt e imagem da cena de origem. Uma união mantém a primeira imagem/prompt de imagem e combina os prompts de vídeo distintos, na ordem. A operação não gera enquadramentos novos automaticamente. Prompts de janelas, contratos de continuidade e aprovações anteriores são invalidados para nova revisão.
+
+Em um projeto pausado, a alteração é salva no servidor e volta à revisão dos prompts; revisões desatualizadas são rejeitadas. Em um planejamento ainda não submetido, aplica-se ao rascunho atual do Director. Durante execução, o botão fica indisponível. A retomada agora prioriza as imagens do checkpoint, evitando substituir imagens regeneradas pelas cópias da preparação inicial.
+
+Validação: 186 testes Python, testes TypeScript de cortes/limites/união/subdivisão, build e Playwright com edição de tempos e conferência do mapeamento das imagens; 11 checks do runner aprovados. Nenhuma geração real foi iniciada nesta validação.

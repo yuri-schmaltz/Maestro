@@ -56,7 +56,7 @@ function ApiKeyField({ label, maskedValue, isSet, onSave }: {
   )
 }
 
-const PUBLIC_PROVIDERS = new Set(['openai', 'anthropic'])
+const PUBLIC_PROVIDERS = new Set(['openai', 'anthropic', 'minimax'])
 
 function NsfwDisclaimerModal({
   onAccept,
@@ -277,6 +277,7 @@ export function ServicesSettingsPanel() {
   const isRemote = provider === 'remote'
   const isOpenAI = provider === 'openai'
   const isLocal = provider === 'local'
+  const isMiniMax = provider === 'minimax'
 
   const handleRefreshModels = async () => {
     setRefreshing(true)
@@ -339,11 +340,12 @@ export function ServicesSettingsPanel() {
             <option value="remote">Remote OpenAI-Compatible (LM Studio, etc.)</option>
             <option value="openai">OpenAI API</option>
             <option value="anthropic">Anthropic API</option>
+            <option value="minimax">MiniMax M3 (Anthropic-compatible)</option>
           </select>
         </div>
 
         {/* Remote URL (for remote/openai providers) */}
-        {(isRemote || isOpenAI) && (
+        {(isRemote || isOpenAI || isMiniMax) && (
           <div className="space-y-3">
             <div>
               <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
@@ -353,13 +355,19 @@ export function ServicesSettingsPanel() {
                 type="text"
                 value={servicesConfig.llm_remote_url}
                 onChange={e => updateConfig({ llm_remote_url: e.target.value })}
-                placeholder={isRemote ? 'http://192.168.1.100:1234' : 'https://api.openai.com'}
+                placeholder={isRemote
+                  ? 'http://192.168.1.100:1234'
+                  : isMiniMax
+                    ? 'https://api.minimax.com'
+                    : 'https://api.openai.com'}
                 className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
               />
               <p className="text-[10px] text-text-muted mt-1">
                 {isRemote
                   ? 'URL of your LM Studio, Ollama, or other OpenAI-compatible server'
-                  : 'Leave blank for default OpenAI endpoint'}
+                  : isMiniMax
+                    ? 'MiniMax M3 gateway URL. Leave blank for default https://api.minimax.com'
+                    : 'Leave blank for default OpenAI endpoint'}
               </p>
             </div>
 
@@ -689,6 +697,13 @@ export function ServicesSettingsPanel() {
               maskedValue={servicesConfig.anthropic_api_key}
               isSet={servicesConfig.anthropic_api_key_set}
               onSave={val => updateConfig({ anthropic_api_key: val })}
+            />
+
+            <ApiKeyField
+              label="MiniMax API Key"
+              maskedValue={servicesConfig.minimax_api_key}
+              isSet={servicesConfig.minimax_api_key_set}
+              onSave={val => updateConfig({ minimax_api_key: val })}
             />
           </>
         )}

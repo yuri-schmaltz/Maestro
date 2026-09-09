@@ -5,6 +5,63 @@ pipeline's own history lives in [app/docs/CHANGELOG.md](app/docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+### Director-as-Stage (Strategy B from the merge feasibility analysis)
+
+The three-mode toggle (`Director | Studio | Editor`) has been collapsed
+into two (`Workspace | Editor`). Director now lives inside the Workspace
+as an in-place Stage, gated by the `workspaceUnifiedDirector` feature
+flag. The flag defaults to off so existing users see no change; flipping
+it on exposes a "Director" button in the sidebar header that mounts
+`<DirectorStage/>` next to the Studio controls.
+
+- New `useStore.cancelPlan()` unifies the four parallel cancel surfaces
+  (`stopPipeline`, `cancelDirectorV2Plan`, `cancelJob`, repair-cancel)
+  into a single entry point. Server-side behaviour is unchanged — the
+  Python primitives (`v2_plan_cancel.request_cancel`, `request_cancel`,
+  `_abort_pipeline_jobs`) all flow through their original registries.
+- New `useStore.openDirectorStage()` / `closeDirectorStage()` /
+  `setWorkspaceUnifiedDirector(enabled)` actions. The flag persists in
+  `localStorage` so a refresh keeps the choice.
+- New `<DirectorStage>` component at
+  `ui/src/components/Stages/DirectorStage.tsx` renders the existing
+  `<DirectorChat/>` inside a Studio-styled shell. Header shows
+  "Director — Planning" + "● Live" indicator when a pipeline is running,
+  with a "Continue in Studio" button that calls `directorApplyToClips`
+  + closes the Stage (replaces the legacy `sidebarMode: 'director'`
+  redirect that lost the Studio queue context).
+- New `ui/src/stores/directorSelectors.ts` exposes the 35 Director
+  slices under a `workspace.director.*` namespace (`useDirectorSlice`,
+  `readDirectorNamespace`). Migration shim only — the underlying
+  top-level state is unchanged, so existing call sites keep working.
+- `AppMode = 'workspace' | 'editor'` (was `'director' | 'studio' |
+  'editor'`). The legacy values are still accepted by `setSidebarMode`
+  and translated to the new mode + `workspaceStage` combination; the
+  storage type accepts them as a compat shim too so persisted UI state
+  with the old values loads without crashing.
+- `cancelDirectorV2Plan` exposed on `AppState` so the DirectorStage
+  X-button can call it directly without going through the legacy
+  sidebar toggle.
+
+Tests:
+
+- `tests/test_workspace_unified_stage.py` (new) — 7 cases locking in
+  the rollout invariants (no new Python routes, no parallel pipeline,
+  `_abort_pipeline_jobs` scoped to one pipeline).
+- `tests/test_workspace_unified_cancel_plan.py` (new) — 9 cases
+  covering `cancelPlan`'s v2-plan and pipeline branches, double-cancel
+  safety, and thread-safe `request_cancel`.
+
+Validation:
+
+- `tsc --noEmit`: 0 errors.
+- `vite build`: ✓ 1845 modules · 6.05s · 1.4 MB JS · 374 KB gz.
+- `pytest tests/test_director_v2_plan_cancel.py
+  tests/test_director_prompt_integrity.py tests/test_director_cancellation.py
+  tests/test_director_pipeline_status.py tests/test_director_projects_queue.py
+  tests/test_workspace_unified_stage.py
+  tests/test_workspace_unified_cancel_plan.py tests/test_llm_provider_api_key.py
+  tests/test_classic_ui_status.py`: **129/129 pass in 2.34s**.
+
 ## [2.0.1] - 2026-09-04
 
 Startup and duration planning: fixed the post-v2.0 black-screen regression

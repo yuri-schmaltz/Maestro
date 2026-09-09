@@ -1532,7 +1532,7 @@ def _invalid_saved_media_numbers(
     output_dir: str,
     media_kind: str,
 ) -> list[int]:
-    """Return 1-based slots without a non-empty direct-child media file."""
+    """Return slots without a non-empty media file contained in the output root."""
     allowed_extensions = _SAVED_MEDIA_EXTENSIONS.get(media_kind)
     if allowed_extensions is None:
         raise ValueError(f"Unsupported saved media kind: {media_kind}")
@@ -1544,13 +1544,18 @@ def _invalid_saved_media_numbers(
         if (
             not isinstance(filename, str)
             or not filename
-            or os.path.basename(filename) != filename
+            or os.path.isabs(filename)
+            or ".." in filename.replace("\\", "/").split("/")
         ):
             invalid.append(index + 1)
             continue
         candidate = os.path.realpath(os.path.join(output_root, filename))
+        try:
+            inside_root = os.path.normcase(os.path.commonpath([output_root, candidate])) == normalized_root
+        except ValueError:
+            inside_root = False
         if (
-            os.path.normcase(os.path.dirname(candidate)) != normalized_root
+            not inside_root
             or os.path.splitext(filename)[1].lower() not in allowed_extensions
             or not os.path.isfile(candidate)
         ):
@@ -5033,6 +5038,53 @@ def continue_pipeline(pid: str, updates: Optional[dict] = None, out_dir=None):
     return True
 
 
+def retime_pipeline_review(out_dir, pid, slots, digest):
+    """Save edited scene timing as a fresh approval stage, without rendering."""
+    from services.creative_review import retime_scene_plan
+    if get_pipeline(pid) is None:
+        saved = load_pipeline_state(out_dir, pid)
+        if not saved or saved.get('status') != 'paused':
+            raise ValueError('Open a paused review before editing timing')
+        ok, message = resume_pipeline(pid, out_dir)
+        if not ok:
+            raise ValueError(message)
+    with _pipeline_lock:
+        p = _pipelines.get(pid)
+        if not p or p.get('status') != 'paused' or pid in _pipeline_threads or pid in _pipeline_operations:
+            raise ValueError('Wait for the current operation to finish')
+        current = review_digest(p.get('pause_reason'), p['clip_plans'], p.get('clip_images'), p.get('review_render_params'))
+        if not digest or digest != current:
+            raise ValueError('This review changed. Reload before editing timing.')
+        old = copy.deepcopy(p)
+        params = p['params']
+        timeline, plans, images = retime_scene_plan(p['_planned_clips'], p['clip_plans'], p.get('clip_images') or [], slots,
+            float(params.get('fps') or 24), int(params.get('frames_minimum') or 1), int(params.get('frames_steps') or 1))
+        p['_planned_clips'] = timeline
+        p['clip_plans'] = plans
+        p['clip_images'] = images
+        p['_clip_keyframes'] = [[] for _ in timeline]
+        p['creative_locks'] = {}
+        p['review_approvals'] = {}
+        p['review_render_params'] = None
+        p['pause_reason'] = 'review_prompts'
+        p['progress'] = {'current': 1, 'total': 3, 'message': 'Scene timing changed — review prompts and inherited images', 'step': 0, 'total_steps': 0}
+        params['planned_clips'] = copy.deepcopy(timeline)
+        params['prepared_planned_clips'] = copy.deepcopy(timeline)
+        params['prepared_clip_plans'] = copy.deepcopy(plans)
+        params['prepared_clip_image_paths'] = [os.path.join(p['out_dir'], name) if name else '' for name in images]
+        p['_scene_take_history'] = {}
+        _pipeline_operations.add(pid)
+    try:
+        if not _save_pipeline_state(pid):
+            with _pipeline_lock:
+                p.clear()
+                p.update(old)
+            raise ValueError('Unable to save scene timing')
+    finally:
+        _release_pipeline_operation(pid)
+    return True
+
+
 def rerun_review_image(out_dir, pid, clip_index, prompt=None):
     """Regenerate one storyboard image while the production is paused."""
     if get_pipeline(pid) is None:
@@ -5728,7 +5780,10 @@ def _run_pipeline(pid: str, resume: bool = False):
                 for path in prepared_image_paths
             )
         )
-        if _prepared_imgs_ok:
+        if _resume_imgs_ok:
+            clip_images = resume_images
+            clip_keyframes = p.get('_clip_keyframes') or [[] for _ in clip_images]
+        elif _prepared_imgs_ok:
             clip_images = []
             pipeline_root = os.path.realpath(pipeline_out_dir)
             for path in prepared_image_paths:

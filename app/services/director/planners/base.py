@@ -409,6 +409,12 @@ class BasePlanner(ABC):
             kwargs.pop("json_schema", None)
             response = gen_fn(**kwargs)
 
+        # Check for cancellation as soon as the LLM call returns. Without
+        # this, a single-call plan (most music videos) only honors cancel
+        # at the *next* batch boundary, which never comes — the user sees
+        # the cancel button do nothing until the full response lands.
+        self._raise_if_planning_cancelled()
+
         parsed = self._parse_json_response(response)
         if parsed is not None:
             return parsed

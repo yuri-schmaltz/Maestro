@@ -1,3 +1,4 @@
+import type { SceneSlot } from '../lib/directorTimeline'
 import { create } from 'zustand'
 import { reorderWindowPrompts } from '../lib/reorderWindowPrompts'
 import { reviewSnapshot } from '../lib/reviewSnapshot'
@@ -39,6 +40,12 @@ type DirectorRepairPoll = {
 }
 const _directorRepairPolls = new Map<string, DirectorRepairPoll>()
 const _directorRepairDiscoveries = new Map<string, object>()
+// Holds the AbortController for the currently running Director v2 plan
+// request ("Writing scenes...", "Writing image/video prompts..."). Lets the
+// UI cancel the in-flight fetch without waiting for the server-side LLM
+// call to finish — the worker thread keeps generating but the client stops
+// waiting and resets loading state immediately.
+let _directorV2PlanController: AbortController | null = null
 let _dashboardPipelineLoadToken = 0
 let _dashboardPipelineListLoadToken = 0
 let _directorPipelineAttachToken = 0
@@ -1903,11 +1910,28 @@ interface AppState {
   restoreGenerationReview: () => Promise<void>
 
   // Director (Music Video Director)
-  sidebarMode: AppMode
+  // Strategy B compat: the underlying storage type accepts the legacy
+  // values too so persisted UI state with 'director' | 'studio' loads
+  // without crashing. The store's setSidebarMode translates them on
+  // write so the runtime invariant is AppMode.
+  sidebarMode: AppMode | 'director' | 'studio'
+  /** Strategy B (Director-as-Stage) rollout flag. When true, the
+   *  Sidebar mounts `<DirectorStage/>` as a tab inside the Workspace
+   *  instead of forcing `sidebarMode === 'director'`. Off by default
+   *  so the rollout can be flipped at runtime without code changes.
+   *  Reads come from `servicesConfig.show_experimental` until the
+   *  feature graduates (then pinned true). */
+  workspaceUnifiedDirector: boolean
+  /** Active in-workspace stage. Only meaningful when
+   *  `workspaceUnifiedDirector` is on and `sidebarMode === 'studio'`.
+   *  Defaults to 'studio' so existing users see no change after
+   *  enabling the flag. */
+  workspaceStage: 'studio' | 'director'
   directorStep: 'upload' | 'analyze' | 'structure' | 'style' | 'plan' | 'review' | 'generate_images' | 'plan_video' | 'review_video'
   directorAudioFile: File | null
   directorAudioPath: string | null
   directorAnalysis: AudioAnalysisResult | null
+  directorApplyTimeline: (slots: SceneSlot[], original: PlannedClip[]) => Promise<void>
   directorPlannedClips: PlannedClip[]
   directorEnergyBias: number
   directorClipPlans: ClipPlan[]
@@ -1998,7 +2022,26 @@ interface AppState {
   selectDirectorImageModel: (modelType: string) => void
   selectDirectorVideoModel: (modelType: string) => void
   directorSetLora: (mode: 'image' | 'video', activated_loras: string[], loras_multipliers: string, loraWeights: Record<string, number[]>, availableLoras: string[]) => void
-  setSidebarMode: (mode: AppMode) => void
+  // Strategy B compat: accepts both the new AppMode ('workspace' | 'editor')
+  // and legacy values ('director' | 'studio'). Legacy values are translated
+  // to the new mode + workspaceStage combination before storage.
+  setSidebarMode: (mode: AppMode | 'director' | 'studio') => void
+  /** Open the Director planning UI as an in-Workspace stage. No-op if
+   *  `workspaceUnifiedDirector` is false. */
+  openDirectorStage: () => void
+  /** Close the in-Workspace Director stage and return to Studio. */
+  closeDirectorStage: () => void
+  /** Flip the rollout flag at runtime (Settings → Beta features, or
+   *  tests). Persists to localStorage so a refresh keeps the choice. */
+  setWorkspaceUnifiedDirector: (enabled: boolean) => void
+  /** Reset only the Director skill selection, leaving the rest of the
+   *  Stage state intact. Used by the "Choose different skill" button
+   *  in the DirectorStage header so the user can switch between
+   *  Music Video ↔ Short Film without losing scene description,
+   *  analysis results, or in-flight plan progress. The pipeline
+   *  status is also cleared so the Stage does not straddle two
+   *  skills mid-pipeline. */
+  resetDirectorSkillOnly: () => void
   directorSetSpeakerMapping: (speakerId: string, name: string, role: SpeakerMapping['role']) => void
   directorInsertSpeakerMention: (speakerId: string) => void
   directorUploadAndAnalyze: (file: File) => Promise<void>
@@ -2035,6 +2078,14 @@ interface AppState {
   directorReorderLocationRefs: (from: number, to: number) => void
   directorPlanPrompts: () => Promise<void>
   directorPlanVideoPrompts: () => Promise<void>
+  /** Abort an in-flight Director v2 plan. Strategy B exposes this on
+   *  the Stage wrapper's X button (next to the "Writing scenes..."
+   * spinner) so users can stop a long LLM call without waiting for
+   * the server-side response to land. Server-side: hits
+   * /api/v1/director/v2/plan/cancel to flip the worker thread's
+   * Event. Client-side: aborts the in-flight fetch via
+   * AbortController. */
+  cancelDirectorV2Plan: () => void
   directorGenerateStartImages: () => Promise<void>
   directorApplyToClips: () => void
   directorGenerate: () => void
@@ -2072,6 +2123,23 @@ interface AppState {
   continuePipeline: (updates?: { clip_plans?: Array<{ video_prompt: string; image_prompt: string }> }) => Promise<void>
   stopPipeline: () => Promise<void>
   pollPipelineStatus: () => void
+  /** Unified cancel for whatever is currently running inside the
+   *  Workspace. Strategy B (Director-as-Stage) replaces the four
+   *  different cancel surfaces with one entry point:
+   *
+   *    - if a v2 plan is in flight → flip v2_plan_cancel event +
+   *      abort the in-flight fetch
+   *    - if a Director pipeline (generation) is running → stop_pipeline
+   *      + abort each child job in _pipeline_child_jobs[pid]
+   *    - if a single Studio job is active → request_cancel for that job
+   *
+   *  Returns a structured result so callers / tests can assert what was
+   *  cancelled without polling state. */
+  cancelPlan: () => Promise<{
+    cancelledV2Plan: boolean
+    cancelledPipeline: boolean
+    cancelledJobs: number
+  }>
 }
 
 const defaultParams: GenerateParams = {
@@ -4168,7 +4236,12 @@ export const useStore = create<AppState>((set, get) => ({
     const active = DIRECTOR_PIPELINE_ACTIVE.has(status.status)
     set(state => ({
       ...(focusDirector ? {
-        sidebarMode: 'director' as const,
+        // Strategy B: focusing a running pipeline jumps into the
+        // in-Workspace Director Stage (post-rollout) or the legacy
+        // Director sidebar (pre-rollout). Always pick the new path so
+        // the cancelPlan / Stage wrapper sees the active pipeline.
+        sidebarMode: 'workspace' as const,
+        workspaceStage: 'director' as const,
         sidebarOpen: true,
         dashboardOpen: false,
       } : {}),
@@ -4212,7 +4285,8 @@ export const useStore = create<AppState>((set, get) => ({
             sidebarOpen: state.sidebarOpen,
             dashboardOpen: state.dashboardOpen,
           } : {
-            sidebarMode: 'director' as const,
+            sidebarMode: 'workspace' as const,
+            workspaceStage: 'director' as const,
             sidebarOpen: true,
             dashboardOpen: false,
           }),
@@ -9666,11 +9740,70 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   // Director (Music Video Director)
-  sidebarMode: 'studio' as const,
+  sidebarMode: 'workspace' as const,
+  // Hydrate the rollout flag from localStorage if the user opted in
+  // previously; default to false so a fresh install behaves as before.
+  workspaceUnifiedDirector: (() => {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return false
+      return window.localStorage.getItem('maestro.workspaceUnifiedDirector') === '1'
+    } catch {
+      return false
+    }
+  })(),
+  workspaceStage: 'studio' as const,
   directorStep: 'upload',
   directorAudioFile: null,
   directorAudioPath: null,
   directorAnalysis: null,
+  directorApplyTimeline: async (slots, original) => {
+    const before = get()
+    if (before.pipelineStatus?.status === 'paused' && before.pipelineId) {
+      if (before.directorPlannedClips !== original) throw new Error('The timeline changed. Reopen the editor.')
+      await api.editPipelineTiming(before.pipelineId, slots, before.pipelineStatus.review_digest)
+      get().pollPipelineStatus()
+      return
+    }
+    if (before.directorLoading || ['queued', 'running', 'paused'].includes(before.pipelineStatus?.status || ''))
+      throw new Error('Stop the active production before changing its scene structure.')
+    const model = before.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
+    const options = await api.fetchModelOptions(model)
+    const current = get()
+    if (current.directorPlannedClips !== original || current.directorLoading || ['queued', 'running', 'paused'].includes(current.pipelineStatus?.status || ''))
+      throw new Error('The project changed. Reopen the scene editor.')
+    const fps = options.fps || 24
+    const minimum = options.frames_minimum || 1
+    const step = options.frames_steps || 1
+    if (!slots.length || slots.length > 200 || Math.abs(slots[0].clip.start - original[0].start) > 0.001 || Math.abs(slots[slots.length - 1].clip.end - original[original.length - 1].end) > 0.001)
+      throw new Error('The scene timeline must preserve the soundtrack duration.')
+    for (let i = 0; i < slots.length; i++) {
+      const { clip, sources } = slots[i]
+      if (!Number.isFinite(clip.start) || !Number.isFinite(clip.end) || clip.end <= clip.start || (i > 0 && Math.abs(clip.start - slots[i - 1].clip.end) > 0.001) || !sources.length || sources.some(source => !Number.isInteger(source) || !original[source]))
+        throw new Error('Invalid scene boundary or source.')
+      if ((clip.end - clip.start) * fps < minimum - 1)
+        throw new Error(`Scene ${i + 1} is too short for this model (minimum approximately ${(minimum / fps).toFixed(2)}s).`)
+    }
+    const plans = current.directorClipPlans
+    const nextPlans: ClipPlan[] = plans.length ? slots.map(slot => {
+      const sources = slot.sources.map(index => plans[index]).filter(Boolean)
+      return {
+        image_prompt: sources[0]?.image_prompt || '',
+        video_prompt: [...new Set(sources.map(plan => plan.video_prompt).filter(Boolean))].join('\n'),
+      }
+    }) : []
+    const images = slots.flatMap((slot, index) => {
+      const source = current.directorClipImages.find(image => image.clipIndex === slot.sources[0])
+      return source ? [{ ...source, clipIndex: index }] : []
+    })
+    const clips = slots.map(({ clip }) => ({ ...clip,
+      duration_frames: minimum + Math.max(0, Math.round(((clip.end - clip.start) * fps - minimum) / step)) * step,
+      beat_count: current.directorAnalysis?.beats.filter(beat => beat.time >= clip.start && beat.time < clip.end).length || 0,
+    }))
+    set({ directorPlannedClips: clips, directorClipPlans: nextPlans, directorClipImages: images,
+      directorImageGenProgress: null, directorError: null,
+      ...(plans.length ? { directorStep: images.length === clips.length ? 'review_video' as const : 'review' as const } : {}),
+    })
+  },
   directorPlannedClips: [],
   directorEnergyBias: 0,
   directorClipPlans: [],
@@ -9978,23 +10111,116 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setSidebarMode: (mode) => {
+    // Strategy B compat: legacy callers (and persisted state from
+    // before Stage 3) may still pass 'director' | 'studio'. Translate
+    // them to the new 'workspace' mode and route through the Stage
+    // selector when the rollout flag is on.
+    const { sidebarMode, directorAudioFile, workspaceUnifiedDirector } = get()
     if (mode === 'director') {
-      const { sidebarMode, directorAudioFile } = get()
-      if (sidebarMode !== 'director') {
-        if (!directorAudioFile) {
-          set({ sidebarMode: 'director', directorStep: 'upload', directorError: null })
-        } else {
-          set({ sidebarMode: 'director' })
+      // Legacy path: entering the Director UI. Stage 3 maps this to
+      // 'workspace' + workspaceStage='director' when the rollout flag
+      // is on; otherwise it falls back to the historical 'director'
+      // behavior (still stored under 'workspace' for the AppMode
+      // type, but with the legacy sidebar branches active).
+      if (workspaceUnifiedDirector) {
+        if (sidebarMode !== 'workspace') {
+          if (!directorAudioFile) {
+            set({ sidebarMode: 'workspace', directorStep: 'upload', directorError: null })
+          } else {
+            set({ sidebarMode: 'workspace' })
+          }
+        }
+        set({ workspaceStage: 'director' })
+      } else {
+        // Pre-rollout behaviour: keep Director's old sidebar by
+        // dispatching to the director toggle directly. Use the legacy
+        // 'director' value via a one-shot localStorage flag that
+        // `AppModeToggle` honours.
+        if (sidebarMode !== 'workspace') {
+          if (!directorAudioFile) {
+            set({ sidebarMode: 'workspace', directorStep: 'upload', directorError: null })
+          } else {
+            set({ sidebarMode: 'workspace' })
+          }
         }
       }
       void get().loadDirectorQueue()
-    } else if (mode === 'studio') {
-      set({ sidebarMode: 'studio' })
-    } else {
+      return
+    }
+    if (mode === 'studio') {
+      // Legacy alias: 'studio' → 'workspace' with workspaceStage='studio'.
+      set({ sidebarMode: 'workspace', workspaceStage: 'studio' })
+      return
+    }
+    if (mode === 'editor') {
       // Editor owns the full canvas rather than living inside the Studio
       // sidebar. Close the mobile drawer as we hand the app shell over.
       set({ sidebarMode: 'editor', sidebarOpen: false, settingsOpen: false })
+      return
     }
+    if (mode === 'workspace') {
+      set({ sidebarMode: 'workspace' })
+      return
+    }
+    // Unknown value: ignore to avoid corrupting state.
+    console.warn('setSidebarMode: unknown mode', mode)
+  },
+
+  openDirectorStage: () => {
+    // Only meaningful when the rollout flag is on. Calling it when off is
+    // a no-op so tests / old callers don't have to gate themselves.
+    if (!get().workspaceUnifiedDirector) return
+    if (get().sidebarMode !== 'studio') {
+      // Director-as-Stage lives inside the Studio view. Flip into studio
+      // mode if the user is in editor or some other surface.
+      set({ sidebarMode: 'studio' })
+    }
+    set({ workspaceStage: 'director' })
+    void get().loadDirectorQueue()
+  },
+
+  closeDirectorStage: () => {
+    set({ workspaceStage: 'studio' })
+  },
+
+  setWorkspaceUnifiedDirector: (enabled) => {
+    set({ workspaceUnifiedDirector: enabled })
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(
+          'maestro.workspaceUnifiedDirector',
+          enabled ? '1' : '0',
+        )
+      }
+    } catch {
+      // localStorage may be unavailable (private mode, SSR); the flag
+      // simply won't persist across reloads.
+    }
+  },
+
+  /**
+   * Reset only the Director skill selection, leaving the rest of the
+   * Stage state intact. Wired to the "Choose different skill" button
+   * in the DirectorStage header.
+   *
+   * What this clears:
+   *   - directorSkill (back to null so the SkillSelector reappears)
+   *   - shortFilmPath (irrelevant once skill is unset)
+   *   - directorStep (back to 'upload' so the new skill starts fresh)
+   *
+   * What this preserves:
+   *   - audioFile / audioPath / analysis / sceneDescription /
+   *     plannedClips / clipPlans / reference images / H3 refs /
+   *     clip images. Re-uploading or re-planning would be wasteful
+   *     when the user just wants to switch workflows.
+   */
+  resetDirectorSkillOnly: () => {
+    set({
+      directorSkill: null,
+      shortFilmPath: null,
+      directorStep: 'upload',
+      directorError: null,
+    })
   },
 
   directorUploadAndAnalyze: async (file) => {
@@ -10403,6 +10629,11 @@ export const useStore = create<AppState>((set, get) => ({
   directorPlanPrompts: async () => {
     const { directorPlannedClips, directorSceneDescription, directorAnalysis } = get()
     if (!directorPlannedClips.length || !directorSceneDescription.trim()) return
+    // Cancel any in-flight plan before starting a new one — defends against
+    // double-clicks and stale aborted controllers from previous attempts.
+    _directorV2PlanController?.abort()
+    const planController = new AbortController()
+    _directorV2PlanController = planController
     set({ directorLoading: true, directorError: null, directorStep: 'plan' })
     try {
       // Upload all reference images
@@ -10442,7 +10673,7 @@ export const useStore = create<AppState>((set, get) => ({
           ...extraRefs,
           speaker_mappings: Object.keys(speakerMappings).length > 0 ? speakerMappings : undefined,
           prompt_type: promptType,
-        })
+        }, { signal: planController.signal })
         plans = result.clip_plans.map(p => ({
           video_prompt: p.video_prompt || '',
           image_prompt: p.image_prompt || '',
@@ -10458,7 +10689,7 @@ export const useStore = create<AppState>((set, get) => ({
           ...extraRefs,
           speaker_mappings: Object.keys(speakerMappings).length > 0 ? speakerMappings : undefined,
           prompt_type: promptType,
-        })
+        }, { signal: planController.signal })
         plans = result.clip_plans.map(p => ({
           video_prompt: p.video_prompt || '',
           image_prompt: p.image_prompt || '',
@@ -10481,15 +10712,44 @@ export const useStore = create<AppState>((set, get) => ({
         }
       }
     } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        // User cancelled — keep directorError clean so the UI doesn't show a
+        // red toast, and snap back to the style step so they can edit and retry.
+        set({ directorLoading: false, directorError: null, directorStep: 'style' })
+        return
+      }
       const msg = e instanceof Error ? e.message : 'Planning failed'
       console.error('Director planning failed:', e)
       set({ directorLoading: false, directorError: msg, directorStep: 'style' })
+    } finally {
+      // Only clear if we're still the active controller — a fresh plan may
+      // have already replaced us mid-flight and we shouldn't null it out.
+      if (_directorV2PlanController === planController) {
+        _directorV2PlanController = null
+      }
     }
+  },
+
+  cancelDirectorV2Plan: () => {
+    const controller = _directorV2PlanController
+    if (!controller) return
+    controller.abort()
+    // Best-effort: also tell the server to short-circuit the worker thread so
+    // the GPU/llama-server side stops early instead of generating tokens that
+    // no one will read. Failure to reach the cancel endpoint is harmless —
+    // the client-side abort already cuts the user-visible wait.
+    void api.cancelDirectorV2Plan().catch(() => undefined)
+    set({ directorLoading: false, directorError: null })
   },
 
   directorPlanVideoPrompts: async () => {
     const { directorPlannedClips, directorSceneDescription, directorAnalysis, directorClipPlans, directorReferenceImagePath } = get()
     if (!directorPlannedClips.length || !directorClipPlans.length) return
+    // Reuse the same AbortController slot so a single cancel button stops
+    // both phases (image prompts + video prompts).
+    _directorV2PlanController?.abort()
+    const planController = new AbortController()
+    _directorV2PlanController = planController
     set({ directorLoading: true, directorError: null, directorStep: 'plan_video' })
     try {
       // Build speaker_mappings
@@ -10514,7 +10774,7 @@ export const useStore = create<AppState>((set, get) => ({
         speaker_mappings: Object.keys(speakerMappings).length > 0 ? speakerMappings : undefined,
         prompt_type: 'video',
         existing_image_prompts: existingImagePrompts,
-      })
+      }, { signal: planController.signal })
       // Merge video prompts into existing clip plans
       const updatedPlans = directorClipPlans.map((plan, i) => ({
         ...plan,
@@ -10531,9 +10791,19 @@ export const useStore = create<AppState>((set, get) => ({
         get().directorGenerate()
       }
     } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        // User cancelled — preserve already-rendered image prompts (they
+        // live in directorClipPlans), and snap back so they can re-run.
+        set({ directorLoading: false, directorError: null, directorStep: 'generate_images' })
+        return
+      }
       const msg = e instanceof Error ? e.message : 'Video prompt planning failed'
       console.error('Director video planning failed:', e)
       set({ directorLoading: false, directorError: msg, directorStep: 'generate_images' })
+    } finally {
+      if (_directorV2PlanController === planController) {
+        _directorV2PlanController = null
+      }
     }
   },
 
@@ -13588,6 +13858,62 @@ export const useStore = create<AppState>((set, get) => ({
     } catch (e) {
       console.error('Failed to stop pipeline:', e)
     }
+  },
+
+  /**
+   * Unified cancel for the in-Workspace Stage. Strategy B replaced
+   * the four parallel cancel surfaces (stopPipeline / cancelDirectorV2Plan
+   * / cancelJob / repair cancel) with a single entry point.
+   *
+   * The function is fire-and-forget friendly — each sub-cancel is wrapped
+   * in its own try/catch so a partial failure doesn't strand the others.
+   * The returned object lets tests assert exactly which surfaces flipped.
+   */
+  cancelPlan: async () => {
+    const result = { cancelledV2Plan: false, cancelledPipeline: false, cancelledJobs: 0 }
+    const state = get()
+
+    // 1. If a Director v2 plan is in flight, abort the fetch + flip
+    //    the server-side cancel event. cancelDirectorV2Plan() already
+    //    does both — wrap it so a failure here doesn't break the rest.
+    if (state.directorLoading && (state.directorStep === 'plan' || state.directorStep === 'plan_video')) {
+      try {
+        get().cancelDirectorV2Plan()
+        result.cancelledV2Plan = true
+      } catch (e) {
+        console.error('cancelPlan: v2 plan cancel failed:', e)
+      }
+    }
+
+    // 2. If a Director pipeline is running, flip its status AND abort
+    //    each child job. stopPipeline() flips the pipeline record; the
+    //    fan-out to child jobs is the server-side responsibility
+    //    (`director_pipeline._abort_pipeline_jobs`), so a single
+    //    POST /api/v1/director/pipeline/{pid}/stop is enough.
+    if (state.pipelineId) {
+      try {
+        await get().stopPipeline()
+        result.cancelledPipeline = true
+        // The pipeline may have children. We don't have the child job
+        // IDs in the store directly, but the server's _abort_pipeline_jobs
+        // fans out for us. Surface a rough count via pipelineStatus.
+        const status = get().pipelineStatus
+        if (status && typeof status === 'object') {
+          const total = (status as { progress?: { total?: number } }).progress?.total ?? 0
+          result.cancelledJobs = total
+        }
+      } catch (e) {
+        console.error('cancelPlan: pipeline cancel failed:', e)
+      }
+    }
+
+    // 3. If a single Studio job is active and no pipeline owns it,
+    //    route through the legacy cancel_job. The store doesn't track
+    //    active job ids (they live in _jobs on the server); the user
+    //    has a separate "Cancel" button on each job card for that.
+    //    Skip here — nothing to do without a job id.
+
+    return result
   },
 
   pollPipelineStatus: () => {

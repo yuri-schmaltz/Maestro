@@ -14,7 +14,44 @@ from services.scene_takes import record_take, select_take
 from services import director_pipeline as pipeline
 
 
+class TimelineEditTests(unittest.TestCase):
+    def test_split_preserves_duration_sources_and_changes_review_digest(self):
+        from services.creative_review import retime_scene_plan
+        timeline = [{'start': 0, 'end': 10, 'section_label': 'verse'}]
+        plans = [{'image_prompt': 'portrait', 'video_prompt': 'sing', 'window_prompts': ['old timing']}]
+        slots = [{'clip': {'start': 0, 'end': 4}, 'sources': [0]}, {'clip': {'start': 4, 'end': 10}, 'sources': [0]}]
+        clips, prompts, images = retime_scene_plan(timeline, plans, ['frame.jpg'], slots, 24, 1, 8)
+        self.assertEqual(images, ['frame.jpg', 'frame.jpg'])
+        self.assertEqual(clips[-1]['end'], 10)
+        self.assertNotIn('window_prompts', prompts[0])
+        self.assertNotEqual(review_digest('review_prompts', prompts), review_digest('review_prompts', plans))
+        slots[1]['clip']['start'] = 5
+        with self.assertRaises(ValueError): retime_scene_plan(timeline, plans, ['frame.jpg'], slots)
+
+    def test_merge_and_invalid_source(self):
+        from services.creative_review import retime_scene_plan
+        timeline = [{'start': 0, 'end': 4}, {'start': 4, 'end': 10}]
+        plans = [{'image_prompt': 'a', 'video_prompt': 'one'}, {'image_prompt': 'b', 'video_prompt': 'two'}]
+        slots = [{'clip': {'start': 0, 'end': 10}, 'sources': [0, 1]}]
+        clips, prompts, images = retime_scene_plan(timeline, plans, ['a.jpg', 'b.jpg'], slots)
+        self.assertEqual(prompts[0]['video_prompt'], 'one\ntwo')
+        self.assertEqual(images, ['a.jpg'])
+        slots[0]['sources'] = [-1]
+        with self.assertRaises(ValueError): retime_scene_plan(timeline, plans, [], slots)
+
+
 class GenerationReviewTests(unittest.TestCase):
+    def test_nested_storyboard_assets_are_valid_but_escaping_paths_are_not(self):
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as outside:
+            asset = Path(root) / '_director_assets/project/scene.jpg'
+            asset.parent.mkdir(parents=True)
+            asset.write_bytes(b'image')
+            external = Path(outside) / 'outside.jpg'
+            external.write_bytes(b'image')
+            (Path(root) / 'escape.jpg').symlink_to(external)
+            files = ['_director_assets/project/scene.jpg', '../outside.jpg', str(external), 'escape.jpg']
+            self.assertEqual(pipeline._invalid_saved_media_numbers(files, 4, root, 'image'), [2, 3, 4])
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -145,6 +182,21 @@ class DirectorApprovalTests(unittest.TestCase):
             'status': 'running', 'clip_plans': [{'image_prompt': 'portrait', 'video_prompt': 'walk', 'window_prompts': ['walk left']}],
             'clip_images': ['frame.png'], 'params': {'auto_mode': False},
         }
+
+    def test_retime_paused_project_saves_new_stage_and_preserves_images(self):
+        p = pipeline._pipelines['test']
+        p.update(out_dir=self.temp.name, _planned_clips=[{'start': 0, 'end': 10}])
+        pipeline._pause_for_creative_review('test', 'review_images', p['clip_plans'], p['clip_images'])
+        digest = review_digest('review_images', p['clip_plans'], p['clip_images'])
+        slots = [{'clip': {'start': 0, 'end': 4}, 'sources': [0]}, {'clip': {'start': 4, 'end': 10}, 'sources': [0]}]
+        pipeline.retime_pipeline_review(self.temp.name, 'test', slots, digest)
+        self.assertEqual(p['pause_reason'], 'review_prompts')
+        self.assertEqual(p['clip_images'], ['frame.png', 'frame.png'])
+        self.assertEqual(p['review_approvals'], {})
+        self.assertEqual(len(p['params']['prepared_planned_clips']), 2)
+        self.assertNotIn('test', pipeline._pipeline_operations)
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            pipeline.retime_pipeline_review(self.temp.name, 'test', slots, digest)
 
     def test_review_pause_returns_without_waiting_for_browser(self):
         plans = pipeline._pipelines['test']['clip_plans']

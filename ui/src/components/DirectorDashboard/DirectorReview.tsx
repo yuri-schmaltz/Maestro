@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Check, LockKeyhole, Unlock, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Check, X, LockKeyhole, Unlock, Loader2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import * as api from '../../api/client'
 
@@ -15,6 +15,18 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
   const [plans, setPlans] = useState(() => structuredClone(status.clip_plans))
   const [locks, setLocks] = useState<Record<string, string[]>>(status.creative_locks || {})
   const [approved, setApproved] = useState<number[]>([])
+  const rejectionKey = `maestro-scene-rejections:${pid}:${status.pause_reason}:${status.review_digest || ''}`
+  const [rejected, setRejected] = useState<Record<number, string>>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(rejectionKey) || '{}')
+      return saved && typeof saved === 'object' && !Array.isArray(saved)
+        ? Object.fromEntries(Object.entries(saved).filter((entry): entry is [string, string] => /^\d+$/.test(entry[0]) && typeof entry[1] === 'string')) : {}
+    } catch { return {} }
+  })
+  useEffect(() => {
+    try { localStorage.setItem(rejectionKey, JSON.stringify(rejected)) } catch { /* Storage may be unavailable. */ }
+  }, [rejected, rejectionKey])
+  const rejectedCount = plans.filter((_, index) => index in rejected).length
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const finalReview = status.pause_reason === 'review_render'
@@ -25,6 +37,7 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
     setApproved(current => current.filter(i => i !== index))
   }
   const submit = async () => {
+    if (rejectedCount || approved.length !== plans.length) return
     setBusy(true)
     setError('')
     try {
@@ -46,7 +59,7 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {plans.map((plan, index) => (
-          <article key={index} className={`rounded-lg border p-3 space-y-3 ${approved.includes(index) ? 'border-green-500' : 'border-border'}`}>
+          <article key={index} className={`rounded-lg border p-3 space-y-3 ${index in rejected ? 'border-red-400' : approved.includes(index) ? 'border-green-500' : 'border-border'}`}>
             <div className="flex justify-between text-sm font-medium">
               <span>Scene {index + 1}</span>
               {status.planned_clips?.[index] && <span className="text-text-muted text-xs">{status.planned_clips[index].start.toFixed(1)}–{status.planned_clips[index].end.toFixed(1)}s</span>}
@@ -84,19 +97,38 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
                   onChange={event => change(index, 'window_prompts', plan.window_prompts!.map((p, j) => j === wi ? event.target.value : p))} />
               </label>
             ))}
+            <div className="flex flex-wrap items-center gap-4">
             <button type="button" disabled={busy} className="flex items-center gap-2 text-xs text-accent-blue"
-              onClick={() => setApproved(current => current.includes(index) ? current.filter(i => i !== index) : [...current, index])}>
+              onClick={() => {
+                setRejected(current => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index)))
+                setApproved(current => current.includes(index) ? current.filter(i => i !== index) : [...current, index])
+              }}>
               <Check size={14} /> {approved.includes(index) ? 'Approved — click to reopen' : 'Approve scene'}
             </button>
+            <button type="button" disabled={busy} aria-pressed={index in rejected}
+              className="flex items-center gap-2 text-xs text-red-400"
+              onClick={() => {
+                setApproved(current => current.filter(i => i !== index))
+                setRejected(current => ({ ...current, [index]: current[index] || '' }))
+              }}><X size={14} /> {index in rejected ? 'Scene rejected' : 'Reject scene'}</button>
+            </div>
+            {index in rejected && <div className="space-y-2 text-xs text-red-400" role="status">
+              <p>This scene needs changes. Edit its prompt or generate another image, then approve it individually. Rejection notes are saved in this browser for this revision.</p>
+              <label className="block">Reason for rejection (optional)
+                <textarea rows={2} disabled={busy} className="mt-1 w-full rounded border border-red-400/50 bg-bg-tertiary p-2 text-text-primary"
+                  value={rejected[index]} placeholder="What should change in this scene?"
+                  onChange={event => setRejected(current => ({ ...current, [index]: event.target.value }))} />
+              </label>
+            </div>}
           </article>
         ))}
       </div>
       {finalReview && <details className="text-xs"><summary>Prepared render settings and effective prompts</summary><pre className="whitespace-pre-wrap break-all max-h-96 overflow-auto p-2">{JSON.stringify(status.review_render_params, null, 2)}</pre></details>}
       {error && <p role="alert" className="text-red-400 text-sm">{error}</p>}
       <div className="flex flex-wrap gap-3 items-center text-xs">
-        <span>{approved.length}/{plans.length} scenes approved</span>
-        <button disabled={busy} className="underline" onClick={() => setApproved(plans.map((_, i) => i))}>Approve all scenes</button>
-        <button disabled={busy || !plans.length || approved.length !== plans.length} onClick={() => void submit()}
+        <span>{approved.length}/{plans.length} scenes approved{rejectedCount > 0 && ` · ${rejectedCount} rejected`}</span>
+        <button disabled={busy} className="underline" onClick={() => setApproved(plans.map((_, i) => i).filter(i => !(i in rejected)))}>Approve all scenes</button>
+        <button disabled={busy || !plans.length || rejectedCount > 0 || approved.length !== plans.length} onClick={() => void submit()}
           className="ml-auto rounded-lg bg-accent-blue text-white px-4 py-2 disabled:opacity-40 flex gap-2 items-center">
           {busy && <Loader2 className="animate-spin" size={14} />} {finalReview ? 'Generate approved video' : imageReview ? 'Prepare final render plan' : 'Continue with approved plan'}
         </button>

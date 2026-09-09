@@ -245,6 +245,7 @@ export function useAdvancedActiveItems(): string[] {
   const params = useStore(s => s.params)
   const modelOptions = useStore(s => s.modelOptions)
   const sidebarMode = useStore(s => s.sidebarMode)
+  const workspaceStage = useStore(s => s.workspaceStage)
   const directorVideoModel = useStore(s => s.selectedModelPerMode.video || '')
   const directorTurboMode = useStore(s => s.directorH3TurboModeByModel)
   const directorSolMode = useStore(s => s.directorH3SolModeByModel)
@@ -264,7 +265,7 @@ export function useAdvancedActiveItems(): string[] {
   const isScailHq = isScailEdit && params.model_type === 'scail2_14B'
 
   const items: string[] = []
-  if (sidebarMode === 'director') {
+  if (sidebarMode === 'director' || (sidebarMode === 'workspace' && workspaceStage === 'director')) {
     if (directorTurboMode[directorVideoModel] === true) items.push('H3 Turbo')
     if (directorSolMode[directorVideoModel] === true) {
       items.push(
@@ -387,7 +388,10 @@ export function AdvancedSettings() {
   const params = useStore(s => s.params)
   const setParam = useStore(s => s.setParam)
   const modelOptions = useStore(s => s.modelOptions)
-  const isDirector = useStore(s => s.sidebarMode === 'director')
+  const isDirector = useStore(s =>
+    s.sidebarMode === 'director'
+    || (s.sidebarMode === 'workspace' && s.workspaceStage === 'director'),
+  )
   const generationMode = useStore(s => s.generationMode)
   const editSubMode = useStore(s => s.editSubMode)
   const audioSubMode = useStore(s => s.audioSubMode)

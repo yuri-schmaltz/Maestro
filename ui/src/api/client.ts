@@ -1229,17 +1229,36 @@ export interface DirectorV2PlanResponse {
   skill_type: string
 }
 
-export async function directorV2Plan(params: DirectorV2PlanRequest): Promise<DirectorV2PlanResponse> {
+export async function directorV2Plan(
+  params: DirectorV2PlanRequest,
+  options: { signal?: AbortSignal } = {},
+): Promise<DirectorV2PlanResponse> {
   const res = await fetch(`${BASE}/api/v1/director/v2/plan`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
+    signal: options.signal,
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Plan failed' }))
     throw new Error(err.detail || 'Director v2 plan failed')
   }
   return res.json()
+}
+
+/** Best-effort cancel of an in-flight Director v2 plan. */
+export async function cancelDirectorV2Plan(): Promise<void> {
+  try {
+    await fetch(`${BASE}/api/v1/director/v2/plan/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+  } catch {
+    // Server-side cancel is best-effort; the client-side AbortController
+    // already stopped the waiting fetch. Swallow network errors so the
+    // UI can reset loading state without surfacing a confusing toast.
+  }
 }
 
 // --- Presets ---
@@ -2235,11 +2254,12 @@ export async function planClipPromptsAndImages(params: {
   speaker_mappings?: Record<string, { name: string; role: string }>
   prompt_type?: 'image' | 'video' | 'both'
   existing_image_prompts?: string[]
-}): Promise<{ clip_plans: import('../types').ClipPlan[] }> {
+}, options: { signal?: AbortSignal } = {}): Promise<{ clip_plans: import('../types').ClipPlan[] }> {
   const res = await fetch(`${BASE}/api/v1/director/plan-prompts-and-images`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
+    signal: options.signal,
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Prompt and image planning failed' }))
@@ -2775,4 +2795,14 @@ export async function fetchActiveDownloads(): Promise<{ downloads: ActiveDownloa
   const res = await fetch(`${BASE}/api/v1/downloads/active`)
   if (!res.ok) throw new Error(`Failed to fetch active downloads (${res.status})`)
   return res.json()
+}
+
+export async function editPipelineTiming(pid: string, slots: import('../lib/directorTimeline').SceneSlot[], digest?: string) {
+  const res = await fetch(`${BASE}/api/v1/director/pipeline/${encodeURIComponent(pid)}/timing`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slots, review_digest: digest }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || 'Unable to edit scene timing')
+  }
 }

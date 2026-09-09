@@ -439,7 +439,18 @@ export interface OutputFile {
   metadata_updated_at?: number | null
 }
 
-export type AppMode = 'director' | 'studio' | 'editor'
+/** AppMode — top-level navigation mode.
+ *  Strategy B (Director-as-Stage) collapses the three-mode toggle into
+ *  two: 'workspace' (Studio + optional Director Stage inside) and
+ *  'editor' (full-screen replacement). The 'director' legacy value is
+ *  kept for backward-compat with any persisted UI state — it now
+ *  aliases to 'workspace' + workspaceStage='director' on first read.
+ */
+export type AppMode = 'workspace' | 'editor'
+/** @deprecated Use `AppMode = 'workspace'` + `workspaceStage =
+ *  'director'` instead. Kept as a value-only literal so existing
+ *  persisted state with `sidebarMode: 'director'` doesn't crash. */
+export type LegacyAppMode = 'director' | 'studio' | 'editor' | 'workspace' | 'editor'
 export type EditorMediaType = 'video' | 'image' | 'audio'
 export type EditorTrackType = 'video' | 'audio' | 'text'
 export type EditorTransitionType = 'none' | 'dissolve' | 'fade_black'
@@ -1081,6 +1092,8 @@ export interface ServicesConfig {
   openai_api_key_set: boolean
   anthropic_api_key: string
   anthropic_api_key_set: boolean
+  minimax_api_key: string
+  minimax_api_key_set: boolean
   use_director_v2: boolean
   nsfw_mode: boolean
   nsfw_accepted_at: string | null
@@ -1445,7 +1458,16 @@ export interface DirectorImageGenProgress {
   status: 'generating' | 'polling' | 'downloading' | 'done' | 'error'
 }
 
-export type DirectorSkill = 'music_video' | 'short_film' | 'podcast' | 'viral_video'
+/** Director skills exposed by the in-stage chooser modal.
+ *
+ *  Active (wired to a planner in `services/director/planners/`):
+ *    - music_video, short_film
+ *
+ *  Visible-but-inactive ("Soon" badge in the chooser):
+ *    - podcast (legacy alias, kept for saved-state compatibility),
+ *      video_podcast (the user-facing label), viral_video
+ */
+export type DirectorSkill = 'music_video' | 'short_film' | 'podcast' | 'video_podcast' | 'viral_video'
 export type ShortFilmPath = 'audio' | 'story'
 
 export interface ShortFilmCharacter {

@@ -1,3 +1,4 @@
+import { DirectorTimelineEditor } from '../src/components/Sidebar/DirectorTimelineEditor'
 // Browser contract harness. Vite's production entry does not include this file.
 import { createRoot } from 'react-dom/client'
 import { useState } from 'react'
@@ -34,10 +35,20 @@ function Harness() {
       useStore.setState({ reviewPlan: resolvedGenerationPlan(useStore.getState(), { id: 'a'.repeat(32), prepared: { params } }), reviewAction: 'generate', reviewBusy: false })
       setMode('studio')
     },
+    showTiming: () => {
+      useStore.setState({ pipelineStatus: null, pipelineId: null, directorLoading: false,
+        directorPlannedClips: fixture.planned_clips.map(clip => ({ ...clip, duration_frames: 121, beat_count: 0, section_label: 'verse', energy: 0.5, suggested_prompt_hint: '' })),
+        directorClipPlans: fixture.clip_plans,
+        directorClipImages: [{ clipIndex: 0, filename: 'first.jpg', prompt: 'first', file: new File(['image'], 'first.jpg') }],
+      })
+      setMode('timing')
+    },
+    timingState: () => ({ clips: useStore.getState().directorPlannedClips, images: useStore.getState().directorClipImages.map(i => ({ index: i.clipIndex, name: i.filename })), plans: useStore.getState().directorClipPlans }),
     showTakes: () => setMode('takes'),
     changeDraft: () => useStore.setState({ params: { ...useStore.getState().params, prompt: 'UNAPPROVED CHANGES' } }),
   } })
   return <main className="p-4 bg-bg-primary text-text-primary min-h-screen">
+    {mode === 'timing' && <DirectorTimelineEditor />}
     {mode === 'director' && <DirectorReview />}
     {mode === 'studio' && <GenerationReviewPanel />}
     {mode === 'takes' && <SceneTakes pid="browser-project" busy={false} clip={{ index: 0, video_filename: 'a.mp4', tag: 'good', video_takes: [

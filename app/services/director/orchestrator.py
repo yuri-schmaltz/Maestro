@@ -14,6 +14,7 @@ Supports feature flags for gradual migration from old system.
 
 from __future__ import annotations
 import os
+import threading
 from typing import Optional, Any
 
 from .schema import ProductionPlan, ShotPlan, RenderedPrompts
@@ -131,11 +132,20 @@ class DirectorOrchestrator:
 
     # ── Planning ─────────────────────────────────────────────────
 
-    def plan(self, skill_type: str, **kwargs) -> ProductionPlan:
+    def plan(
+        self,
+        skill_type: str,
+        cancel_event: Optional[threading.Event] = None,
+        **kwargs,
+    ) -> ProductionPlan:
         """Create a ProductionPlan using the appropriate skill planner.
 
         Args:
             skill_type: "music_video" | "short_film" | "podcast" | "viral_video"
+            cancel_event: optional threading.Event that flips the planner's
+                ``_planning_cancelled_callback`` so the in-flight LLM call
+                can short-circuit between token reads. When unset the
+                planner behaves as before (direct-call / unit-test usage).
             **kwargs: Skill-specific arguments (clips, scene_description, etc.)
 
         Returns:
@@ -149,6 +159,13 @@ class DirectorOrchestrator:
             llm_generate=self._generate,
             llm_generate_streaming=self._generate_streaming,
         )
+
+        if cancel_event is not None:
+            # The planners call _configure_planning_runtime(kwargs, ...)
+            # which pulls _planning_cancelled_callback out of kwargs; this
+            # closure forwards the Event's flag without exposing threading
+            # primitives to the planner implementations.
+            kwargs["_planning_cancelled_callback"] = cancel_event.is_set
 
         print(f"[Director] Planning with {planner_cls.__name__}...")
         production_plan = planner.plan(**kwargs)

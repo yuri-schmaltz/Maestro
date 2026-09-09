@@ -15,7 +15,15 @@ export function GenerateButton() {
   const reviewBeforeGenerate = useStore(s => s.reviewBeforeGenerate)
   const reviewBusy = useStore(s => s.reviewBusy)
   const openGenerationReview = useStore(s => s.openGenerationReview)
-  const isDirectorMode = useStore(s => s.sidebarMode === 'director')
+  // Strategy B: Director is no longer a top-level mode. The legacy
+// sidebarMode === 'director' value may still exist for the pre-rollout
+// branch; in the new world the equivalent signal is `workspaceStage ===
+// 'director'`. We check both so the Generate button's disabled state
+// stays accurate after the migration.
+const isDirectorMode = useStore(s =>
+  s.sidebarMode === 'director'
+  || (s.sidebarMode === 'workspace' && s.workspaceStage === 'director'),
+)
   const [pendingAction, setPendingAction] = useState<'generate' | 'queue' | null>(null)
 
   // Check if i2v-only model needs a start image. Video mode only: edit
