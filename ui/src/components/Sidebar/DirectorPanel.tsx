@@ -423,12 +423,12 @@ export function DirectorPanel() {
               type="checkbox"
               checked={autoMode}
               onChange={e => setAutoMode(e.target.checked)}
-              className="accent-red-500"
+              className="accent-accent-blue"
             />
-            <span className="text-[11px] text-red-400 font-medium">* Dangerously Skip Human Intervention</span>
+            <span className="text-[11px] text-text-secondary font-medium">Automatic production — skip review stages</span>
           </label>
           {autoMode && (
-            <p className="text-[10px] text-red-400/70 -mt-1">
+            <p className="text-[10px] text-text-muted -mt-1">
               After planning, the Director will generate images, video prompts, and start generation without stopping for review.
             </p>
           )}

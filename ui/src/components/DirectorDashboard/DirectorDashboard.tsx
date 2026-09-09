@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, Component, type ReactNode } from 'react'
 import { X, ChevronDown, ChevronRight, Play, ImageIcon, Check, AlertTriangle, Clock, Brain, Sparkles, Loader2, Camera, Film, Combine, Pencil, Trash2 } from 'lucide-react'
+import { SceneTakes } from './SceneTakes'
 import { useStore } from '../../stores/useStore'
 import { getFileUrl } from '../../api/client'
 import type { PipelineClipState, SavedPipelineState } from '../../types'
@@ -420,6 +421,8 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
             )
           )}
         </div>
+
+        <SceneTakes pid={pipeline.pipeline_id} clip={clip} busy={busy} />
 
         {/* Prompt polish diff */}
         {hasPolish && (

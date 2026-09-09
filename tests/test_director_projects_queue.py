@@ -128,7 +128,7 @@ class TestDirectorProjectRevisionsAndQueue(unittest.TestCase):
         first_id, second_id = [entry["id"] for entry in second["entries"]]
         detail = pipeline.get_director_queue_entry(self.temp_dir.name, first_id)
         self.assertIsNotNone(detail)
-        self.assertTrue(detail["params"]["auto_mode"])
+        self.assertFalse(detail["params"]["auto_mode"])
         owned = detail["params"]["reference_image_path"]
         self.assertTrue(os.path.isfile(owned))
         self.assertIn(os.path.join("_director_queue_assets", first_id), owned)

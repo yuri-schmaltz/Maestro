@@ -17,9 +17,9 @@ import { useStore } from '../stores/useStore'
 import { formatEtaDuration } from '../lib/format'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../lib/promptEnhancementActivity'
 
-const ACTIVE_JOB_STATUSES = new Set(['held', 'queued', 'running'])
-const ACTIVE_DIRECTOR_STATUSES = new Set(['held', 'queued', 'running'])
-const ACTIVE_PIPELINE_STATUSES = new Set(['running', 'paused'])
+const ACTIVE_JOB_STATUSES = new Set(['held', 'queued', 'running', 'awaiting_review'])
+const ACTIVE_DIRECTOR_STATUSES = new Set(['held', 'queued', 'running', 'awaiting_review'])
+const ACTIVE_PIPELINE_STATUSES = new Set(['queued', 'running', 'paused'])
 
 function compactStatus(value: string): string {
   return value.replace(/_/g, ' ').replace(/^./, letter => letter.toUpperCase())
@@ -79,7 +79,7 @@ export function GlobalQueuePopover({
   )
   const activePipelineIsQueued = Boolean(
     activePipeline && directorEntries.some(entry => (
-      entry.status === 'running'
+      (entry.status === 'running' || entry.status === 'awaiting_review')
       && (!entry.pipeline_id || entry.pipeline_id === pipelineId)
     )),
   )
@@ -92,10 +92,10 @@ export function GlobalQueuePopover({
   }, [loadDirectorQueue])
 
   useEffect(() => {
-    if (!directorQueue?.running) return
+    if (!directorQueue?.running && !directorQueue?.entries.some(entry => entry.status === 'awaiting_review')) return
     const timer = window.setInterval(() => void loadDirectorQueue(), 2500)
     return () => window.clearInterval(timer)
-  }, [directorQueue?.running, loadDirectorQueue])
+  }, [directorQueue?.running, directorQueue?.entries, loadDirectorQueue])
 
   useEffect(() => {
     if (!open) return
@@ -370,7 +370,12 @@ export function GlobalQueuePopover({
                           : <Clock size={10} className="shrink-0 text-text-muted" />}
                       <button
                         type="button"
-                        onClick={() => void openDirectorEntry(entry.id)}
+                        onClick={() => {
+                          if (entry.status === 'awaiting_review' && entry.pipeline_id) {
+                            void useStore.getState().reattachDirectorPipeline(entry.pipeline_id)
+                            setOpen(false)
+                          } else void openDirectorEntry(entry.id)
+                        }}
                         disabled={directorQueueLoading}
                         className="min-w-0 flex-1 text-left"
                         title={entry.error || entry.message || entry.scene_description}
@@ -384,14 +389,19 @@ export function GlobalQueuePopover({
                       </button>
                       <button
                         type="button"
-                        onClick={() => void openDirectorEntry(entry.id)}
+                        onClick={() => {
+                          if (entry.status === 'awaiting_review' && entry.pipeline_id) {
+                            void useStore.getState().reattachDirectorPipeline(entry.pipeline_id)
+                            setOpen(false)
+                          } else void openDirectorEntry(entry.id)
+                        }}
                         disabled={directorQueueLoading}
                         title="Open Director project"
                         className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-accent-blue disabled:opacity-40"
                       >
                         <Pencil size={9} />
                       </button>
-                      {entry.status !== 'running' && (
+                      {entry.status !== 'running' && entry.status !== 'awaiting_review' && (
                         <>
                           <button
                             type="button"

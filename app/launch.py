@@ -9577,7 +9577,10 @@ async def director_pipeline_continue(pid: str, request: Request):
     _init_pipeline()
     from services.director_pipeline import continue_pipeline
     body = await request.json() if request.headers.get("content-length", "0") != "0" else {}
-    ok = continue_pipeline(pid, body or None)
+    try:
+        ok = continue_pipeline(pid, body or None, out_dir=wgp.save_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     if not ok:
         raise HTTPException(status_code=400, detail="Pipeline is not paused")
     return {"status": "resumed"}
@@ -9669,6 +9672,26 @@ async def tag_pipeline_clip(pid: str, clip_index: int, request: Request):
     if not success:
         return JSONResponse({"error": "Pipeline or clip not found"}, status_code=404)
     return {"status": "ok"}
+
+
+@api.post("/api/v1/director/pipeline/{pid}/review-image/{clip_index}")
+async def regenerate_review_image(pid: str, clip_index: int, request: Request):
+    from services.director_pipeline import rerun_review_image
+    body = await request.json()
+    try:
+        return await asyncio.to_thread(rerun_review_image, wgp.save_path, pid, clip_index, body.get("prompt"))
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@api.put("/api/v1/director/pipelines/{pid}/clips/{clip_index}/take")
+async def select_pipeline_scene_take(pid: str, clip_index: int, request: Request):
+    from services.director_pipeline import select_scene_take
+    body = await request.json()
+    try:
+        return await asyncio.to_thread(select_scene_take, wgp.save_path, pid, clip_index, body.get("kind"), body.get("filename", ""))
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 # ── Director Pipeline Re-run ──────────────────────────────────────────────
@@ -10027,6 +10050,102 @@ def _enqueue_deferred_generation_preparation(body: dict) -> dict:
         "status": initial_status,
         "client_submission_id": client_submission_id or None,
     }
+
+
+def _generation_review_store():
+    from services.generation_reviews import GenerationReviews
+    global _generation_reviews
+    with _generation_reviews_lock:
+        if _generation_reviews is None:
+            _generation_reviews = GenerationReviews(os.path.join(os.path.dirname(__file__), "settings", "generation_reviews"))
+        return _generation_reviews
+
+
+_generation_reviews = None
+_generation_reviews_lock = threading.Lock()
+
+
+def _prepare_review_request(body):
+    # Use the same GPU exclusion as generation, but release it before review.
+    from services.director_pipeline import _pipelines, _pipeline_lock
+    while True:
+        with _pipeline_lock:
+            occupied = any(p.get("status") in {"running", "planning", "queued"} for p in _pipelines.values())
+        if not occupied:
+            break
+        time.sleep(0.5)
+    with _gen_lock:
+        try:
+            body.pop("_queue_mode", None)
+            if body.get("_deferred_prompt_enhance"):
+                temporary_job = {"id": "review", "params": body}
+                _apply_deferred_prompt_enhancement(temporary_job, body)
+            return asyncio.run(_prepare_generation_submission(body, prepare_only=True))
+        finally:
+            from services import llm_service
+            if llm_service.is_loaded():
+                llm_service.unload_model()
+
+
+@api.post("/api/v1/generation-reviews")
+async def prepare_generation_review(request: Request):
+    body = await request.json()
+    body["workspace"] = body.get("workspace") or _get_active_workspace()
+    store = _generation_review_store()
+    review = store.create(body)
+    threading.Thread(target=store.prepare, args=(review["id"], _prepare_review_request),
+                     daemon=False, name="maestro-generation-review").start()
+    return {"id": review["id"], "status": review["status"]}
+
+
+@api.get("/api/v1/generation-reviews/{review_id}")
+def get_generation_review(review_id: str):
+    try:
+        review = _generation_review_store().get(review_id)
+        review.pop("assets", None)
+        return review
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@api.put("/api/v1/generation-reviews/{review_id}")
+async def revise_generation_review(review_id: str, request: Request):
+    body = await request.json()
+    try:
+        revision = _generation_review_store().revise(review_id, body.get("prompt"), body.get("window_prompts", []))
+        revision.pop("assets", None)
+        return revision
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+def _submit_generation_review(prepared, held):
+    job_id = prepared["params"]["_generation_review_id"]
+    if job_id in _jobs:
+        return {"job_id": job_id, "status": _jobs[job_id]["status"]}
+    status = "held" if held else "queued"
+    _jobs[job_id] = {
+        "id": job_id, "show_in_gallery": not held, "status": status,
+        "progress": 0, "step": 0, "total_steps": 0, "phase": "",
+        "message": "Approved plan — ready", "created_at": time.time(),
+        "params": prepared["params"], "workspace": prepared["workspace"],
+        "out_dir": prepared["out_dir"], "output_files": [], "error": None,
+        "h3_window_plan": prepared.get("h3_window_plan"),
+        "ltx_window_plan": prepared.get("ltx_window_plan"),
+    }
+    if not held:
+        threading.Thread(target=_run_generation, args=(job_id,), daemon=False).start()
+    return {"job_id": job_id, "status": status}
+
+
+@api.post("/api/v1/generation-reviews/{review_id}/confirm")
+async def confirm_generation_review(review_id: str, request: Request):
+    body = await request.json()
+    try:
+        return _generation_review_store().confirm(
+            review_id, _submit_generation_review, held=body.get("held") is True)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @api.post("/api/v1/generate")
@@ -23944,6 +24063,8 @@ def _run_generation(job_id: str, *, finalize: bool = True) -> bool:
             # work or memory budgeting starts until the prompt LLM is gone.
             raw_params = job["params"].copy()
             try:
+                from services.generation_reviews import GenerationReviews
+                GenerationReviews.validate_assets({"assets": raw_params.get("_generation_review_assets", {})})
                 _apply_deferred_prompt_enhancement(job, raw_params)
             except Exception as error:
                 detail = getattr(error, "detail", None) or str(error)

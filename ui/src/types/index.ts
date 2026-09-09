@@ -344,6 +344,9 @@ export interface H3WindowPlan {
   planning_diagnostics?: string[]
   planning_notes?: string[]
   planning_style?: WindowPlanningStyle
+  /** Narrative content moved into fixed time slots. Continuity summaries
+   * are cleared and the new order requires review. */
+  order_edited?: boolean
   plan_kind?: 'sliding_window' | 'reference_sequence'
   camera_coverage?: 'auto' | 'continuous' | 'multi_shot'
   total_frames: number
@@ -1561,7 +1564,15 @@ export interface DirectorV2PlanResponse {
 
 // ── Director Pipeline Dashboard ──────────────────────────────────────────
 
+export interface SceneTake {
+  filename: string
+  created_at: number
+  settings: Record<string, unknown>
+}
+
 export interface PipelineClipState {
+  image_takes?: SceneTake[]
+  video_takes?: SceneTake[]
   index: number
   planned_clip: PlannedClip | null
   image_prompt: string
@@ -1665,6 +1676,7 @@ export interface SavedPipelineState {
 }
 
 export type DirectorQueueEntryStatus =
+  | 'awaiting_review'
   | 'held'
   | 'queued'
   | 'running'

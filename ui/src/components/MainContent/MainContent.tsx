@@ -3,6 +3,7 @@ import { Film, Play, Square, FolderOpen, Plus, Check, Loader2, X, BookMarked, Up
 import { TabFilter } from './TabFilter'
 import { ThumbnailGallery } from './ThumbnailGallery'
 import { MediaFeedItem } from './MediaFeedItem'
+import { DirectorReview } from '../DirectorDashboard/DirectorReview'
 import { GlobalQueuePopover } from '../GlobalQueuePopover'
 import { useStore } from '../../stores/useStore'
 import { useIsMobile } from '../../lib/useIsMobile'
@@ -380,6 +381,7 @@ function PipelinePlaceholder() {
 
   if (!pipelineId || !pipelineStatus) return null
   if (pipelineStatus.status === 'completed') return null
+  if (pipelineStatus.status === 'paused') return <DirectorReview />
 
   const phase = pipelineStatus.phase || 'planning'
   const progress = pipelineStatus.progress
@@ -421,7 +423,7 @@ function PipelinePlaceholder() {
             <p className={`text-sm font-medium ${isFailed ? 'text-red-400' : 'text-text-secondary'}`}>
               {isFailed
                 ? (pipelineStatus.status === 'cancelled' ? 'Director Cancelled' : 'Director Failed')
-                : pipelineStatus.status === 'paused' ? 'Paused — Review' : 'Director'}
+                : 'Director'}
             </p>
             {!isFailed && <p className="text-xs mt-1 truncate">{phaseLabel}</p>}
             {hasSteps && !isFailed && (

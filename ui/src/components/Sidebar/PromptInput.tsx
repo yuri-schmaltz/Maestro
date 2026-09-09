@@ -155,6 +155,7 @@ export function PromptInput() {
   const ltxManualWindowPrompts = useStore(s => s.params.ltx_window_prompt_mode === 'manual')
   const h3WindowPlan = useStore(s => s.h3WindowPlan)
   const updateH3WindowPrompt = useStore(s => s.updateH3WindowPrompt)
+  const moveH3Window = useStore(s => s.moveH3Window)
   const activeH3JobPhase = useStore(s => {
     const job = s.jobs.find(item => (
       (item.status === 'queued' || item.status === 'running')
@@ -394,6 +395,14 @@ export function PromptInput() {
               {h3PlanIsStale && (
                 <span className="text-[9px] text-amber-400">Needs update</span>
               )}
+              {h3WindowPlan.order_edited && (
+                <span
+                  title="Prompts were moved into the existing time slots. Continuity summaries were cleared. Review actions, dialogue timing and transitions before approving this order."
+                  className="text-[9px] text-accent-blue"
+                >
+                  Order edited
+                </span>
+              )}
               {(h3WindowPlan.planned_by === 'deterministic_fallback' || h3WindowPlan.planned_by === 'hybrid_repair') && (
                 <span className="text-[9px] text-amber-400">
                   {h3WindowPlan.planned_by === 'hybrid_repair' ? 'Repaired' : 'Fallback'}
@@ -451,21 +460,83 @@ export function PromptInput() {
           )}
           {windowPlanOpen && (
             <div className="mt-2 space-y-3">
+              {/* Real plan geometry, at a glance: one proportional segment per
+                  window so the story arc is visible without opening each one. */}
+              <div className="flex items-center gap-2">
+                <div className="flex flex-1 h-2 overflow-hidden rounded bg-bg-secondary">
+                  {h3WindowPlan.windows.map(window => {
+                    const windowFrames = Math.max(0, (window.end_frame || 0) - (window.start_frame || 0))
+                    const segmentBasis = Math.max(
+                      1,
+                      h3WindowPlan.total_frames
+                      || (h3WindowPlan.windows[h3WindowPlan.windows.length - 1]?.end_frame || 1),
+                    )
+                    const width = Math.max(1.5, (windowFrames / segmentBasis) * 100)
+                    return (
+                      <div
+                        key={`seg-${window.index}`}
+                        title={`${window.title || `Beat ${window.index}`} · ${window.start_frame}–${window.end_frame}f (${window.start_seconds.toFixed(1)}–${window.end_seconds.toFixed(1)}s)`}
+                        style={{ width: `${width}%` }}
+                        className={activeH3Window === window.index ? 'bg-accent-blue' : 'bg-text-muted/45'}
+                      >
+                        &nbsp;
+                      </div>
+                    )
+                  })}
+                </div>
+                <span className="shrink-0 text-[8px] text-text-muted">
+                  {h3WindowPlan.total_frames} frames
+                </span>
+              </div>
               {h3WindowPlan.windows.map((window, index) => (
                 <div
                   key={`${window.index}-${window.start_frame}`}
                   className="space-y-1"
                 >
-                  <div className={`flex items-center justify-between text-[9px] ${
+                  <div className={`flex items-center justify-between gap-2 text-[9px] ${
                     activeH3Window === window.index ? 'text-accent-blue' : 'text-text-muted'
                   }`}>
-                    <span>
+                    <span className="flex items-center gap-1 min-w-0 truncate">
                       {usesH3SequencePlanner && !h3NativeSequence ? 'Clip' : 'Window'} {window.index}: {window.title || `Beat ${window.index}`}
                       {activeH3Window === window.index ? ' · Generating now' : ''}
+                      {!h3WindowPlan.order_edited && window.closing_state && (
+                        <span
+                          title={`Continuity carried into the next window: ${window.closing_state}`}
+                          className="shrink-0 rounded-full border border-border bg-bg-secondary px-1.5 py-px text-[8px] text-text-muted"
+                        >
+                          {window.closing_state}
+                        </span>
+                      )}
                     </span>
-                    <span>
-                      {window.start_seconds.toFixed(1)}–{window.end_seconds.toFixed(1)}s
-                      {usesH3WindowPlanner && ` · ~${estimateH3TextTokens(window.prompt)} tokens`}
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      {!matchingActiveH3Phase && (
+                        <span className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => moveH3Window(index, index - 1)}
+                            disabled={index === 0}
+                            title="Move this beat earlier"
+                            className="p-0.5 rounded hover:bg-bg-hover text-text-muted hover:text-accent-blue disabled:opacity-30"
+                          >
+                            <ChevronUp size={10} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveH3Window(index, index + 1)}
+                            disabled={index === h3WindowPlan.windows.length - 1}
+                            title="Move this beat later"
+                            className="p-0.5 rounded hover:bg-bg-hover text-text-muted hover:text-accent-blue disabled:opacity-30"
+                          >
+                            <ChevronDown size={10} />
+                          </button>
+                        </span>
+                      )}
+                      <span>
+                        {window.start_seconds.toFixed(1)}–{window.end_seconds.toFixed(1)}s
+                        {' · '}
+                        {window.start_frame}–{window.end_frame}f
+                        {usesH3WindowPlanner && ` · ~${estimateH3TextTokens(window.prompt)} tokens`}
+                      </span>
                     </span>
                   </div>
                   <H3WindowPromptTextarea

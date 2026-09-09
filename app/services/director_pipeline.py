@@ -16,11 +16,14 @@ import re
 import time
 import json
 import uuid
+import secrets
 import math
 import shutil
 import subprocess
 import threading
 import traceback
+from services.scene_takes import record_take, select_take
+from services.creative_review import review_digest, apply_review_edits
 from functools import wraps
 from typing import Optional
 
@@ -1228,6 +1231,10 @@ def _save_pipeline_state_locked(pid: str) -> bool:
             "image_gen_time_sec": clip_timings.get(f"image_{i}"),
             "video_gen_time_sec": clip_timings.get(f"video_{i}"),
         }
+        history = (p.get("_scene_take_history") or {}).get(str(i), {})
+        for kind in ("image", "video"):
+            if history.get(f"{kind}_takes"):
+                clip_state[f"{kind}_takes"] = copy.deepcopy(history[f"{kind}_takes"])
         clips.append(clip_state)
 
     state = {
@@ -1248,6 +1255,12 @@ def _save_pipeline_state_locked(pid: str) -> bool:
         "phase": p.get("phase"),
         "progress": copy.deepcopy(p.get("progress") or {}),
         "error": p.get("error"),
+        "pause_reason": p.get("pause_reason"),
+        "review_approvals": copy.deepcopy(p.get("review_approvals") or {}),
+        "review_render_params": copy.deepcopy(p.get("review_render_params")),
+        "review_clip_plans": copy.deepcopy(p.get("clip_plans") or []),
+        "review_digest": review_digest(p.get("pause_reason"), p.get("clip_plans") or [], p.get("clip_images"), p.get("review_render_params")) if p.get("pause_reason") else None,
+        "creative_locks": copy.deepcopy(p.get("creative_locks") or {}),
         "workspace": p.get("workspace") or "default",
         "pipeline_type": params.get("pipeline_type", "music_video"),
         "scene_description": params.get("scene_description", ""),
@@ -2201,6 +2214,7 @@ def _rerun_clip_image_impl(out_dir: str, pid: str, clip_index: int, prompt_overr
 
     # Update the saved pipeline state
     def _update(s):
+        previous_clip = copy.deepcopy(s["clips"][clip_index])
         s["clips"][clip_index]["start_image_filename"] = new_filename
         # A video generated from the previous start image is still useful
         # history, but it no longer represents this clip's current inputs.
@@ -2217,6 +2231,7 @@ def _rerun_clip_image_impl(out_dir: str, pid: str, clip_index: int, prompt_overr
                 snapshot["generated_reference_image_filename"] = (
                     anchor_to_persist
                 )
+        record_take(previous_clip, s["clips"][clip_index], "image")
     _update_saved_pipeline(out_dir, pid, _update)
 
     return {"filename": new_filename, "clip_index": clip_index}
@@ -3043,6 +3058,7 @@ def _rerun_clip_video_impl(out_dir: str, pid: str, clip_index: int, prompt_overr
         )
 
     def _update(s):
+        previous_clip = copy.deepcopy(s["clips"][clip_index])
         s["clips"][clip_index]["video_filename"] = new_filename
         s["clips"][clip_index]["video_stale"] = False
         s["clips"][clip_index]["video_prompt"] = prompt
@@ -3074,6 +3090,7 @@ def _rerun_clip_video_impl(out_dir: str, pid: str, clip_index: int, prompt_overr
                 "video_params", {}
             )
             snapshot_video_params["resolution"] = gen_params["resolution"]
+        record_take(previous_clip, s["clips"][clip_index], "video")
     _update_saved_pipeline(out_dir, pid, _update)
 
     return {"filename": new_filename, "clip_index": clip_index}
@@ -3228,9 +3245,16 @@ def _public_director_queue_state(state: dict) -> dict:
 
 def list_director_queue(base_out_dir: str) -> dict:
     with _director_queue_lock:
-        return _public_director_queue_state(
-            _load_director_queue_locked(base_out_dir)
-        )
+        state = _load_director_queue_locked(base_out_dir)
+        for entry in state.get("entries", []):
+            if entry.get("status") == "awaiting_review" and entry.get("pipeline_id"):
+                current = get_pipeline(entry["pipeline_id"]) or {}
+                if current.get("status") in _DIRECTOR_QUEUE_TERMINAL:
+                    entry.update(status=current["status"], message=current["status"].capitalize())
+                elif current.get("status") in {"running", "queued"}:
+                    entry["message"] = "Approved — continuing production"
+        _write_director_queue_locked(base_out_dir, state)
+        return _public_director_queue_state(state)
 
 
 def get_director_queue_entry(base_out_dir: str, entry_id: str) -> Optional[dict]:
@@ -3247,7 +3271,7 @@ def enqueue_director_pipeline(base_out_dir: str, params: dict) -> dict:
 
     entry_id = uuid.uuid4().hex[:8]
     frozen = copy.deepcopy(params)
-    frozen["auto_mode"] = True  # queued work must not wait for browser review
+    frozen.setdefault("auto_mode", False)
     frozen["_director_queue_entry_id"] = entry_id
     _materialize_director_assets(
         frozen,
@@ -3281,7 +3305,7 @@ def update_director_queue_entry(
     """Replace a non-running held project with a newly frozen edit."""
 
     frozen = copy.deepcopy(params)
-    frozen["auto_mode"] = True
+    frozen.setdefault("auto_mode", False)
     frozen["_director_queue_entry_id"] = entry_id
     with _director_queue_lock:
         state = _load_director_queue_locked(base_out_dir)
@@ -3294,7 +3318,7 @@ def update_director_queue_entry(
         )
         if entry is None:
             raise ValueError("Director queue entry not found")
-        if entry.get("status") == "running":
+        if entry.get("status") in {"running", "awaiting_review"}:
             raise PipelineBusyError(
                 "The queued Director project has already started and cannot be edited."
             )
@@ -3371,7 +3395,7 @@ def _run_director_queue(base_out_dir: str) -> None:
                 with _pipeline_lock:
                     active_pipeline = any(
                         str(item.get("status") or "").lower()
-                        in _ACTIVE_PIPELINE_STATUSES
+                        in {"queued", "planning", "running"}
                         for item in _pipelines.values()
                         if isinstance(item, dict)
                     )
@@ -3410,6 +3434,11 @@ def _run_director_queue(base_out_dir: str) -> None:
                         saved = load_pipeline_state(base_out_dir, pid)
                         current = saved or {}
                     status = str(current.get("status") or "").lower()
+                    if status == "paused":
+                        _set_director_queue_entry(base_out_dir, entry_id,
+                            status="awaiting_review", message="Awaiting scene approval")
+                        terminal = current
+                        break
                     if status in _DIRECTOR_QUEUE_TERMINAL:
                         terminal = current
                         break
@@ -3429,6 +3458,8 @@ def _run_director_queue(base_out_dir: str) -> None:
                         last_queue_message = progress_message
                     time.sleep(1.0)
                 status = str(terminal.get("status") or "failed").lower()
+                if status == "paused":
+                    continue
                 _set_director_queue_entry(
                     base_out_dir,
                     entry_id,
@@ -3463,7 +3494,7 @@ def _run_director_queue(base_out_dir: str) -> None:
                 _director_queue_worker = None
             pending = any(
                 isinstance(item, dict)
-                and item.get("status") in {"held", "queued", "running"}
+                and item.get("status") in {"held", "queued", "running", "awaiting_review"}
                 for item in state.get("entries") or []
             )
             if processed_statuses and not state.get("paused") and not pending:
@@ -3541,7 +3572,7 @@ def remove_director_queue_entry(base_out_dir: str, entry_id: str) -> bool:
         )
         if target is None:
             return False
-        if target.get("status") == "running":
+        if target.get("status") in {"running", "awaiting_review"}:
             raise PipelineBusyError(
                 "The queued Director project is running; stop its pipeline first."
             )
@@ -4812,13 +4843,15 @@ def get_pipeline_status(pid: str, out_dir: str) -> Optional[dict]:
             or []
         )
         live["planned_clips"] = copy.deepcopy(planned_clips)
+        if live.get("status") == "paused":
+            live["review_digest"] = review_digest(live.get("pause_reason"), live.get("clip_plans", []), live.get("clip_images"), live.get("review_render_params"))
         return live
     saved = load_pipeline_state(out_dir, pid)
     if not saved:
         return None
 
     saved_status = str(saved.get("status") or "unknown").strip().lower()
-    if saved_status not in {"completed", "failed", "cancelled", "crashed"}:
+    if saved_status not in {"completed", "failed", "cancelled", "crashed", "paused"}:
         saved_status = "crashed"
     # Keep the existing live-status API contract for older browser bundles:
     # they already stop polling on "failed" but do not know "crashed".
@@ -4876,12 +4909,13 @@ def get_pipeline_status(pid: str, out_dir: str) -> Optional[dict]:
         "phase": saved.get("phase") or response_status,
         "auto_mode": bool(saved.get("auto_mode", True)),
         "progress": restored_progress,
-        "clip_plans": [{
+        "clip_plans": copy.deepcopy(saved.get("review_clip_plans")) if saved_status == "paused" and saved.get("review_clip_plans") else [{
             "image_prompt": clip.get("image_prompt", ""),
             "video_prompt": clip.get("video_prompt", ""),
             "window_prompts": clip.get("window_prompts", []) or [],
             "keyframe_prompts": clip.get("keyframe_prompts", []) or [],
         } for clip in clips],
+        "review_digest": saved.get("review_digest"),
         "planned_clips": [
             copy.deepcopy(clip.get("planned_clip"))
             for clip in clips
@@ -4895,24 +4929,168 @@ def get_pipeline_status(pid: str, out_dir: str) -> Optional[dict]:
             "Maestro no longer has a live worker for this Director run."
             if saved_status == "crashed" else None
         ),
-        "pause_reason": None,
+        "pause_reason": saved.get("pause_reason"),
+        "review_approvals": saved.get("review_approvals", {}),
+        "review_render_params": saved.get("review_render_params"),
+        "creative_locks": saved.get("creative_locks", {}),
         "llm_streaming": False,
         "recovered_from_disk": True,
     }
 
 
-def continue_pipeline(pid: str, updates: Optional[dict] = None):
-    """Resume a paused pipeline, optionally with updated clip_plans."""
+class _CreativeReviewPending(Exception):
+    """End a worker at a persisted approval boundary without marking failure."""
+
+
+def _pause_for_creative_review(pid, reason, plans, images=None):
+    with _pipeline_lock:
+        p = _pipelines[pid]
+        if p.get("status") == "cancelled":
+            raise _CreativeReviewPending()
+        digest = review_digest(reason, plans, images, p.get("review_render_params"))
+        if (p.get("review_approvals") or {}).get(reason) == digest:
+            return False
+        p.update(status="paused", pause_reason=reason,
+                 progress={"current": 1 if reason == "review_prompts" else 2,
+                           "total": 3, "message": "Awaiting approval", "step": 0, "total_steps": 0})
+    if not _save_pipeline_state(pid):
+        raise RuntimeError("Unable to save review checkpoint; generation was not started")
+    return True
+
+
+def _dispatch_review_resume(pid):
+    # Waiting for a user does not reserve GPU/planning resources. After
+    # approval, serialize with other Director workers before resuming.
+    while True:
+        with _pipeline_lock:
+            p = _pipelines.get(pid)
+            if not p or p.get("status") == "cancelled":
+                return
+            occupied = pid in _pipeline_threads or any(
+                other_id != pid and other.get("status") in {"running", "planning"}
+                for other_id, other in _pipelines.items()
+            )
+            if not occupied:
+                p["status"] = "running"
+                break
+        time.sleep(0.2)
+    _start_pipeline_worker(pid, resume=True)
+
+
+def continue_pipeline(pid: str, updates: Optional[dict] = None, out_dir=None):
+    """Approve the current stage; preserve scene metadata and locked fields."""
+    if get_pipeline(pid) is None and out_dir:
+        ok, _ = resume_pipeline(pid, out_dir)
+        if not ok:
+            return False
     with _pipeline_lock:
         p = _pipelines.get(pid)
-        if not p or p["status"] != "paused":
+        if not p or p["status"] != "paused" or pid in _pipeline_operations:
             return False
-        if updates:
-            if "clip_plans" in updates:
-                p["clip_plans"] = updates["clip_plans"]
-        p["status"] = "running"
+        previous_review = copy.deepcopy(p)
+        reason = p.get("pause_reason")
+        updates = updates or {}
+        current_digest = review_digest(reason, p["clip_plans"], p.get("clip_images"), p.get("review_render_params"))
+        if updates.get("review_digest") and updates["review_digest"] != current_digest:
+            raise ValueError("This review changed. Reload before approving.")
+        locks = updates.get("creative_locks", p.get("creative_locks", {}))
+        if not isinstance(locks, dict) or any(
+            not isinstance(fields, list) or not all(field in {"image_prompt", "video_prompt", "window_prompts", "keyframe_prompts"} for field in fields)
+            for fields in locks.values()
+        ):
+            raise ValueError("Invalid creative locks")
+        enforced_locks = {
+            key: [field for field in fields if field in locks.get(key, [])]
+            for key, fields in (p.get("creative_locks") or {}).items()
+        }
+        plans = apply_review_edits(p["clip_plans"], updates.get("clip_plans", p["clip_plans"]), enforced_locks)
+        if reason == "review_render" and plans != p["clip_plans"]:
+            raise ValueError("The final render plan is immutable; return to a new revision to edit prompts")
+        # Images must correspond to approved image prompts. Editing them
+        # after rendering requires returning to planning in a new revision.
+        if reason == "review_images" and any(
+            new.get("image_prompt") != old.get("image_prompt")
+            or new.get("keyframe_prompts") != old.get("keyframe_prompts")
+            for old, new in zip(p["clip_plans"], plans)
+        ):
+            raise ValueError("Image prompts changed; create a new revision to regenerate the storyboard")
+        p["creative_locks"] = copy.deepcopy(locks)
+        p["clip_plans"] = plans
+        approvals = p.setdefault("review_approvals", {})
+        approvals[reason] = review_digest(reason, plans, p.get("clip_images"), p.get("review_render_params"))
+        if reason in {"review_images", "review_render"}:
+            approvals["review_prompts"] = review_digest("review_prompts", plans)
+        if reason == "review_render":
+            approvals["review_images"] = review_digest("review_images", plans, p.get("clip_images"))
+        p["status"] = "queued"
         p["pause_reason"] = None
+    if not _save_pipeline_state(pid):
+        with _pipeline_lock:
+            p.clear()
+            p.update(previous_review)
+        raise ValueError("Unable to save approval. Nothing was dispatched; try again.")
+    threading.Thread(target=_dispatch_review_resume, args=(pid,), daemon=False).start()
     return True
+
+
+def rerun_review_image(out_dir, pid, clip_index, prompt=None):
+    """Regenerate one storyboard image while the production is paused."""
+    if get_pipeline(pid) is None:
+        saved = load_pipeline_state(out_dir, pid)
+        if not saved or saved.get("status") != "paused" or saved.get("pause_reason") != "review_images":
+            raise ValueError("Open the storyboard review before regenerating an image")
+        ok, message = resume_pipeline(pid, out_dir)
+        if not ok:
+            raise ValueError(message)
+    with _pipeline_lock:
+        p = _pipelines.get(pid)
+        if not p or p.get("status") != "paused" or p.get("pause_reason") != "review_images":
+            raise ValueError("Open the storyboard review before regenerating an image")
+        if pid in _pipeline_threads or pid in _pipeline_operations or _pipeline_child_jobs.get(pid):
+            raise PipelineBusyError("A scene operation is already running")
+        if not 0 <= clip_index < len(p.get("clip_plans", [])):
+            raise ValueError("Invalid scene index")
+        if prompt is not None and prompt != p["clip_plans"][clip_index].get("image_prompt") and "image_prompt" in (p.get("creative_locks") or {}).get(str(clip_index), []):
+            raise ValueError("Unlock this image prompt in a new revision before changing it")
+        _pipeline_operations.add(pid)
+    try:
+        result = _rerun_clip_image_impl(out_dir, pid, clip_index, prompt)
+        saved = load_pipeline_state(out_dir, pid)
+        clip = saved["clips"][clip_index]
+        with _pipeline_lock:
+            p = _pipelines[pid]
+            p["clip_images"][clip_index] = clip["start_image_filename"]
+            p["clip_plans"][clip_index]["image_prompt"] = clip["image_prompt"]
+            p.setdefault("_scene_take_history", {})[str(clip_index)] = {"image_takes": clip.get("image_takes", [])}
+            p.setdefault("review_approvals", {}).pop("review_images", None)
+            p["review_approvals"].pop("review_render", None)
+            p["review_render_params"] = None
+            p["review_approvals"]["review_prompts"] = review_digest("review_prompts", p["clip_plans"])
+        _save_pipeline_state(pid)
+        return result
+    finally:
+        _release_pipeline_operation(pid)
+
+
+def select_scene_take(out_dir, pid, clip_index, kind, filename):
+    if not _claim_pipeline_operation(pid):
+        raise PipelineBusyError("Wait for the production to finish before selecting a take")
+    try:
+        def update(state):
+            if not 0 <= clip_index < len(state.get("clips", [])):
+                raise ValueError("Invalid scene index")
+            clip = state["clips"][clip_index]
+            select_take(clip, kind, filename)
+            state_path = _find_pipeline_file(out_dir, pid)
+            take_path = os.path.join(os.path.dirname(state_path), filename)
+            if not os.path.isfile(take_path):
+                raise ValueError("The selected take is missing")
+        result = _update_saved_pipeline(out_dir, pid, update)
+        if result is None:
+            raise ValueError("Project not found")
+        return result
+    finally:
+        _release_pipeline_operation(pid)
 
 
 def _find_pipeline_state_file(pid: str, out_dir: str) -> Optional[str]:
@@ -5062,6 +5240,8 @@ def _resume_pipeline_reserved(pid: str, out_dir: str) -> tuple[bool, str]:
         "_director_closing_blocking": c.get("_director_closing_blocking"),
         "_director_audio_plan": c.get("_director_audio_plan"),
     } for c in saved_clips]
+    if data.get("status") in {"paused", "queued", "running"} and isinstance(data.get("review_clip_plans"), list) and len(data["review_clip_plans"]) == len(saved_clips):
+        clip_plans = copy.deepcopy(data["review_clip_plans"])
     planned_clips = [c.get("planned_clip") for c in saved_clips]
     clip_images = [c.get("start_image_filename") for c in saved_clips]
     clip_keyframes = [c.get("keyframe_filenames", []) or [] for c in saved_clips]
@@ -5073,6 +5253,10 @@ def _resume_pipeline_reserved(pid: str, out_dir: str) -> tuple[bool, str]:
         "id": pid,
         "status": "running",
         "phase": "resuming",
+        "_scene_take_history": {str(i): {key: c[key] for key in ("image_takes", "video_takes") if key in c} for i, c in enumerate(saved_clips)},
+        "review_approvals": copy.deepcopy(data.get("review_approvals") or {}),
+        "review_render_params": copy.deepcopy(data.get("review_render_params")),
+        "creative_locks": copy.deepcopy(data.get("creative_locks") or {}),
         "auto_mode": params.get("auto_mode", True),
         "progress": {"current": 0, "total": 0, "message": "Resuming…", "step": 0, "total_steps": 0},
         "clip_plans": clip_plans,
@@ -5098,6 +5282,9 @@ def _resume_pipeline_reserved(pid: str, out_dir: str) -> tuple[bool, str]:
     with _pipeline_lock:
         _pipelines[pid] = pipeline
 
+    if data.get("status") == "paused" and data.get("pause_reason"):
+        pipeline.update(status="paused", pause_reason=data["pause_reason"])
+        return True, "awaiting_review"
     _start_pipeline_worker(pid, resume=True)
     return True, "resumed"
 
@@ -5448,12 +5635,12 @@ def _run_pipeline(pid: str, resume: bool = False):
         # Bounded shots have no semantic memory of the preceding generation.
         # Re-attach the stored world/location anchor after any LLM polish so a
         # rewrite cannot reduce a recognizable set to a generic room.
-        clip_plans = apply_independent_shot_context(clip_plans)
-        _preflight_h3_director_prompts(
-            params.get("video_model", ""),
-            clip_plans,
-            pid=pid,
-        )
+        already_reviewed = (p.get("review_approvals") or {}).get("review_prompts") == review_digest("review_prompts", clip_plans)
+        if not already_reviewed:
+            clip_plans = apply_independent_shot_context(clip_plans)
+            _preflight_h3_director_prompts(
+                params.get("video_model", ""), clip_plans, pid=pid,
+            )
 
         _update_pipeline(pid, clip_plans=clip_plans, llm_streaming=False)
         _save_pipeline_state(pid)  # Save after planning
@@ -5463,15 +5650,8 @@ def _run_pipeline(pid: str, resume: bool = False):
             return
 
         # In non-auto mode, pause for user review after planning
-        if not auto_mode:
-            _update_pipeline(pid, status="paused", pause_reason="review_prompts",
-                             progress={"current": 1, "total": 3, "message": "Review prompts", "step": 0, "total_steps": 0})
-            _save_pipeline_state(pid)  # Save paused state so Dashboard shows it
-            _wait_for_resume(pid)
-            if _pipelines[pid]["status"] == "cancelled":
-                return
-            # Reload clip_plans in case user edited them
-            clip_plans = _pipelines[pid]["clip_plans"]
+        if not auto_mode and _pause_for_creative_review(pid, "review_prompts", clip_plans):
+            return
 
         # ── Phase 2: Generate Start Images ──────────────────────────────
         # Generate start images only when the selected model/policy uses them.
@@ -5597,20 +5777,10 @@ def _run_pipeline(pid: str, resume: bool = False):
                 clip_images, len(clip_plans), pipeline_out_dir,
             )
 
-        # In non-auto mode, pause for image review
-        if not auto_mode and requires_shot_images and not _prepared_imgs_ok:
-            _update_pipeline(pid, status="paused", pause_reason="review_images",
-                             progress={"current": 2, "total": 3, "message": "Review images", "step": 0, "total_steps": 0})
-            _wait_for_resume(pid)
-            if _pipelines[pid]["status"] == "cancelled":
-                return
-
-            # Review can be open for hours; a gallery cleanup or manual rename
-            # during that pause must not silently turn a planned I2V shot into
-            # unconditioned T2V.
-            _require_video_start_images(
-                clip_images, len(clip_plans), pipeline_out_dir,
-            )
+        if not auto_mode and requires_shot_images and _pause_for_creative_review(
+            pid, "review_images", clip_plans, clip_images
+        ):
+            return
 
         # ── Phase 3: Generate Video ─────────────────────────────────────
         _update_pipeline(pid, phase="generating_video",
@@ -5659,6 +5829,8 @@ def _run_pipeline(pid: str, resume: bool = False):
             )
         _save_pipeline_state(pid)  # Save on completion
 
+    except _CreativeReviewPending:
+        return
     except Exception as e:
         import traceback
         partial_outputs = getattr(e, "output_files", None)
@@ -6862,6 +7034,13 @@ def _run_video_generation(pid: str, params: dict, clip_plans: list[dict],
                           out_dir: str = None, workspace: str = None) -> list[str]:
     """Generate multi-clip video with optional keyframe injection. Returns list of output filenames."""
     _validate_director_models(params, stages=("video",))
+    with _pipeline_lock:
+        pipeline = _pipelines.get(pid) or {}
+        frozen_render = pipeline.get("review_render_params")
+        approved_render = (pipeline.get("review_approvals") or {}).get("review_render")
+        expected = review_digest("review_render", clip_plans, clip_images, frozen_render)
+    if frozen_render and approved_render == expected:
+        return _submit_and_wait(copy.deepcopy(frozen_render), timeout_s=7200, workspace=workspace, out_dir=out_dir)
     video_model = params.get("video_model") or "ltx2_22B_distilled_1_1"
     _preflight_h3_director_prompts(video_model, clip_plans, pid=pid)
     video_params = params.get("video_params", {})
@@ -7721,6 +7900,15 @@ def _run_video_generation(pid: str, params: dict, clip_plans: list[dict],
     if film_grain_intensity > 0:
         gen_params["film_grain_intensity"] = film_grain_intensity
         gen_params["film_grain_saturation"] = film_grain_saturation
+
+    if params.get("auto_mode", True) is False and pid in _pipelines:
+        _prepare_director_generation_params(gen_params)
+        gen_params["prompt_enhancer"] = ""
+        if int(gen_params.get("seed", -1)) < 0:
+            gen_params["seed"] = secrets.randbelow(2**31)
+        _update_pipeline(pid, review_render_params=copy.deepcopy(gen_params), clip_plans=clip_plans)
+        if _pause_for_creative_review(pid, "review_render", clip_plans, clip_images):
+            raise _CreativeReviewPending()
 
     # Track progress by monitoring the generation job
     output_files = _submit_and_wait(

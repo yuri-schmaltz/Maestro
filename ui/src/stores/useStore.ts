@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { reorderWindowPrompts } from '../lib/reorderWindowPrompts'
+import { reviewSnapshot } from '../lib/reviewSnapshot'
 import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode } from '../types'
 import * as api from '../api/client'
 import { applyThemePrefs, getStoredPrefs, type FamilyId, type ThemeMode, type ThemePrefs } from '../lib/theme'
@@ -17,6 +19,10 @@ import {
   continuationFirstWindowFrames,
   durationWindowPlan,
 } from '../lib/durationPlanning'
+import { buildGenerationPlan, resolvedGenerationPlan, type ReviewPlan } from '../lib/generationPlan'
+
+let _reviewSnapshot: AppState | null = null
+let _reviewRequestToken = 0
 
 const CIVIT_DOWNLOAD_POLL_MS = 2000
 const CIVIT_DOWNLOAD_COMPLETED_VISIBLE_MS = 30_000
@@ -26,7 +32,7 @@ let _civitDownloadPollRequested = false
 const _civitRefreshedCheckpointDownloads = new Set<string>()
 const DIRECTOR_REPAIR_POLL_MS = 2000
 const DIRECTOR_REPAIR_ACTIVE = new Set(['queued', 'running', 'cancelling'])
-const DIRECTOR_PIPELINE_ACTIVE = new Set(['running', 'paused'])
+const DIRECTOR_PIPELINE_ACTIVE = new Set(['queued', 'running', 'paused'])
 type DirectorRepairPoll = {
   operationId: string
   timer: number | null
@@ -1741,7 +1747,7 @@ interface AppState {
   // Generation state (queue)
   jobs: GenerationJob[]
   isGenerating: boolean
-  startGeneration: (mode?: 'now' | 'queue') => Promise<void>
+  startGeneration: (mode?: 'now' | 'queue', snapshot?: AppState, prepareReview?: boolean) => Promise<void>
   startStudioQueue: () => Promise<void>
   stopGeneration: (jobId?: string) => void
   dismissJob: (jobId: string) => void
@@ -1880,7 +1886,21 @@ interface AppState {
   enhancePrompt: (ttsMode?: string) => Promise<void>
   h3WindowPlan: H3WindowPlan | null
   updateH3WindowPrompt: (index: number, prompt: string) => void
+  moveH3Window: (fromIndex: number, toIndex: number) => void
   clearH3WindowPlan: () => void
+
+  // Review-before-generate gate (P0). Building a review plan reuses the
+  // same route/model/enhancement/frame decisions startGeneration makes, so
+  // the panel previews the exact request that would be frozen on Confirm.
+  reviewPlan: ReviewPlan | null
+  reviewAction: 'generate' | 'queue' | null
+  reviewBusy: boolean
+  reviewBeforeGenerate: boolean
+  setReviewBeforeGenerate: (enabled: boolean) => void
+  openGenerationReview: (action: 'generate' | 'queue') => Promise<void>
+  confirmGenerationReview: (action?: 'generate' | 'queue') => Promise<void>
+  closeGenerationReview: () => void
+  restoreGenerationReview: () => Promise<void>
 
   // Director (Music Video Director)
   sidebarMode: AppMode
@@ -2381,7 +2401,7 @@ function _directorStepForPipelineStatus(
 ): AppState['directorStep'] {
   if (status.status === 'paused') {
     if (status.pause_reason === 'review_prompts') return 'review'
-    if (status.pause_reason === 'review_images') return 'review_video'
+    if ((status.pause_reason === 'review_images' || status.pause_reason === 'review_render')) return 'review_video'
   }
   if (status.status === 'completed') return 'review_video'
   if (status.phase === 'planning' || status.phase === 'resuming' || status.phase === 'polishing_prompts') {
@@ -4275,7 +4295,7 @@ export const useStore = create<AppState>((set, get) => ({
           ? params.reference_image_path : null,
         character_ref_paths: _stringArray(params.character_ref_paths),
         location_ref_paths: _stringArray(params.location_ref_paths),
-        auto_mode: Boolean(_record(params.director_ui_snapshot).directorAutoMode ?? true),
+        auto_mode: Boolean(_record(params.director_ui_snapshot).directorAutoMode ?? params.auto_mode ?? false),
         seamless: Boolean(params.seamless),
         image_model: String(params.image_model || entry.image_model || ''),
         video_model: String(params.video_model || entry.video_model || ''),
@@ -5874,14 +5894,85 @@ export const useStore = create<AppState>((set, get) => ({
   jobs: [],
   isGenerating: false,
 
-  startGeneration: async (submissionMode = 'now') => {
-    let state = get()
+  openGenerationReview: async (action) => {
+    if (get().reviewBusy) return
+    const token = ++_reviewRequestToken
+    set({ reviewBusy: true, reviewPlan: null, reviewAction: action, promptEnhanceError: null })
+    try {
+      await get().startGeneration('queue', undefined, true)
+    } catch (error) {
+      set({ promptEnhanceError: error instanceof Error ? error.message : 'Unable to prepare review' })
+    } finally {
+      if (token === _reviewRequestToken) set({ reviewBusy: false })
+    }
+  },
+
+  restoreGenerationReview: async () => {
+    if (get().reviewBusy || get().reviewPlan) return
+    const id = localStorage.getItem('maestro-pending-generation-review')
+    if (!id) return
+    const token = ++_reviewRequestToken
+    set({ reviewBusy: true })
+    try {
+      let result = await api.fetchGenerationReview(id)
+      while (result.status === 'planning') {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        if (token !== _reviewRequestToken) return
+        result = await api.fetchGenerationReview(id)
+      }
+      if (token !== _reviewRequestToken) return
+      if (result.status === 'ready' && result.prepared) {
+        set({ reviewPlan: resolvedGenerationPlan(get(), { id: result.id, prepared: result.prepared }), reviewAction: 'generate' })
+      } else {
+        localStorage.removeItem('maestro-pending-generation-review')
+        if (result.status === 'failed') set({ promptEnhanceError: result.error || 'Planning was interrupted. Prepare a new review.' })
+      }
+    } catch (error) {
+      set({ promptEnhanceError: error instanceof Error ? error.message : 'Unable to restore review' })
+    } finally {
+      if (token === _reviewRequestToken) set({ reviewBusy: false })
+    }
+  },
+
+  confirmGenerationReview: async (target) => {
+    const plan = get().reviewPlan
+    const snapshot = _reviewSnapshot
+    if (!plan || (!snapshot && !plan.reviewId) || get().reviewBusy) return
+    set({ reviewBusy: true })
+    try {
+      if (plan.reviewId) {
+        await api.submitGenerationReview(plan.reviewId, target === 'queue')
+        await get().reconnectJobs()
+        localStorage.removeItem('maestro-pending-generation-review')
+      } else if (snapshot) {
+        await get().startGeneration(target === 'queue' ? 'queue' : 'now', snapshot)
+      }
+      set({ reviewPlan: null, reviewAction: null })
+      _reviewSnapshot = null
+    } catch (error) {
+      set({ promptEnhanceError: error instanceof Error ? error.message : 'Unable to submit approved plan' })
+    } finally {
+      set({ reviewBusy: false })
+    }
+  },
+
+  closeGenerationReview: () => {
+    if (get().reviewBusy && get().reviewPlan) return
+    ++_reviewRequestToken
+    _reviewSnapshot = null
+    localStorage.removeItem('maestro-pending-generation-review')
+    set({ reviewBusy: false, reviewPlan: null, reviewAction: null })
+  },
+
+  startGeneration: async (submissionMode = 'now', snapshot, prepareReview = false) => {
+    const reviewToken = _reviewRequestToken
+    let state = snapshot || get()
     const primaryStudioCreate = (
       state.generationMode === 'video'
       && (state.studioVideoWorkflow === 'frames' || state.studioVideoWorkflow === 'references')
       && Number(state.params.image_mode) === 0
     )
-    if (primaryStudioCreate) {
+    if (primaryStudioCreate && !snapshot) {
       state.reconcileStudioVideoCreateRoute('Inputs changed')
       state = get()
     }
@@ -5892,7 +5983,8 @@ export const useStore = create<AppState>((set, get) => ({
     // of submitting the new model with the previous model's frame/VRAM rules.
     const selectedModelType = String(state.params.model_type || '')
     if (
-      selectedModelType
+      !snapshot
+      && selectedModelType
       && state.modelOptions?.model_type !== selectedModelType
       && !sfxModelTypes.has(selectedModelType)
     ) {
@@ -6007,7 +6099,8 @@ export const useStore = create<AppState>((set, get) => ({
         )
 
     const automaticSinglePromptEnhance = (
-      state.generationMode === 'video'
+      !snapshot
+      && state.generationMode === 'video'
       && (isH3PromptModel || isLtxPromptModel)
       && (promptMode === 'auto' || promptMode === 'creative')
       && !usesMultiplePasses
@@ -6046,6 +6139,8 @@ export const useStore = create<AppState>((set, get) => ({
       if (state.isEnhancing || state.promptEnhanceError) return
     }
 
+    state = reviewSnapshot(state)
+
     // Freeze the Studio configuration at click time. This matters for the
     // split Add to Queue action: later UI edits must belong to a new job.
     const holdForQueue = submissionMode === 'queue'
@@ -6056,7 +6151,7 @@ export const useStore = create<AppState>((set, get) => ({
         && Number(state.params.image_mode) === 4
       )
     )
-    if (holdForQueue && !queueSupported) {
+    if (holdForQueue && !queueSupported && !prepareReview) {
       console.warn('Add to Queue is not available for this specialized edit workflow yet.')
       return
     }
@@ -6064,7 +6159,7 @@ export const useStore = create<AppState>((set, get) => ({
     // A held job does not touch the GPU, so keep the prompt LLM resident for
     // enhancing the next queued prompt. It will be unloaded when the queue is
     // explicitly started, just like Generate Now.
-    if (!holdForQueue && state.llmStatus?.loaded) {
+    if (!prepareReview && !holdForQueue && state.llmStatus?.loaded) {
       try {
         await api.unloadLlm()
         set({ llmStatus: { loaded: false, model_id: null, device: null, provider: '' } })
@@ -6094,6 +6189,16 @@ export const useStore = create<AppState>((set, get) => ({
       && !omniReferences.some(reference => reference.type === 'image' || reference.type === 'video')
     ) {
       console.error('MiniMax H3 Omni Reference needs at least one image or video reference')
+      return
+    }
+
+    const specialized = state.generationMode === 'avatar'
+      || (state.generationMode === 'video' && Number(state.params.image_mode) === 4)
+    if (prepareReview && specialized) {
+      _reviewSnapshot = state
+      const plan = buildGenerationPlan(state)
+      plan.warnings.push('This specialized operation uses a frozen configuration; its renderer resolves final geometry at execution.')
+      set({ reviewPlan: plan })
       return
     }
 
@@ -7828,6 +7933,35 @@ export const useStore = create<AppState>((set, get) => ({
       delete params.h3_window_plan
     }
 
+    if (prepareReview) {
+      const token = reviewToken
+      if (token !== _reviewRequestToken) return
+      params._review_ui = {
+        generationMode: state.generationMode, studioVideoWorkflow: state.studioVideoWorkflow,
+        studioVideoEffectiveCreateRoute: state.studioVideoEffectiveCreateRoute,
+        studioImageWorkflow: state.studioImageWorkflow, resolutionPreset: state.resolutionPreset,
+        aspectRatio: state.aspectRatio, durationSeconds: state.durationSeconds,
+        slidingWindowSeconds: state.slidingWindowSeconds, slidingWindowOverlap: state.slidingWindowOverlap,
+        outputCount: state.outputCount, modelOptions: state.modelOptions,
+      }
+      params._review_original_prompt = state.params._h3_original_prompt || state.params._ltx_original_prompt || state.params.prompt
+      const created = await api.prepareGenerationReview(params)
+      if (token !== _reviewRequestToken) return
+      localStorage.setItem('maestro-pending-generation-review', created.id)
+      let resolved = created
+      while (resolved.status === 'planning') {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        resolved = await api.fetchGenerationReview(created.id)
+        if (token !== _reviewRequestToken) return
+      }
+      if (resolved.status !== 'ready' || !resolved.prepared) {
+        throw new Error(resolved.error || 'Generation plan is not ready')
+      }
+      _reviewSnapshot = state
+      set({ reviewPlan: resolvedGenerationPlan(state, { id: resolved.id, prepared: resolved.prepared }) })
+      return
+    }
+
     const clientSubmissionId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
     const pendingJobId = `pending-${clientSubmissionId}`
     params._client_submission_id = clientSubmissionId
@@ -9002,6 +9136,18 @@ export const useStore = create<AppState>((set, get) => ({
   isEnhancing: false,
   promptEnhanceError: null,
   h3WindowPlan: null,
+
+  // Review-before-generate gate (P0)
+  reviewPlan: null,
+  reviewAction: null,
+  reviewBusy: false,
+  reviewBeforeGenerate: (() => {
+    try { return localStorage.getItem('maestro-review-before-generate') !== '0' } catch { return false }
+  })(),
+  setReviewBeforeGenerate: (enabled) => {
+    try { localStorage.setItem('maestro-review-before-generate', enabled ? '1' : '0') } catch { /* private mode */ }
+    set({ reviewBeforeGenerate: enabled })
+  },
   updateH3WindowPrompt: (index, prompt) => set(s => {
     if (!s.h3WindowPlan || index < 0 || index >= s.h3WindowPlan.windows.length) return {}
     const windows = s.h3WindowPlan.windows.map((window, windowIndex) => (
@@ -9014,6 +9160,11 @@ export const useStore = create<AppState>((set, get) => ({
         window_prompts: windows.map(window => window.prompt),
       },
     }
+  }),
+
+  moveH3Window: (fromIndex, toIndex) => set(s => {
+    if (!s.h3WindowPlan) return {}
+    return { h3WindowPlan: reorderWindowPrompts(s.h3WindowPlan, fromIndex, toIndex) }
   }),
   clearH3WindowPlan: () => set({ h3WindowPlan: null }),
   enhancePrompt: async (ttsMode?: string) => {
@@ -9574,7 +9725,7 @@ export const useStore = create<AppState>((set, get) => ({
   // Defaults per user preference (2026-06): Auto ON (hands-off pipeline is
   // the common flow), Seamless OFF (separate per-clip generations are easier
   // to retake/review than one rolling-window render).
-  directorAutoMode: true,
+  directorAutoMode: false,
   directorSeamless: false,
   directorShotImageGuidance: 'auto' as DirectorShotImageGuidance,
   directorLlmLog: [],
@@ -10397,6 +10548,10 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   directorGenerateStartImages: async () => {
+    if (get().pipelineStatus?.status === 'paused') {
+      set({ directorError: 'Approve the scene cards in the main workspace to continue this production.' })
+      return
+    }
     const { directorClipPlans, directorPlannedClips, params, selectedModelPerMode, savedParamsPerMode, savedLoraPerMode, directorResolution, directorAspectRatio, directorSceneDescription } = get()
     if (!directorClipPlans.length) return
 
@@ -10641,6 +10796,10 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   directorGenerate: () => {
+    if (get().pipelineStatus?.status === 'paused') {
+      set({ directorError: 'Approve the scene cards in the main workspace to continue this production.' })
+      return
+    }
     void get().startDirectorPipeline(
       get().directorQueueEditingEntryId
         || get().pipelinePolling
@@ -10679,7 +10838,7 @@ export const useStore = create<AppState>((set, get) => ({
       directorImageGenProgress: null,
       directorSpeakers: [],
       directorSpeakerMappings: [],
-      directorAutoMode: true,
+      directorAutoMode: false,
       directorSeamless: false,
       directorShotImageGuidance: 'auto' as DirectorShotImageGuidance,
       directorLlmLog: [],
@@ -13206,9 +13365,8 @@ export const useStore = create<AppState>((set, get) => ({
 
     const pipelineParams: Record<string, unknown> = {
       pipeline_type: pipelineType,
-      // Held work and reviewed revisions cannot pause for browser review.
-      auto_mode: mode === 'queue' || state.directorClipPlans.length > 0
-        ? true : directorAutoMode,
+      // Queueing never changes the user's approval policy.
+      auto_mode: directorAutoMode,
       workspace: get().activeWorkspace,
       _director_project_id: state.directorProjectId || undefined,
       _director_parent_pipeline_id: state.directorSourcePipelineId || undefined,
@@ -13552,7 +13710,7 @@ export const useStore = create<AppState>((set, get) => ({
           set({ directorLoading: false })
           if (status.pause_reason === 'review_prompts') {
             set({ directorStep: 'review' })
-          } else if (status.pause_reason === 'review_images') {
+          } else if ((status.pause_reason === 'review_images' || status.pause_reason === 'review_render')) {
             set({ directorStep: 'review_video' })
           }
         }

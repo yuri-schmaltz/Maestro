@@ -183,6 +183,50 @@ export async function fetchDefaults(modelType: string): Promise<Record<string, u
 
 // --- Generation ---
 
+export interface GenerationReviewResponse {
+  id: string
+  status: 'planning' | 'ready' | 'failed' | 'submitted'
+  error?: string
+  prepared?: { params: Record<string, unknown>; workspace: string; h3_window_plan?: H3WindowPlan; ltx_window_plan?: LTXWindowPlan }
+}
+
+export async function prepareGenerationReview(params: Record<string, unknown>): Promise<GenerationReviewResponse> {
+  const response = await fetch(`${BASE}/api/v1/generation-reviews`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(params),
+  })
+  if (!response.ok) throw new Error('Unable to prepare the generation review')
+  return response.json()
+}
+
+export async function reviseGenerationReview(id: string, prompt: string, windowPrompts: string[]): Promise<GenerationReviewResponse> {
+  const response = await fetch(`${BASE}/api/v1/generation-reviews/${id}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, window_prompts: windowPrompts }),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.detail || 'Unable to save edited plan')
+  }
+  return response.json()
+}
+
+export async function fetchGenerationReview(id: string): Promise<GenerationReviewResponse> {
+  const response = await fetch(`${BASE}/api/v1/generation-reviews/${id}`)
+  if (!response.ok) throw new Error('Unable to load the generation review')
+  return response.json()
+}
+
+export async function submitGenerationReview(id: string, held: boolean): ReturnType<typeof submitGeneration> {
+  const response = await fetch(`${BASE}/api/v1/generation-reviews/${id}/confirm`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ held }),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.detail || 'Unable to submit the approved plan')
+  }
+  return response.json()
+}
+
 export async function submitGeneration(
   params: Record<string, unknown>,
   holdForQueue = false,
@@ -775,7 +819,7 @@ export async function fetchGroupClips(groupId: string): Promise<{ group_id: stri
 
 export interface PipelineStatus {
   id: string
-  status: 'running' | 'paused' | 'completed' | 'failed' | 'cancelled'
+  status: 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled'
   phase: 'resuming' | 'planning' | 'polishing_prompts' | 'generating_images' | 'preparing_video' | 'generating_video' | 'post_processing' | 'completed' | 'failed' | 'cancelled'
   auto_mode: boolean
   progress: {
@@ -802,7 +846,7 @@ export interface PipelineStatus {
       seconds: number | null
     }>
   }
-  clip_plans: Array<{ video_prompt: string; image_prompt: string }>
+  clip_plans: Array<{ video_prompt: string; image_prompt: string; window_prompts?: string[]; keyframe_prompts?: string[] }>
   /** Model-adapted native timeline. This can contain more, shorter clips than
    *  the initial music-analysis timeline (for example MiniMax H3's 14.4s cap). */
   planned_clips?: import('../types').PlannedClip[]
@@ -813,6 +857,9 @@ export interface PipelineStatus {
    *  See `OomInfo` in types/index.ts. */
   oom_info?: import('../types').OomInfo | null
   pause_reason: string | null
+  review_render_params?: Record<string, unknown>
+  creative_locks?: Record<string, string[]>
+  review_digest?: string
   llm_streaming: boolean
   recovered_from_disk?: boolean
   /** Non-fatal warnings raised during the run — currently used for
@@ -844,7 +891,7 @@ export async function fetchPipelineStatus(pid: string): Promise<PipelineStatus> 
   return res.json()
 }
 
-export async function continuePipeline(pid: string, updates?: { clip_plans?: Array<{ video_prompt: string; image_prompt: string }> }): Promise<void> {
+export async function continuePipeline(pid: string, updates?: { clip_plans?: Array<{ video_prompt: string; image_prompt: string }>; creative_locks?: Record<string, string[]>; review_digest?: string }): Promise<void> {
   const res = await fetch(`${BASE}/api/v1/director/pipeline/${encodeURIComponent(pid)}/continue`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1087,6 +1134,20 @@ export async function cancelPipelineRepair(pid: string): Promise<{
     throw new Error(err.error || err.detail || 'Repair cancel failed')
   }
   return res.json()
+}
+
+export async function regenerateReviewImage(pid: string, index: number, prompt: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/director/pipeline/${pid}/review-image/${index}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }),
+  })
+  if (!res.ok) { const error = await res.json(); throw new Error(error.detail || 'Unable to regenerate image') }
+}
+
+export async function selectSceneTake(pid: string, index: number, kind: 'video' | 'image', filename: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/director/pipelines/${pid}/clips/${index}/take`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, filename }),
+  })
+  if (!res.ok) { const error = await res.json(); throw new Error(error.detail || 'Unable to select take') }
 }
 
 export async function rerunClipImage(pid: string, clipIndex: number, prompt?: string): Promise<{ filename: string; clip_index: number }> {
