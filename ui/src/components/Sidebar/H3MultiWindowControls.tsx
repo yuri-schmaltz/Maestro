@@ -62,7 +62,7 @@ export function H3MultiWindowControls() {
   return (
     <div className="rounded-lg border border-border bg-bg-tertiary/50 px-2.5 py-2 space-y-1.5">
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-text-secondary">
+        <span className="text-2xs text-text-secondary">
           {enabled ? 'Long sequence · automatic' : 'Prompt writing'}
         </span>
         <span
@@ -77,7 +77,7 @@ export function H3MultiWindowControls() {
         </span>
       </div>
 
-      <label className="flex items-center justify-between gap-2 text-[9px] text-text-muted">
+      <label className="flex items-center justify-between gap-2 text-2xs text-text-muted">
         <span className="flex items-center gap-1">
           {enabled ? 'Window prompts' : 'Prompt writing'}
           <span
@@ -98,7 +98,7 @@ export function H3MultiWindowControls() {
                 ? 'creative'
                 : 'auto',
           )}
-          className="min-w-[158px] rounded border border-border bg-bg-secondary px-2 py-1 text-[9px] text-text-secondary focus:outline-none focus:border-accent-blue"
+          className="min-w-[158px] rounded border border-border bg-bg-secondary px-2 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue"
         >
           <option value="auto">AI - Faithful</option>
           <option value="creative">AI - Creative story + dialogue</option>
@@ -107,7 +107,7 @@ export function H3MultiWindowControls() {
       </label>
 
       {!enabled && promptMode !== 'manual' && (
-        <p className="text-[8px] leading-relaxed text-text-muted">
+        <p className="text-2xs leading-relaxed text-text-muted">
           {promptMode === 'creative'
             ? 'Maestro treats your prompt as a creative brief and writes the scene automatically. Exact quoted lines stay locked; add “only these lines” when no extra dialogue should be written.'
             : 'Maestro expands this prompt without inventing new story events or dialogue.'}{' '}
@@ -116,7 +116,7 @@ export function H3MultiWindowControls() {
       )}
 
       {enabled && isOmni && (
-        <label className="flex items-start gap-2 text-[9px] text-text-muted cursor-pointer">
+        <label className="flex items-start gap-2 text-2xs text-text-muted cursor-pointer">
           <input
             type="checkbox"
             checked={params.minimax_h3_sequence_continuity !== false}
@@ -125,7 +125,7 @@ export function H3MultiWindowControls() {
           />
           <span>
             Carry motion and sound between windows
-            <span className="block text-[8px] mt-0.5">
+            <span className="block text-2xs mt-0.5">
               Uses native Ref2VA overlap for smooth continuation. Turn off for independent hard-cut clips.
             </span>
           </span>

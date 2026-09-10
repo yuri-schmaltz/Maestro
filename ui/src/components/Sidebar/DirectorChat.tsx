@@ -104,7 +104,7 @@ function AudioScaleSlider() {
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-text-muted whitespace-nowrap">Audio {audioScale.toFixed(1)}x</span>
+        <span className="text-2xs text-text-muted whitespace-nowrap">Audio {audioScale.toFixed(1)}x</span>
         <input
           type="range"
           min={0}
@@ -115,7 +115,7 @@ function AudioScaleSlider() {
           className="flex-1 h-1"
         />
       </div>
-      <div className="flex gap-2 text-[8px] text-text-muted">
+      <div className="flex gap-2 text-2xs text-text-muted">
         <span>1x</span>
         <span>3x TTS</span>
         <span>5x</span>
@@ -219,7 +219,7 @@ function AutoResizeTextarea({ minHeight, maxHeight, ...props }: React.TextareaHT
 
 function SectionBadge({ label }: { label: string }) {
   return (
-    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${sectionColors[label] || 'bg-bg-hover text-text-muted'}`}>
+    <span className={`text-2xs px-1.5 py-0.5 rounded-full ${sectionColors[label] || 'bg-bg-hover text-text-muted'}`}>
       {label}
     </span>
   )
@@ -230,10 +230,18 @@ function EnergyDot({ energy }: { energy: number }) {
   return <span className={`inline-block w-2 h-2 rounded-full ${color}`} title={`Energy: ${(energy * 100).toFixed(0)}%`} />
 }
 
-// Chat bubble wrapper
+// Event/entry wrapper used by the chat column on the Director page.
+//
+// The app moved away from the conversational "chat bubble" pattern
+// (left system bubble / right user reply). Every chat event is now a
+// neutral log line — the user's selections and the app's prompts share
+// the same left-rail, neutral styling so the eye scans a single timeline
+// rather than two alternating speakers. Indentation comes from a left
+// rule, not a margin offset, so alignment stays consistent across event
+// sizes.
 function SystemBubble({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-bg-tertiary/50 rounded-lg p-3 border border-border/50 space-y-2">
+    <div className="pl-3 py-2 border-l-2 border-border/60 space-y-2">
       {children}
     </div>
   )
@@ -241,7 +249,7 @@ function SystemBubble({ children }: { children: React.ReactNode }) {
 
 function UserBubble({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-accent-blue/10 rounded-lg p-3 ml-8 border border-accent-blue/20">
+    <div className="pl-3 py-2 border-l-2 border-accent-blue/40 space-y-1">
       {children}
     </div>
   )
@@ -351,7 +359,7 @@ function LlmThinkingStream({ stage }: { stage: string }) {
     <div className="mt-2">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-[10px] text-text-muted hover:text-text-secondary transition-colors"
+        className="flex items-center gap-1 text-2xs text-text-muted hover:text-text-secondary transition-colors"
       >
         {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
         {isStillThinking ? 'Thinking...' : thinking && !output ? 'Thinking complete' : output ? 'Writing scenes...' : 'LLM Output'}
@@ -367,13 +375,13 @@ function LlmThinkingStream({ stage }: { stage: string }) {
           className="mt-1 rounded bg-bg-primary/50 border border-border/30 p-2 max-h-32 overflow-y-auto"
         >
           {thinking && (
-            <pre className="text-[10px] text-text-muted whitespace-pre-wrap font-mono leading-relaxed">
+            <pre className="text-2xs text-text-muted whitespace-pre-wrap font-mono leading-relaxed">
               {thinking}
               {isStillThinking && <span className="animate-pulse">|</span>}
             </pre>
           )}
           {output && (
-            <pre className="text-[10px] text-accent-blue/70 whitespace-pre-wrap font-mono leading-relaxed mt-1 pt-1 border-t border-border/30">
+            <pre className="text-2xs text-accent-blue/70 whitespace-pre-wrap font-mono leading-relaxed mt-1 pt-1 border-t border-border/30">
               {output}
               {!streamDone && !isStillThinking && <span className="animate-pulse">|</span>}
             </pre>
@@ -387,7 +395,7 @@ function LlmThinkingStream({ stage }: { stage: string }) {
 /** Collapsed, persistent record of completed LLM streams for one stage.
  *  Replaces the old behavior where the thinking/output box vanished the
  *  moment a stage finished. Default-collapsed so history stays compact. */
-function LlmLogStage({ stage, label }: { stage: string; label: string }) {
+export function LlmLogStage({ stage, label }: { stage: string; label: string }) {
   const log = useStore(s => s.directorLlmLog)
   const [openIdx, setOpenIdx] = useState<number | null>(null)
   const entries = log.filter(e => e.stage === stage)
@@ -404,7 +412,7 @@ function LlmLogStage({ stage, label }: { stage: string; label: string }) {
           <div key={i}>
             <button
               onClick={() => setOpenIdx(open ? null : i)}
-              className="flex items-center gap-1 text-[10px] text-text-muted hover:text-text-secondary transition-colors"
+              className="flex items-center gap-1 text-2xs text-text-muted hover:text-text-secondary transition-colors"
             >
               {open ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
               {label}{entries.length > 1 ? ` · pass ${i + 1}` : ''} (done)
@@ -412,10 +420,10 @@ function LlmLogStage({ stage, label }: { stage: string; label: string }) {
             {open && (
               <div className="mt-1 rounded bg-bg-primary/50 border border-border/30 p-2 max-h-48 overflow-y-auto">
                 {thinking && (
-                  <pre className="text-[10px] text-text-muted whitespace-pre-wrap font-mono leading-relaxed">{thinking}</pre>
+                  <pre className="text-2xs text-text-muted whitespace-pre-wrap font-mono leading-relaxed">{thinking}</pre>
                 )}
                 {output && (
-                  <pre className={`text-[10px] text-accent-blue/70 whitespace-pre-wrap font-mono leading-relaxed ${thinking ? 'mt-1 pt-1 border-t border-border/30' : ''}`}>{output}</pre>
+                  <pre className={`text-2xs text-accent-blue/70 whitespace-pre-wrap font-mono leading-relaxed ${thinking ? 'mt-1 pt-1 border-t border-border/30' : ''}`}>{output}</pre>
                 )}
               </div>
             )}
@@ -741,33 +749,26 @@ export function DirectorChat() {
             {isShortFilm ? <Film size={14} className="text-accent-blue" /> : <Music size={14} className="text-accent-blue" />}
             <span className="text-xs font-medium text-text-primary">{skill ? (isShortFilm ? 'Short Film' : 'Music Video') : 'Choose a skill'}</span>
             {analysis && !isShortFilm && (
-              <span className="text-[10px] text-text-muted">
+              <span className="text-2xs text-text-muted">
                 {analysis.bpm.toFixed(0)} BPM
               </span>
             )}
             {analysis && isShortFilm && (
-              <span className="text-[10px] text-text-muted">
+              <span className="text-2xs text-text-muted">
                 {formatTime(analysis.duration)}
               </span>
             )}
             {!analysis && isStoryPath && (
-              <span className="text-[10px] text-text-muted">
+              <span className="text-2xs text-text-muted">
                 {shortFilmTargetDuration}s
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => useStore.getState().setDashboardOpen(true)}
-              className="text-[10px] text-accent-blue hover:text-accent-blue/80 flex items-center gap-0.5 transition-colors"
-              title="Open pipeline dashboard"
-            >
-              Dashboard
-            </button>
             {(skill || step !== 'upload') && (
               <button
                 onClick={reset}
-                className="text-[10px] text-text-muted hover:text-text-primary flex items-center gap-0.5 transition-colors"
+                className="text-2xs text-text-muted hover:text-text-primary flex items-center gap-0.5 transition-colors"
                 title="Start over"
               >
                 <RotateCcw size={10} /> Start Over
@@ -823,7 +824,7 @@ export function DirectorChat() {
             decisions while technical settings sit beside it. */}
 
         {pipelineActive && step === 'review_video' && (
-          <div className="space-y-1 rounded-lg border border-accent-blue/25 bg-accent-blue/10 px-3 py-2 text-[10px] leading-relaxed text-text-secondary">
+          <div className="space-y-1 rounded-lg border border-accent-blue/25 bg-accent-blue/10 px-3 py-2 text-2xs leading-relaxed text-text-secondary">
             <div>
               The current render is frozen. Changes here apply to a new revision; Generate will add it to the held queue.
             </div>
@@ -884,7 +885,7 @@ export function DirectorChat() {
                           <button
                             key={opt}
                             onClick={() => setMusicSource(opt)}
-                            className={`flex-1 px-2 py-1.5 rounded-md text-[11px] font-medium transition-all ${
+                            className={`flex-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
                               active ? 'bg-accent-blue text-white' : 'text-text-secondary hover:text-text-primary'
                             }`}
                           >
@@ -1000,7 +1001,7 @@ export function DirectorChat() {
 
         {/* Error */}
         {error && (
-          <div className="text-[11px] text-red-400 bg-red-500/10 rounded px-2 py-1.5 border border-red-500/20">
+          <div className="text-xs text-red-400 bg-red-500/10 rounded px-2 py-1.5 border border-red-500/20">
             {error}
           </div>
         )}
@@ -1068,8 +1069,8 @@ export function DirectorChat() {
                       className="accent-accent-blue"
                     />
                     <div>
-                      <span className="text-[10px] text-text-primary">Narrative storytelling</span>
-                      <p className="text-[9px] text-text-muted leading-tight">
+                      <span className="text-2xs text-text-primary">Narrative storytelling</span>
+                      <p className="text-2xs text-text-muted leading-tight">
                         Structure scenes around a character arc with rising tension and emotional resolution
                       </p>
                     </div>
@@ -1289,7 +1290,7 @@ export function DirectorChat() {
           <div
             role="status"
             aria-live="polite"
-            className="rounded-md border border-green-500/20 bg-green-500/5 px-2.5 py-2 text-[10px] leading-relaxed text-indicator-success"
+            className="rounded-md border border-green-500/20 bg-green-500/5 px-2.5 py-2 text-2xs leading-relaxed text-indicator-success"
           >
             {draftQueueConfirmation}
           </div>
@@ -1324,7 +1325,7 @@ function CharacterNaming({
 
   return (
     <div>
-      <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-1.5">
+      <label className="text-xs text-text-muted uppercase tracking-wider block mb-1.5">
         <Users size={10} className="inline mr-1" />
         Name the Characters
       </label>
@@ -1356,11 +1357,11 @@ function CharacterNaming({
       </div>
       <button
         onClick={addCharacter}
-        className="mt-1.5 text-[10px] text-accent-blue hover:text-accent-blue-hover transition-colors"
+        className="mt-1.5 text-2xs text-accent-blue hover:text-accent-blue-hover transition-colors"
       >
         + Add character
       </button>
-      <span className="text-[10px] text-text-muted block mt-1">
+      <span className="text-2xs text-text-muted block mt-1">
         Name the people visible in the reference photo so the AI can identify them.
       </span>
     </div>
@@ -1389,7 +1390,7 @@ function DirectorAspectRatioSelector({ disabled = false }: { disabled?: boolean 
   ]
   return (
     <div>
-      <label className="text-[10px] text-text-muted uppercase tracking-wider mb-1.5 block">Aspect Ratio</label>
+      <label className="text-2xs text-text-muted uppercase tracking-wider mb-1.5 block">Aspect Ratio</label>
       <div className="flex gap-1.5">
         {presets.map(p => (
           <button
@@ -1403,7 +1404,7 @@ function DirectorAspectRatioSelector({ disabled = false }: { disabled?: boolean 
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <div className="font-medium">{p.label}</div>
-            <div className="text-[9px] mt-0.5 opacity-60">{p.desc}</div>
+            <div className="text-2xs mt-0.5 opacity-60">{p.desc}</div>
           </button>
         ))}
       </div>
@@ -1448,7 +1449,7 @@ function DirectorResolutionSelector({ disabled = false }: { disabled?: boolean }
   const selectedConfig = options?.resolution_presets?.[resolution]
   return (
     <div>
-      <label className="text-[10px] text-text-muted uppercase tracking-wider mb-1.5 block">Resolution</label>
+      <label className="text-2xs text-text-muted uppercase tracking-wider mb-1.5 block">Resolution</label>
       <div className="flex gap-1.5">
         {presets.map(p => (
           <button
@@ -1465,19 +1466,19 @@ function DirectorResolutionSelector({ disabled = false }: { disabled?: boolean }
           </button>
         ))}
       </div>
-      <div className="mt-1 text-[10px] text-text-muted">
+      <div className="mt-1 text-2xs text-text-muted">
         {resolvedResolution}
         {recommendation?.frames != null && totalVramGb > 0 && (
           <> &middot; Auto max shot {formatSeconds(recommendation.frames / fps)} on {totalVramGb.toFixed(0)} GB</>
         )}
       </div>
       {recommendation?.supported === false && (
-        <div className="mt-1 text-[10px] text-amber-400">
+        <div className="mt-1 text-2xs text-amber-400">
           Auto recommends {recommendation.fallbackResolution || 'a lower resolution'} on this GPU. An Advanced manual shot-length override is experimental.
         </div>
       )}
       {selectedConfig?.hint && (
-        <div className={`mt-1 text-[10px] ${selectedConfig.experimental ? 'text-amber-400' : 'text-text-muted'}`}>
+        <div className={`mt-1 text-2xs ${selectedConfig.experimental ? 'text-amber-400' : 'text-text-muted'}`}>
           {selectedConfig.hint}
         </div>
       )}
@@ -1504,7 +1505,7 @@ export function DirectorSetupPanel({ locked }: { locked: boolean }) {
       <DirectorResolutionSelector disabled={locked} />
 
       <div className="pt-2 border-t border-border/50 space-y-1.5">
-        <span className="text-[10px] text-text-muted uppercase tracking-wider block">Workflow</span>
+        <span className="text-2xs text-text-muted uppercase tracking-wider block">Workflow</span>
         <div className="flex items-center gap-4">
           <label
             className={`flex items-center gap-1.5 select-none ${
@@ -1523,7 +1524,7 @@ export function DirectorSetupPanel({ locked }: { locked: boolean }) {
               onChange={e => setSeamless(e.target.checked)}
               className="accent-accent-blue w-3 h-3"
             />
-            <span className="text-[10px] text-text-secondary">Seamless</span>
+            <span className="text-2xs text-text-secondary">Seamless</span>
           </label>
           <label
             className={`flex items-center gap-1.5 select-none ${locked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
@@ -1536,18 +1537,18 @@ export function DirectorSetupPanel({ locked }: { locked: boolean }) {
               onChange={e => setAutoMode(e.target.checked)}
               className="accent-red-500 w-3 h-3"
             />
-            <span className={`text-[10px] ${autoMode ? 'text-red-400' : 'text-text-secondary'}`}>Auto</span>
+            <span className={`text-2xs ${autoMode ? 'text-red-400' : 'text-text-secondary'}`}>Auto</span>
           </label>
         </div>
       </div>
 
       <div className="pt-2 border-t border-border/50 space-y-1.5">
-        <span className="text-[10px] text-text-muted uppercase tracking-wider block">Models</span>
+        <span className="text-2xs text-text-muted uppercase tracking-wider block">Models</span>
         <DirectorModelSelection disabled={locked} />
       </div>
 
       {locked && (
-        <p className="text-[9px] text-text-muted">
+        <p className="text-2xs text-text-muted">
           Project setup is locked after planning begins.
         </p>
       )}
@@ -1578,9 +1579,9 @@ function SkillSelector({ onSelect }: { onSelect: (skill: DirectorSkill) => void 
         >
           <s.icon size={16} className={s.active ? 'text-accent-blue mb-1.5' : 'text-text-muted mb-1.5'} />
           <div className="text-xs font-medium text-text-primary">{s.label}</div>
-          <div className="text-[10px] text-text-muted mt-0.5">{s.desc}</div>
+          <div className="text-2xs text-text-muted mt-0.5">{s.desc}</div>
           {!s.active && (
-            <span className="absolute top-1.5 right-1.5 text-[8px] bg-bg-hover text-text-muted px-1.5 py-0.5 rounded-full">
+            <span className="absolute top-1.5 right-1.5 text-2xs bg-bg-hover text-text-muted px-1.5 py-0.5 rounded-full">
               Soon
             </span>
           )}
@@ -1605,7 +1606,7 @@ function PathChooser({ onSelect }: { onSelect: (path: ShortFilmPath) => void }) 
         >
           <p.icon size={16} className="text-accent-blue mb-1.5" />
           <div className="text-xs font-medium text-text-primary">{p.label}</div>
-          <div className="text-[10px] text-text-muted mt-0.5">{p.desc}</div>
+          <div className="text-2xs text-text-muted mt-0.5">{p.desc}</div>
         </button>
       ))}
     </div>
@@ -1642,7 +1643,7 @@ function UploadZone({
           {/* Sub-status (set by directorUploadAndAnalyze polling loop) takes
               precedence over the static fallback. Reflects backend phase:
               "Loading transcription model (first use downloads ~300MB)..." etc. */}
-          <span className="text-[11px] text-text-muted text-center px-2">
+          <span className="text-xs text-text-muted text-center px-2">
             {loadingMessage || (isShortFilm ? 'Transcribing dialogue...' : 'Analyzing audio...')}
           </span>
         </div>
@@ -1655,7 +1656,7 @@ function UploadZone({
         <label className="cursor-pointer flex flex-col items-center gap-1.5">
           <Music size={20} className="text-accent-blue/60" />
           <span className="text-xs text-text-secondary">{isShortFilm ? 'Drop dialogue audio or click to upload' : 'Drop a song or video or click to upload'}</span>
-          <span className="text-[10px] text-text-muted">audio: wav/mp3/flac/ogg/m4a · video: mp4/mov/mkv/webm/avi (audio extracted)</span>
+          <span className="text-2xs text-text-muted">audio: wav/mp3/flac/ogg/m4a · video: mp4/mov/mkv/webm/avi (audio extracted)</span>
           <input
             type="file"
             accept={AUDIO_ACCEPT}
@@ -1720,7 +1721,7 @@ function ReferenceImageUpload({
           >
             <X size={12} className="text-text-muted" />
           </button>
-          <span className="absolute bottom-1.5 left-1.5 text-[9px] text-white/80 bg-black/50 px-1.5 py-0.5 rounded">
+          <span className="absolute bottom-1.5 left-1.5 text-2xs text-white/80 bg-black/50 px-1.5 py-0.5 rounded">
             Reference photo &middot; click to change
           </span>
         </div>
@@ -1736,7 +1737,7 @@ function ReferenceImageUpload({
           <div className="flex flex-col items-center gap-1.5">
             <ImageIcon size={20} className="text-accent-blue/60" />
             <span className="text-xs text-text-secondary">Drop reference photo or click to upload</span>
-            <span className="text-[10px] text-text-muted">Creates start images for each clip</span>
+            <span className="text-2xs text-text-muted">Creates start images for each clip</span>
           </div>
           <input
             type="file"
@@ -1749,13 +1750,13 @@ function ReferenceImageUpload({
       {referenceImage && !fixedMediaStrength && (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <label className="text-[11px] text-text-secondary">{strengthLabel || 'Image Strength'}</label>
-            <span className="text-[11px] text-text-muted tabular-nums">{inputVideoStrength.toFixed(2)}</span>
+            <label className="text-xs text-text-secondary">{strengthLabel || 'Image Strength'}</label>
+            <span className="text-xs text-text-muted tabular-nums">{inputVideoStrength.toFixed(2)}</span>
           </div>
           <input type="range" min={0} max={1} step={0.01} value={inputVideoStrength}
             onChange={e => setParam('input_video_strength', parseFloat(e.target.value))}
             className="w-full h-1 accent-accent-blue" />
-          <p className="text-[9px] text-text-muted">Lower values can increase motion</p>
+          <p className="text-2xs text-text-muted">Lower values can increase motion</p>
         </div>
       )}
     </div>
@@ -1826,7 +1827,7 @@ function DraggableRefRow({ file, label, index, onRemove, onLabelChange, onReorde
           className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <X size={8} className="text-white" />
         </button>
-        <span className="absolute bottom-0 left-0 bg-black/60 text-white text-[7px] px-1 rounded-br rounded-tl pointer-events-none">
+        <span className="absolute bottom-0 left-0 bg-black/60 text-white text-2xs px-1 rounded-br rounded-tl pointer-events-none">
           {index + 1}
         </span>
       </div>
@@ -1835,7 +1836,7 @@ function DraggableRefRow({ file, label, index, onRemove, onLabelChange, onReorde
         value={label}
         onChange={e => onLabelChange(index, e.target.value)}
         placeholder={placeholder}
-        className="flex-1 min-w-0 bg-bg-secondary border border-border rounded px-1.5 py-0.5 text-[10px] text-text-primary placeholder:text-text-muted focus:border-accent-blue outline-none"
+        className="flex-1 min-w-0 bg-bg-secondary border border-border rounded px-1.5 py-0.5 text-2xs text-text-primary placeholder:text-text-muted focus:border-accent-blue outline-none"
       />
     </div>
   )
@@ -1885,20 +1886,20 @@ function AdditionalRefsSection() {
     <div className="mt-1">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-[10px] text-text-muted hover:text-text-secondary transition-colors w-full"
+        className="flex items-center gap-1 text-2xs text-text-muted hover:text-text-secondary transition-colors w-full"
       >
         {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
         <Users size={10} />
         <span>Additional references</span>
-        {totalRefs > 0 && <span className="ml-auto bg-accent-blue/20 text-accent-blue px-1.5 rounded-full text-[9px]">{totalRefs}</span>}
+        {totalRefs > 0 && <span className="ml-auto bg-accent-blue/20 text-accent-blue px-1.5 rounded-full text-2xs">{totalRefs}</span>}
       </button>
       {expanded && (
         <div className="mt-1.5 space-y-2 pl-1">
           {/* Character References */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-text-secondary">Character refs</span>
-              <label className="cursor-pointer text-[9px] text-accent-blue hover:underline">
+              <span className="text-2xs text-text-secondary">Character refs</span>
+              <label className="cursor-pointer text-2xs text-accent-blue hover:underline">
                 + Add
                 <input type="file" accept={IMAGE_ACCEPT} multiple className="hidden"
                   onChange={e => handleFiles(e.target.files, 'char')} />
@@ -1914,14 +1915,14 @@ function AdditionalRefsSection() {
               </div>
             )}
             {charRefs.length === 0 && (
-              <p className="text-[9px] text-text-muted italic">Individual character close-ups improve identity</p>
+              <p className="text-2xs text-text-muted italic">Individual character close-ups improve identity</p>
             )}
           </div>
           {/* Location References */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-text-secondary">Location refs</span>
-              <label className="cursor-pointer text-[9px] text-accent-blue hover:underline">
+              <span className="text-2xs text-text-secondary">Location refs</span>
+              <label className="cursor-pointer text-2xs text-accent-blue hover:underline">
                 + Add
                 <input type="file" accept={IMAGE_ACCEPT} multiple className="hidden"
                   onChange={e => handleFiles(e.target.files, 'loc')} />
@@ -1937,40 +1938,40 @@ function AdditionalRefsSection() {
               </div>
             )}
             {locRefs.length === 0 && (
-              <p className="text-[9px] text-text-muted italic">Scene/environment reference images</p>
+              <p className="text-2xs text-text-muted italic">Scene/environment reference images</p>
             )}
           </div>
           {/* LTX uses an ID-LoRA; H3 Omni maps the sample as a native voice
               reference in each shot's Ref2VA manifest. */}
           {showVoiceReference && <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-text-secondary"><Mic size={9} className="inline mr-0.5" />Voice ref</span>
+              <span className="text-2xs text-text-secondary"><Mic size={9} className="inline mr-0.5" />Voice ref</span>
               {!voiceRef ? (
-                <label className="cursor-pointer text-[9px] text-accent-blue hover:underline">
+                <label className="cursor-pointer text-2xs text-accent-blue hover:underline">
                   + Add
                   <input type="file" accept={AUDIO_ACCEPT} className="hidden"
                     onChange={e => { const f = e.target.files?.[0]; if (f) setVoiceRef(f); e.target.value = '' }} />
                 </label>
               ) : (
-                <button onClick={() => setVoiceRef(null)} className="text-[9px] text-red-400 hover:text-red-300">Remove</button>
+                <button onClick={() => setVoiceRef(null)} className="text-2xs text-red-400 hover:text-red-300">Remove</button>
               )}
             </div>
             {voiceRef ? (
               <div className="space-y-1">
                 <div className="flex items-center gap-1.5 bg-bg-tertiary rounded px-1.5 py-1">
                   <Mic size={10} className="text-accent-blue shrink-0" />
-                  <span className="text-[9px] text-text-secondary truncate">{voiceRef.name}</span>
+                  <span className="text-2xs text-text-secondary truncate">{voiceRef.name}</span>
                 </div>
                 {!nativeVoiceReference && <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] text-text-muted whitespace-nowrap">Identity scale</span>
+                  <span className="text-2xs text-text-muted whitespace-nowrap">Identity scale</span>
                   <input type="range" min={0} max={10} step={0.5} value={identityScale}
                     onChange={e => setIdentityScale(parseFloat(e.target.value))}
                     className="flex-1 h-1 accent-accent-blue" />
-                  <span className="text-[9px] text-text-muted w-5 text-right">{identityScale}</span>
+                  <span className="text-2xs text-text-muted w-5 text-right">{identityScale}</span>
                 </div>}
               </div>
             ) : (
-              <p className="text-[9px] text-text-muted italic">
+              <p className="text-2xs text-text-muted italic">
                 {nativeVoiceReference
                   ? 'Voice sample used by H3 Omni for the primary speaking character'
                   : '~5 sec voice sample for consistent voice across clips'}
@@ -2004,7 +2005,7 @@ function AnalysisSummary({
       </p>
       <button
         onClick={() => setShowDetails(v => !v)}
-        className="flex items-center gap-3 text-[11px] text-text-muted w-full hover:text-text-secondary transition-colors"
+        className="flex items-center gap-3 text-xs text-text-muted w-full hover:text-text-secondary transition-colors"
       >
         <ChevronDown size={10} className={`transition-transform ${showDetails ? '' : '-rotate-90'}`} />
         <span>{formatTime(analysis.duration)}</span>
@@ -2016,7 +2017,7 @@ function AnalysisSummary({
 
       {showDetails && (
         // No inner scroll — chat panel handles scrolling.
-        <div className="bg-bg-tertiary rounded-lg p-2 space-y-2 text-[10px]">
+        <div className="bg-bg-tertiary rounded-lg p-2 space-y-2 text-2xs">
           <div>
             <div className="text-text-muted uppercase tracking-wider mb-1 font-medium">Sections</div>
             <div className="space-y-0.5">
@@ -2061,7 +2062,7 @@ function AnalysisSummary({
                             </span>
                             <span className="text-text-secondary">
                               {seg.speaker && (
-                                <span className="text-accent-blue text-[9px] mr-1">[{seg.speaker}]</span>
+                                <span className="text-accent-blue text-2xs mr-1">[{seg.speaker}]</span>
                               )}
                               {seg.text}
                             </span>
@@ -2081,7 +2082,7 @@ function AnalysisSummary({
                       </span>
                       <span className="text-text-secondary">
                         {seg.speaker && (
-                          <span className="text-accent-blue text-[9px] mr-1">[{seg.speaker}]</span>
+                          <span className="text-accent-blue text-2xs mr-1">[{seg.speaker}]</span>
                         )}
                         {seg.text}
                       </span>
@@ -2097,7 +2098,7 @@ function AnalysisSummary({
   )
 }
 
-function StructureView({
+export function StructureView({
   plannedClips, energyBias, localBias, setLocalBias, sliderRef, setEnergyBias,
   loading, totalClipDuration, beatDistribution, confirmStructure, isActive, isShortFilm,
 }: {
@@ -2125,7 +2126,7 @@ function StructureView({
       {isActive && (
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[11px] text-text-muted uppercase tracking-wider">{isShortFilm ? 'Scene Pacing' : 'Cut Speed'}</label>
+            <label className="text-xs text-text-muted uppercase tracking-wider">{isShortFilm ? 'Scene Pacing' : 'Cut Speed'}</label>
             <span className="text-xs text-text-secondary">
               {(localBias ?? energyBias) > 0 ? '+' : ''}{localBias ?? energyBias}
             </span>
@@ -2157,7 +2158,7 @@ function StructureView({
             }}
             className="w-full"
           />
-          <div className="flex items-center justify-between mt-1 text-[10px] text-text-muted">
+          <div className="flex items-center justify-between mt-1 text-2xs text-text-muted">
             <span>{isShortFilm ? 'Longer scenes' : 'Slower cuts'}</span>
             <span>{isShortFilm ? 'Shorter scenes' : 'Faster cuts'}</span>
           </div>
@@ -2165,13 +2166,13 @@ function StructureView({
       )}
 
       <div className="bg-bg-tertiary rounded-lg p-2 space-y-2">
-        <div className="flex items-center justify-between text-[11px]">
+        <div className="flex items-center justify-between text-xs">
           <span className="text-text-secondary font-medium">{plannedClips.length} {isShortFilm ? 'scenes' : 'clips'}</span>
           <span className="text-text-muted">{formatTime(totalClipDuration)} total</span>
         </div>
 
         {loading ? (
-          <div className="flex items-center gap-1.5 text-[10px] text-text-muted py-1">
+          <div className="flex items-center gap-1.5 text-2xs text-text-muted py-1">
             <Loader2 size={10} className="animate-spin" /> Recalculating...
           </div>
         ) : (
@@ -2195,7 +2196,7 @@ function StructureView({
                     title={tooltipLabel}
                   >
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 pointer-events-none">
-                      <div className="bg-bg-primary border border-border rounded px-1.5 py-1 text-[9px] text-text-secondary whitespace-nowrap shadow-lg">
+                      <div className="bg-bg-primary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary whitespace-nowrap shadow-lg">
                         {tooltipLabel}
                       </div>
                     </div>
@@ -2204,7 +2205,7 @@ function StructureView({
               })}
             </div>
 
-            <div className="text-[9px] text-text-muted space-y-1">
+            <div className="text-2xs text-text-muted space-y-1">
               {!isShortFilm && <div>{beatDistribution}</div>}
               <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                 {Object.entries(sectionBarColors).map(([label, color]) => {
@@ -2416,7 +2417,7 @@ function DirectorAdvancedAccordion() {
     <div className="border border-border rounded-lg overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] text-text-secondary hover:bg-bg-hover transition-colors"
+        className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs text-text-secondary hover:bg-bg-hover transition-colors"
       >
         <span>Advanced</span>
         {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -2429,7 +2430,7 @@ function DirectorAdvancedAccordion() {
 
           {shotImageSupport && shotImageSupport !== 'required' && (
             <div className="space-y-1 pt-1">
-              <label className="text-[11px] text-text-secondary block">Shot image guidance</label>
+              <label className="text-xs text-text-secondary block">Shot image guidance</label>
               <select
                 value={shotImageGuidance}
                 onChange={e => setShotImageGuidance(e.target.value as DirectorShotImageGuidance)}
@@ -2441,7 +2442,7 @@ function DirectorAdvancedAccordion() {
                 </option>
                 <option value="generate">Generate shot images</option>
               </select>
-              <p className="text-[10px] text-text-muted">
+              <p className="text-2xs text-text-muted">
                 {shotImageSupport === 'direct_references'
                   ? shotImageGuidance === 'generate'
                     ? 'Creates a composition image for each shot before H3 uses the references.'
@@ -2456,10 +2457,10 @@ function DirectorAdvancedAccordion() {
           )}
           {/* IMAGE section */}
           {generateShotImages && <div className="space-y-2">
-            <div className="text-[10px] text-text-muted uppercase tracking-wider">Image</div>
+            <div className="text-2xs text-text-muted uppercase tracking-wider">Image</div>
 
             <div>
-              <label className="text-[11px] text-text-secondary block mb-1">Upsampling</label>
+              <label className="text-xs text-text-secondary block mb-1">Upsampling</label>
               <select
                 value={imgUpsampling}
                 onChange={e => setImgUpsampling(e.target.value)}
@@ -2469,29 +2470,29 @@ function DirectorAdvancedAccordion() {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <p className="text-[10px] text-text-muted mt-0.5">
+              <p className="text-2xs text-text-muted mt-0.5">
                 Render then upscale the start image. Adds time per shot.
               </p>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] text-text-secondary">Film grain</label>
-                <span className="text-[10px] text-text-muted tabular-nums">{imgGrain.toFixed(2)}</span>
+                <label className="text-xs text-text-secondary">Film grain</label>
+                <span className="text-2xs text-text-muted tabular-nums">{imgGrain.toFixed(2)}</span>
               </div>
               <input
                 type="range" min={0} max={1} step={0.01} value={imgGrain}
                 onChange={e => setImgGrain(parseFloat(e.target.value))}
                 className="w-full"
               />
-              <p className="text-[10px] text-text-muted mt-0.5">
+              <p className="text-2xs text-text-muted mt-0.5">
                 Aesthetic film-grain texture. 0 = off.
               </p>
               {imgGrain > 0 && (
                 <div className="mt-1.5">
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] text-text-muted">Grain saturation</label>
-                    <span className="text-[10px] text-text-muted tabular-nums">{imgGrainSat.toFixed(2)}</span>
+                    <label className="text-2xs text-text-muted">Grain saturation</label>
+                    <span className="text-2xs text-text-muted tabular-nums">{imgGrainSat.toFixed(2)}</span>
                   </div>
                   <input
                     type="range" min={0} max={1} step={0.01} value={imgGrainSat}
@@ -2505,11 +2506,11 @@ function DirectorAdvancedAccordion() {
 
           {/* VIDEO section */}
           <div className="space-y-2 pt-1 border-t border-border">
-            <div className="text-[10px] text-text-muted uppercase tracking-wider pt-2">Video</div>
+            <div className="text-2xs text-text-muted uppercase tracking-wider pt-2">Video</div>
 
             <div title="Applies to every newly generated Director shot and is saved with the project for later repair or regeneration.">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] text-text-secondary">
+                <label className="text-xs text-text-secondary">
                   {activeDirectorVideoOptions?.inference_steps_label || 'Inference steps'}
                 </label>
                 <div className="flex items-center gap-1.5">
@@ -2518,7 +2519,7 @@ function DirectorAdvancedAccordion() {
                     <button
                       type="button"
                       onClick={() => setVideoSteps(videoModel, defaultVideoSteps)}
-                      className="text-[9px] text-accent-blue hover:text-accent-blue/80"
+                      className="text-2xs text-accent-blue hover:text-accent-blue/80"
                     >
                       Default
                     </button>
@@ -2536,7 +2537,7 @@ function DirectorAdvancedAccordion() {
                         setVideoSteps(videoModel, clampVideoSteps(value))
                       }
                     }}
-                    className="w-14 bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-[11px] text-text-primary text-center focus:outline-none focus:border-accent-blue disabled:opacity-50"
+                    className="w-14 bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-xs text-text-primary text-center focus:outline-none focus:border-accent-blue disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -2553,7 +2554,7 @@ function DirectorAdvancedAccordion() {
                 )}
                 className="w-full disabled:opacity-50"
               />
-              <p className="text-[10px] text-text-muted mt-0.5">
+              <p className="text-2xs text-text-muted mt-0.5">
                 {turboSelected
                   ? `H3 Turbo uses its ${selectedTurboPreset?.steps ?? turboOption?.steps ?? 6}-step recipe.`
                   : videoStepsLocked
@@ -2570,14 +2571,14 @@ function DirectorAdvancedAccordion() {
               && nativeShotChoices.length > 0 && (
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <label className="text-[11px] text-text-secondary">Maximum planned shot</label>
+                  <label className="text-xs text-text-secondary">Maximum planned shot</label>
                   <select
                     value={manualMaxShotFrames ?? ''}
                     onChange={event => setMaxShotFrames(
                       videoModel,
                       event.target.value ? Number(event.target.value) : null,
                     )}
-                    className="bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-[11px] text-text-primary focus:outline-none focus:border-accent-blue"
+                    className="bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-xs text-text-primary focus:outline-none focus:border-accent-blue"
                   >
                     <option value="">Auto</option>
                     {nativeShotChoices.map(frames => (
@@ -2587,7 +2588,7 @@ function DirectorAdvancedAccordion() {
                     ))}
                   </select>
                 </div>
-                <p className={`text-[10px] ${
+                <p className={`text-2xs ${
                   manualMaxShotFrames != null
                   && safeShotFrames != null
                   && manualMaxShotFrames > safeShotFrames
@@ -2606,7 +2607,7 @@ function DirectorAdvancedAccordion() {
             )}
 
             <div>
-              <label className="text-[11px] text-text-secondary block mb-1">Upsampling</label>
+              <label className="text-xs text-text-secondary block mb-1">Upsampling</label>
               <select
                 value={vidUpsampling}
                 onChange={e => setVidUpsampling(e.target.value)}
@@ -2616,29 +2617,29 @@ function DirectorAdvancedAccordion() {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <p className="text-[10px] text-text-muted mt-0.5">
+              <p className="text-2xs text-text-muted mt-0.5">
                 Render then upscale the video. Adds time per shot.
               </p>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] text-text-secondary">Film grain</label>
-                <span className="text-[10px] text-text-muted tabular-nums">{vidGrain.toFixed(2)}</span>
+                <label className="text-xs text-text-secondary">Film grain</label>
+                <span className="text-2xs text-text-muted tabular-nums">{vidGrain.toFixed(2)}</span>
               </div>
               <input
                 type="range" min={0} max={1} step={0.01} value={vidGrain}
                 onChange={e => setVidGrain(parseFloat(e.target.value))}
                 className="w-full"
               />
-              <p className="text-[10px] text-text-muted mt-0.5">
+              <p className="text-2xs text-text-muted mt-0.5">
                 Aesthetic film-grain texture. 0 = off.
               </p>
               {vidGrain > 0 && (
                 <div className="mt-1.5">
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] text-text-muted">Grain saturation</label>
-                    <span className="text-[10px] text-text-muted tabular-nums">{vidGrainSat.toFixed(2)}</span>
+                    <label className="text-2xs text-text-muted">Grain saturation</label>
+                    <span className="text-2xs text-text-muted tabular-nums">{vidGrainSat.toFixed(2)}</span>
                   </div>
                   <input
                     type="range" min={0} max={1} step={0.01} value={vidGrainSat}
@@ -2651,8 +2652,8 @@ function DirectorAdvancedAccordion() {
 
             {activeDirectorVideoOptions?.self_refiner === true && <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] text-text-secondary">Self refiner</label>
-                <span className="text-[9px] uppercase tracking-wider text-text-muted bg-bg-tertiary border border-border rounded px-1 py-px">
+                <label className="text-xs text-text-secondary">Self refiner</label>
+                <span className="text-2xs uppercase tracking-wider text-text-muted bg-bg-tertiary border border-border rounded px-1 py-px">
                   Experimental
                 </span>
               </div>
@@ -2665,7 +2666,7 @@ function DirectorAdvancedAccordion() {
                 <option value={1}>P1-Norm</option>
                 <option value={2}>P2-Norm</option>
               </select>
-              <p className="text-[10px] text-text-muted mt-0.5">
+              <p className="text-2xs text-text-muted mt-0.5">
                 Re-passes the rendered video through the refiner. May improve detail or introduce artifacts.
               </p>
             </div>}
@@ -2738,7 +2739,7 @@ function DirectorModelPicker({ mode, value, onChange, disabled = false }: {
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[10px] text-text-muted uppercase tracking-wider w-11 shrink-0">
+      <span className="text-2xs text-text-muted uppercase tracking-wider w-11 shrink-0">
         {mode === 'image' ? 'Image' : 'Video'}
       </span>
       <select
@@ -2746,7 +2747,7 @@ function DirectorModelPicker({ mode, value, onChange, disabled = false }: {
         onChange={e => onChange(e.target.value)}
         disabled={disabled || (mode === 'video' && compatibleModels.length === 0)}
         title={title}
-        className="flex-1 min-w-0 bg-bg-tertiary border border-border rounded-lg px-2 py-1 text-[11px] text-text-primary focus:outline-none focus:border-accent-blue disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex-1 min-w-0 bg-bg-tertiary border border-border rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent-blue disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {mode === 'image' && (
           <option value={DIRECTOR_IMAGE_MODEL_NONE}>None — no generated images</option>
@@ -2888,7 +2889,7 @@ function DirectorLoraAccordion() {
         <div className="border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => setImageOpen(!imageOpen)}
-            className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] text-text-secondary hover:bg-bg-hover transition-colors"
+            className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs text-text-secondary hover:bg-bg-hover transition-colors"
           >
             <span>Image LoRAs</span>
             {imageOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -2905,7 +2906,7 @@ function DirectorLoraAccordion() {
         <div className="border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => setVideoOpen(!videoOpen)}
-            className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] text-text-secondary hover:bg-bg-hover transition-colors"
+            className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs text-text-secondary hover:bg-bg-hover transition-colors"
           >
             <span>Video LoRAs</span>
             {videoOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -2918,7 +2919,7 @@ function DirectorLoraAccordion() {
         </div>
       )}
       {videoModel && videoLorasDisabled && (
-        <p className="rounded-lg border border-amber-500/25 bg-amber-500/8 px-2.5 py-2 text-[9px] leading-relaxed text-text-muted">
+        <p className="rounded-lg border border-amber-500/25 bg-amber-500/8 px-2.5 py-2 text-2xs leading-relaxed text-text-muted">
           Video LoRAs are disabled because this model already contains its Turbo and Mystic adapters.
         </p>
       )}
@@ -2936,7 +2937,7 @@ export function DirectorGenerationOptions() {
 
   return (
     <div className="space-y-2">
-      <span className="text-[10px] text-text-muted uppercase tracking-wider block">
+      <span className="text-2xs text-text-muted uppercase tracking-wider block">
         Generation Options
       </span>
       <DirectorLoraAccordion />
@@ -2950,7 +2951,7 @@ export function DirectorGenerationOptions() {
   )
 }
 
-function StyleForm({
+export function StyleForm({
   speakers, speakerMappings, speakerSamples, setSpeakerMapping, insertSpeakerMention, isActive, isShortFilm, isStoryPath,
 }: {
   speakers: string[]
@@ -2987,14 +2988,14 @@ function StyleForm({
       {/* Speaker Mapping — hidden for story path (no audio = no detected speakers) */}
       {!isStoryPath && speakers.length >= 1 && (
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-1">Speakers Detected</label>
+          <label className="text-xs text-text-muted uppercase tracking-wider block mb-1">Speakers Detected</label>
           <div className="space-y-2">
             {speakerMappings.map((mapping) => (
               <div key={mapping.speakerId} className="bg-bg-tertiary rounded-lg p-2 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => insertSpeakerMention(mapping.speakerId)}
-                    className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/30 shrink-0 transition-colors"
+                    className="text-2xs px-1.5 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/30 shrink-0 transition-colors"
                     title={`Insert @${mapping.speakerId} into description`}
                   >
                     {mapping.speakerId}
@@ -3009,7 +3010,7 @@ function StyleForm({
                   <select
                     value={mapping.role}
                     onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role)}
-                    className="bg-bg-secondary border border-border rounded px-1.5 py-1 text-[10px] text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
+                    className="bg-bg-secondary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
                   >
                     <option value="">role</option>
                     {!isShortFilm && <option value="rapping">rapping</option>}
@@ -3018,7 +3019,7 @@ function StyleForm({
                   </select>
                 </div>
                 {speakerSamples[mapping.speakerId] && (
-                  <div className="text-[9px] text-text-muted pl-1 italic">
+                  <div className="text-2xs text-text-muted pl-1 italic">
                     {speakerSamples[mapping.speakerId].map((line, li) => (
                       <div key={li} className="truncate">&ldquo;{line}&rdquo;</div>
                     ))}
@@ -3027,13 +3028,13 @@ function StyleForm({
               </div>
             ))}
           </div>
-          <span className="text-[10px] text-text-muted mt-1 block">
+          <span className="text-2xs text-text-muted mt-1 block">
             Name each speaker so the director knows who to show. Click a chip to insert into description.
           </span>
         </div>
       )}
 
-      <p className="text-[11px] text-text-muted">
+      <p className="text-xs text-text-muted">
         {isStoryPath
           ? 'Describe your story in the input below and press send. The AI will plan everything.'
           : isShortFilm
@@ -3044,7 +3045,7 @@ function StyleForm({
   )
 }
 
-function ImagePromptsReview({
+export function ImagePromptsReview({
   clipPlans, plannedClips, speakerMappings, editClipPlan, planPrompts,
   generateStartImages, loading, isActive, isShortFilm,
 }: {
@@ -3062,12 +3063,12 @@ function ImagePromptsReview({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] text-text-muted uppercase tracking-wider">Start Image Prompts</label>
+        <label className="text-xs text-text-muted uppercase tracking-wider">Start Image Prompts</label>
         {isActive && (
           <button
             onClick={planPrompts}
             disabled={loading}
-            className="text-[10px] text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
+            className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
           >
             <RotateCcw size={10} /> Regenerate
           </button>
@@ -3081,7 +3082,7 @@ function ImagePromptsReview({
           const clip = plannedClips[i]
           return (
             <div key={i} className="bg-bg-tertiary rounded-lg p-2 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+              <div className="flex items-center gap-1.5 text-2xs text-text-muted">
                 <span className="font-medium text-text-secondary">{isShortFilm ? 'Shot' : 'Clip'} {i + 1}</span>
                 {clip && (
                   <>
@@ -3127,7 +3128,7 @@ function ImagePromptsReview({
   )
 }
 
-function ImageGenView({
+export function ImageGenView({
   loading, imageGenProgress, clipImages,
 }: {
   loading: boolean
@@ -3143,12 +3144,12 @@ function ImageGenView({
   const loraWarnings = useStore(s => s.pipelineStatus?.lora_warnings) || []
   return (
     <div className="space-y-3">
-      <label className="text-[11px] text-text-muted uppercase tracking-wider block">Generating Start Images</label>
+      <label className="text-xs text-text-muted uppercase tracking-wider block">Generating Start Images</label>
 
       {loraWarnings.length > 0 && (
         <div className="space-y-1.5">
           {loraWarnings.map((w, i) => (
-            <div key={i} className="px-2.5 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-text-primary leading-snug whitespace-pre-line">
+            <div key={i} className="px-2.5 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-text-primary leading-snug whitespace-pre-line">
               {w}
             </div>
           ))}
@@ -3158,7 +3159,7 @@ function ImageGenView({
 
       {imageGenProgress && (
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-[11px]">
+          <div className="flex items-center justify-between text-xs">
             <span className="text-text-secondary">
               {imageGenProgress.status === 'done'
                 ? 'All images ready — planning video shots...'
@@ -3186,7 +3187,7 @@ function ImageGenView({
       {loading && (
         <div className="flex items-center justify-center gap-2 py-2">
           <Loader2 size={16} className="animate-spin text-accent-blue" />
-          <span className="text-[11px] text-text-muted">
+          <span className="text-xs text-text-muted">
             {imageGenProgress?.status === 'generating' ? 'Submitting...' :
              imageGenProgress?.status === 'polling' ? 'Waiting for result...' :
              imageGenProgress?.status === 'downloading' ? 'Downloading...' : 'Processing...'}
@@ -3205,7 +3206,7 @@ function ImageGenView({
                 alt={`Clip ${img.clipIndex + 1}`}
                 className="w-full aspect-square object-cover rounded-lg border border-border"
               />
-              <span className="absolute bottom-0.5 left-0.5 text-[8px] bg-black/60 text-white px-1 py-0.5 rounded">
+              <span className="absolute bottom-0.5 left-0.5 text-2xs bg-black/60 text-white px-1 py-0.5 rounded">
                 {img.clipIndex + 1}
               </span>
             </div>
@@ -3225,7 +3226,7 @@ function ImageGenView({
   )
 }
 
-function VideoPromptsReview({
+export function VideoPromptsReview({
   clipPlans, plannedClips, clipImages, setClipImage, allowSceneImageUploads,
   speakerMappings, editClipPlan,
   planVideoPrompts, directorGenerate, queueCurrent, applyToClips, loading, isShortFilm,
@@ -3281,18 +3282,18 @@ function VideoPromptsReview({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] text-text-muted uppercase tracking-wider">Video Prompts</label>
+        <label className="text-xs text-text-muted uppercase tracking-wider">Video Prompts</label>
         <button
           onClick={planVideoPrompts}
           disabled={loading}
-          className="text-[10px] text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
+          className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
         >
           <RotateCcw size={10} /> Regenerate
         </button>
       </div>
 
       {allowSceneImageUploads && (
-        <p className="text-[10px] text-text-muted leading-snug">
+        <p className="text-2xs text-text-muted leading-snug">
           Scene images are optional. Add one to anchor a shot, or leave it blank to render from its video prompt.
         </p>
       )}
@@ -3306,7 +3307,7 @@ function VideoPromptsReview({
                 alt={`Clip ${img.clipIndex + 1}`}
                 className="w-full aspect-square object-cover rounded border border-border"
               />
-              <span className="absolute bottom-0 left-0 text-[7px] bg-black/60 text-white px-0.5 rounded-br">
+              <span className="absolute bottom-0 left-0 text-2xs bg-black/60 text-white px-0.5 rounded-br">
                 {img.clipIndex + 1}
               </span>
             </div>
@@ -3323,7 +3324,7 @@ function VideoPromptsReview({
           const clipImage = clipImages.find(image => image.clipIndex === i)
           return (
             <div key={i} className="bg-bg-tertiary rounded-lg p-2 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+              <div className="flex items-center gap-1.5 text-2xs text-text-muted">
                 <span className="font-medium text-text-secondary">{isShortFilm ? 'Shot' : 'Clip'} {i + 1}</span>
                 {clip && (
                   <>
@@ -3347,14 +3348,14 @@ function VideoPromptsReview({
                     />
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[10px] text-text-secondary">
+                    <div className="truncate text-2xs text-text-secondary">
                       {clipImage?.filename || 'No scene image'}
                     </div>
-                    <div className="text-[9px] text-text-muted">
+                    <div className="text-2xs text-text-muted">
                       {clipImage ? 'Used as this shot’s start image' : 'Prompt-only video'}
                     </div>
                   </div>
-                  <label className="shrink-0 cursor-pointer rounded border border-border px-2 py-1 text-[10px] text-text-secondary hover:bg-bg-hover hover:text-text-primary">
+                  <label className="shrink-0 cursor-pointer rounded border border-border px-2 py-1 text-2xs text-text-secondary hover:bg-bg-hover hover:text-text-primary">
                     <input
                       type="file"
                       accept={IMAGE_ACCEPT}
@@ -3432,7 +3433,7 @@ function VideoPromptsReview({
               <div
                 role="status"
                 aria-live="polite"
-                className="rounded-md border border-green-500/20 bg-green-500/5 px-2.5 py-2 text-[10px] leading-relaxed text-indicator-success"
+                className="rounded-md border border-green-500/20 bg-green-500/5 px-2.5 py-2 text-2xs leading-relaxed text-indicator-success"
               >
                 {queueConfirmation}
               </div>

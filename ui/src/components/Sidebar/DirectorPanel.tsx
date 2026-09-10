@@ -31,7 +31,7 @@ const sectionBarColors: Record<string, string> = {
 
 function SectionBadge({ label }: { label: string }) {
   return (
-    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${sectionColors[label] || 'bg-bg-hover text-text-muted'}`}>
+    <span className={`text-2xs px-1.5 py-0.5 rounded-full ${sectionColors[label] || 'bg-bg-hover text-text-muted'}`}>
       {label}
     </span>
   )
@@ -144,7 +144,7 @@ export function DirectorPanel() {
           <Music size={14} className="text-accent-blue" />
           <span className="text-xs font-medium text-text-primary">Director</span>
           {analysis && (
-            <span className="text-[10px] text-text-muted">
+            <span className="text-2xs text-text-muted">
               {analysis.bpm.toFixed(0)} BPM
             </span>
           )}
@@ -152,7 +152,7 @@ export function DirectorPanel() {
         {step !== 'upload' && (
           <button
             onClick={reset}
-            className="text-[10px] text-text-muted hover:text-text-primary flex items-center gap-0.5 transition-colors"
+            className="text-2xs text-text-muted hover:text-text-primary flex items-center gap-0.5 transition-colors"
             title="Start over"
           >
             <RotateCcw size={10} /> Start Over
@@ -162,7 +162,7 @@ export function DirectorPanel() {
 
       {/* Error */}
       {error && (
-        <div className="text-[11px] text-red-400 bg-red-500/10 rounded px-2 py-1.5">
+        <div className="text-xs text-red-400 bg-red-500/10 rounded px-2 py-1.5">
           {error}
         </div>
       )}
@@ -180,7 +180,7 @@ export function DirectorPanel() {
           {loading ? (
             <div className="flex flex-col items-center gap-2 py-2">
               <Loader2 size={20} className="animate-spin text-accent-blue" />
-              <span className="text-[11px] text-text-muted text-center px-2">
+              <span className="text-xs text-text-muted text-center px-2">
                 {loadingMessage || 'Analyzing audio...'}
               </span>
             </div>
@@ -193,7 +193,7 @@ export function DirectorPanel() {
             <label className="cursor-pointer flex flex-col items-center gap-1.5">
               <Upload size={18} className="text-text-muted" />
               <span className="text-xs text-text-muted">Drop a song or click to upload</span>
-              <span className="text-[10px] text-text-muted">wav, mp3, flac, ogg, m4a</span>
+              <span className="text-2xs text-text-muted">wav, mp3, flac, ogg, m4a</span>
               <input
                 type="file"
                 accept={AUDIO_ACCEPT}
@@ -213,7 +213,7 @@ export function DirectorPanel() {
         <div className="space-y-1">
           <button
             onClick={() => setShowAnalysisDetails(v => !v)}
-            className="flex items-center gap-3 text-[11px] text-text-muted w-full hover:text-text-secondary transition-colors"
+            className="flex items-center gap-3 text-xs text-text-muted w-full hover:text-text-secondary transition-colors"
           >
             <ChevronDown size={10} className={`transition-transform ${showAnalysisDetails ? '' : '-rotate-90'}`} />
             <span>{formatTime(analysis.duration)}</span>
@@ -223,7 +223,7 @@ export function DirectorPanel() {
           </button>
 
           {showAnalysisDetails && (
-            <div className="bg-bg-tertiary rounded-lg p-2 space-y-2 max-h-[250px] overflow-y-auto text-[10px]">
+            <div className="bg-bg-tertiary rounded-lg p-2 space-y-2 max-h-[250px] overflow-y-auto text-2xs">
               {/* Sections */}
               <div>
                 <div className="text-text-muted uppercase tracking-wider mb-1 font-medium">Sections</div>
@@ -271,7 +271,7 @@ export function DirectorPanel() {
                                 </span>
                                 <span className="text-text-secondary">
                                   {seg.speaker && (
-                                    <span className="text-accent-blue text-[9px] mr-1">[{seg.speaker}]</span>
+                                    <span className="text-accent-blue text-2xs mr-1">[{seg.speaker}]</span>
                                   )}
                                   {seg.text}
                                 </span>
@@ -292,7 +292,7 @@ export function DirectorPanel() {
                           </span>
                           <span className="text-text-secondary">
                             {seg.speaker && (
-                              <span className="text-accent-blue text-[9px] mr-1">[{seg.speaker}]</span>
+                              <span className="text-accent-blue text-2xs mr-1">[{seg.speaker}]</span>
                             )}
                             {seg.text}
                           </span>
@@ -312,7 +312,7 @@ export function DirectorPanel() {
         <div className="space-y-3">
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] text-text-muted uppercase tracking-wider">Cut Speed</label>
+              <label className="text-xs text-text-muted uppercase tracking-wider">Cut Speed</label>
               <span className="text-xs text-text-secondary">
                 {(localBias ?? energyBias) > 0 ? '+' : ''}{localBias ?? energyBias}
               </span>
@@ -344,7 +344,7 @@ export function DirectorPanel() {
               }}
               className="w-full"
             />
-            <div className="flex items-center justify-between mt-1 text-[10px] text-text-muted">
+            <div className="flex items-center justify-between mt-1 text-2xs text-text-muted">
               <span>Slower cuts</span>
               <span>Faster cuts</span>
             </div>
@@ -352,13 +352,13 @@ export function DirectorPanel() {
 
           {/* Clip structure visualization */}
           <div className="bg-bg-tertiary rounded-lg p-2 space-y-2">
-            <div className="flex items-center justify-between text-[11px]">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-text-secondary font-medium">{plannedClips.length} clips</span>
               <span className="text-text-muted">{formatTime(totalClipDuration)} total</span>
             </div>
 
             {loading ? (
-              <div className="flex items-center gap-1.5 text-[10px] text-text-muted py-1">
+              <div className="flex items-center gap-1.5 text-2xs text-text-muted py-1">
                 <Loader2 size={10} className="animate-spin" /> Recalculating...
               </div>
             ) : (
@@ -377,7 +377,7 @@ export function DirectorPanel() {
                       >
                         {/* Tooltip on hover */}
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 pointer-events-none">
-                          <div className="bg-bg-primary border border-border rounded px-1.5 py-1 text-[9px] text-text-secondary whitespace-nowrap shadow-lg">
+                          <div className="bg-bg-primary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary whitespace-nowrap shadow-lg">
                             Clip {i + 1}: {clip.section_label}, {clip.beat_count} beats ({(clip.end - clip.start).toFixed(1)}s)
                           </div>
                         </div>
@@ -387,7 +387,7 @@ export function DirectorPanel() {
                 </div>
 
                 {/* Beat distribution and section legend */}
-                <div className="text-[9px] text-text-muted space-y-1">
+                <div className="text-2xs text-text-muted space-y-1">
                   <div>{beatDistribution}</div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                     {Object.entries(sectionBarColors).map(([label, color]) => {
@@ -427,17 +427,17 @@ export function DirectorPanel() {
               onChange={e => setAutoMode(e.target.checked)}
               className="accent-accent-blue"
             />
-            <span className="text-[11px] text-text-secondary font-medium">Automatic production — skip review stages</span>
+            <span className="text-xs text-text-secondary font-medium">Automatic production — skip review stages</span>
           </label>
           {autoMode && (
-            <p className="text-[10px] text-text-muted -mt-1">
+            <p className="text-2xs text-text-muted -mt-1">
               After planning, the Director will generate images, video prompts, and start generation without stopping for review.
             </p>
           )}
 
           {/* Reference image upload */}
           <div>
-            <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-1">Reference Photo</label>
+            <label className="text-xs text-text-muted uppercase tracking-wider block mb-1">Reference Photo</label>
             {referenceImage && refImagePreview ? (
               <div className="relative inline-block">
                 <img
@@ -467,7 +467,7 @@ export function DirectorPanel() {
                 />
               </label>
             )}
-            <span className="text-[10px] text-text-muted mt-0.5 block">
+            <span className="text-2xs text-text-muted mt-0.5 block">
               Used to generate unique start images for each clip
             </span>
           </div>
@@ -475,14 +475,14 @@ export function DirectorPanel() {
           {/* Speaker Mapping — shown when diarization found 2+ speakers */}
           {speakers.length >= 1 && (
             <div>
-              <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-1">Speakers Detected</label>
+              <label className="text-xs text-text-muted uppercase tracking-wider block mb-1">Speakers Detected</label>
               <div className="space-y-2">
                 {speakerMappings.map((mapping) => (
                   <div key={mapping.speakerId} className="bg-bg-tertiary rounded-lg p-2 space-y-1">
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => insertSpeakerMention(mapping.speakerId)}
-                        className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/30 shrink-0 transition-colors"
+                        className="text-2xs px-1.5 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/30 shrink-0 transition-colors"
                         title={`Insert @${mapping.speakerId} into description`}
                       >
                         {mapping.speakerId}
@@ -497,7 +497,7 @@ export function DirectorPanel() {
                       <select
                         value={mapping.role}
                         onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role)}
-                        className="bg-bg-secondary border border-border rounded px-1.5 py-1 text-[10px] text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
+                        className="bg-bg-secondary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
                       >
                         <option value="">role</option>
                         <option value="rapping">rapping</option>
@@ -507,7 +507,7 @@ export function DirectorPanel() {
                     </div>
                     {/* Sample lyrics for identification */}
                     {speakerSamples[mapping.speakerId] && (
-                      <div className="text-[9px] text-text-muted pl-1 italic">
+                      <div className="text-2xs text-text-muted pl-1 italic">
                         {speakerSamples[mapping.speakerId].map((line, li) => (
                           <div key={li} className="truncate">&ldquo;{line}&rdquo;</div>
                         ))}
@@ -516,13 +516,13 @@ export function DirectorPanel() {
                   </div>
                 ))}
               </div>
-              <span className="text-[10px] text-text-muted mt-1 block">
+              <span className="text-2xs text-text-muted mt-1 block">
                 Name each speaker so the director knows who to show. Click a chip to insert into description.
               </span>
             </div>
           )}
 
-          <label className="text-[11px] text-text-muted uppercase tracking-wider block">Scene & Characters</label>
+          <label className="text-xs text-text-muted uppercase tracking-wider block">Scene & Characters</label>
           <textarea
             value={sceneDescription}
             onChange={e => setSceneDescription(e.target.value)}
@@ -551,11 +551,11 @@ export function DirectorPanel() {
       {step === 'review' && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-[11px] text-text-muted uppercase tracking-wider">Start Image Prompts</label>
+            <label className="text-xs text-text-muted uppercase tracking-wider">Start Image Prompts</label>
             <button
               onClick={planPrompts}
               disabled={loading}
-              className="text-[10px] text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
+              className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
             >
               <RotateCcw size={10} /> Regenerate
             </button>
@@ -566,7 +566,7 @@ export function DirectorPanel() {
               const clip = plannedClips[i]
               return (
                 <div key={i} className="bg-bg-tertiary rounded-lg p-2 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                  <div className="flex items-center gap-1.5 text-2xs text-text-muted">
                     <span className="font-medium text-text-secondary">Clip {i + 1}</span>
                     {clip && (
                       <>
@@ -615,12 +615,12 @@ export function DirectorPanel() {
       {/* Step 5: Generate per-clip start images */}
       {step === 'generate_images' && (
         <div className="space-y-3">
-          <label className="text-[11px] text-text-muted uppercase tracking-wider block">Generating Start Images</label>
+          <label className="text-xs text-text-muted uppercase tracking-wider block">Generating Start Images</label>
 
           {/* Progress */}
           {imageGenProgress && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center justify-between text-xs">
                 <span className="text-text-secondary">
                   {imageGenProgress.status === 'done'
                     ? 'All images ready — planning video shots...'
@@ -649,7 +649,7 @@ export function DirectorPanel() {
           {loading && (
             <div className="flex items-center justify-center gap-2 py-2">
               <Loader2 size={16} className="animate-spin text-accent-blue" />
-              <span className="text-[11px] text-text-muted">
+              <span className="text-xs text-text-muted">
                 {imageGenProgress?.status === 'generating' ? 'Submitting...' :
                  imageGenProgress?.status === 'polling' ? 'Waiting for result...' :
                  imageGenProgress?.status === 'downloading' ? 'Downloading...' : 'Processing...'}
@@ -667,7 +667,7 @@ export function DirectorPanel() {
                     alt={`Clip ${img.clipIndex + 1}`}
                     className="w-full aspect-square object-cover rounded-lg border border-border"
                   />
-                  <span className="absolute bottom-0.5 left-0.5 text-[8px] bg-black/60 text-white px-1 py-0.5 rounded">
+                  <span className="absolute bottom-0.5 left-0.5 text-2xs bg-black/60 text-white px-1 py-0.5 rounded">
                     {img.clipIndex + 1}
                   </span>
                 </div>
@@ -691,11 +691,11 @@ export function DirectorPanel() {
       {step === 'review_video' && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-[11px] text-text-muted uppercase tracking-wider">Video Prompts</label>
+            <label className="text-xs text-text-muted uppercase tracking-wider">Video Prompts</label>
             <button
               onClick={planVideoPrompts}
               disabled={loading}
-              className="text-[10px] text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
+              className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
             >
               <RotateCcw size={10} /> Regenerate
             </button>
@@ -711,7 +711,7 @@ export function DirectorPanel() {
                     alt={`Clip ${img.clipIndex + 1}`}
                     className="w-full aspect-square object-cover rounded border border-border"
                   />
-                  <span className="absolute bottom-0 left-0 text-[7px] bg-black/60 text-white px-0.5 rounded-br">
+                  <span className="absolute bottom-0 left-0 text-2xs bg-black/60 text-white px-0.5 rounded-br">
                     {img.clipIndex + 1}
                   </span>
                 </div>
@@ -724,7 +724,7 @@ export function DirectorPanel() {
               const clip = plannedClips[i]
               return (
                 <div key={i} className="bg-bg-tertiary rounded-lg p-2 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                  <div className="flex items-center gap-1.5 text-2xs text-text-muted">
                     <span className="font-medium text-text-secondary">Clip {i + 1}</span>
                     {clip && (
                       <>
@@ -770,7 +770,7 @@ export function DirectorPanel() {
       {step === 'plan' && loading && (
         <div className="relative flex flex-col items-center gap-2 py-4">
           <Loader2 size={20} className="animate-spin text-accent-blue" />
-          <span className="text-[11px] text-text-muted">Writing image prompts...</span>
+          <span className="text-xs text-text-muted">Writing image prompts...</span>
           <button
             type="button"
             onClick={() => useStore.getState().cancelDirectorV2Plan()}
@@ -785,7 +785,7 @@ export function DirectorPanel() {
       {step === 'plan_video' && loading && (
         <div className="relative flex flex-col items-center gap-2 py-4">
           <Loader2 size={20} className="animate-spin text-accent-blue" />
-          <span className="text-[11px] text-text-muted">Writing video prompts...</span>
+          <span className="text-xs text-text-muted">Writing video prompts...</span>
           <button
             type="button"
             onClick={() => useStore.getState().cancelDirectorV2Plan()}

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { FolderOpen, Clapperboard, Film, Images, SlidersHorizontal, Lock, ListVideo } from 'lucide-react'
+import { FolderOpen, Clapperboard, Film, Images, SlidersHorizontal, Lock, ListVideo, LayoutDashboard } from 'lucide-react'
 import { MaestroBrand } from '../AppModeNavigation'
 import { useStore } from '../../stores/useStore'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../../lib/promptEnhancementActivity'
@@ -14,6 +14,7 @@ const sections: ReadonlyArray<{
   { id: 'projects', label: 'Projects', icon: FolderOpen },
   { id: 'director', label: 'Director', icon: Clapperboard },
   { id: 'editor', label: 'Editor', icon: Film },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'medias', label: 'Medias', icon: Images },
   { id: 'queue', label: 'Queue', icon: ListVideo, showCount: true },
   { id: 'configurations', label: 'Configurations', icon: SlidersHorizontal },
@@ -78,6 +79,7 @@ export function ApplicationHeader() {
                 aria-disabled={locked || undefined}
                 aria-label={showCount ? `${label}, ${count} ${count === 1 ? 'item' : 'items'}` : label}
                 title={locked ? 'Create or open a project first' : undefined}
+                data-section={id}
                 className={`application-tab ${active === id ? 'is-active' : ''} ${locked ? 'is-locked' : ''}`}
                 onClick={() => select(id)}
                 onKeyDown={event => {

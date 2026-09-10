@@ -794,9 +794,17 @@ export async function fetchOutputMetadata(name: string): Promise<import('../type
   throw lastErr  // all attempts failed — loadOutputMetadata's catch sets meta null
 }
 
-export async function deleteOutput(name: string): Promise<void> {
-  const res = await fetch(`${BASE}/api/v1/outputs/${encodeURIComponent(name)}`, { method: 'DELETE' })
+export async function deleteOutput(name: string, workspace?: string): Promise<void> {
+  const url = workspace
+    ? `${BASE}/api/v1/outputs/${encodeURIComponent(name)}?workspace=${encodeURIComponent(workspace)}`
+    : `${BASE}/api/v1/outputs/${encodeURIComponent(name)}`
+  const res = await fetch(url, { method: 'DELETE' })
   if (!res.ok) throw new Error('Failed to delete output')
+}
+
+export async function deleteUpload(name: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/uploads/${encodeURIComponent(name)}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to delete upload')
 }
 
 export async function rejoinClips(groupId: string, audioFile?: string): Promise<{ filename: string; clip_count: number }> {

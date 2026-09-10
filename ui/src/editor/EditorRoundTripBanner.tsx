@@ -34,10 +34,10 @@ export function EditorRoundTripBanner() {
         <Loader2 size={16} className="shrink-0 animate-spin text-accent-blue" />
       )}
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[11px] font-medium text-text-primary">
+        <div className="truncate text-xs font-medium text-text-primary">
           {TOOL_LABELS[roundTrip.tool]} · {roundTrip.itemName}
         </div>
-        <div className={`truncate text-[9px] ${failed ? 'text-red-300' : 'text-text-muted'}`}>
+        <div className={`truncate text-2xs ${failed ? 'text-red-300' : 'text-text-muted'}`}>
           {roundTrip.status === 'armed'
             ? 'Configure the edit and generate normally. The next job is linked to this Editor clip.'
             : roundTrip.status === 'queued'
@@ -52,7 +52,7 @@ export function EditorRoundTripBanner() {
         </div>
       </div>
       {finished && (
-        <button type="button" onClick={() => setSidebarMode('editor')} className="flex shrink-0 items-center gap-1 rounded-lg bg-accent-blue/10 px-2.5 py-1.5 text-[9px] font-medium text-accent-blue hover:bg-accent-blue/20">
+        <button type="button" onClick={() => setSidebarMode('editor')} className="flex shrink-0 items-center gap-1 rounded-lg bg-accent-blue/10 px-2.5 py-1.5 text-2xs font-medium text-accent-blue hover:bg-accent-blue/20">
           <ArrowLeft size={11} /> Editor
         </button>
       )}

@@ -182,7 +182,7 @@ export function ThumbnailGallery({ activeIndex, onThumbnailClick }: Props) {
           mobileOpen ? 'translate-x-0' : 'translate-x-full'
         }`}>
           <div className="px-2 py-2 border-b border-border flex items-center justify-between">
-            <span className="text-[10px] text-text-muted uppercase tracking-wider">History</span>
+            <span className="text-2xs text-text-muted uppercase tracking-wider">History</span>
             <button
               onClick={() => setMobileOpen(false)}
               className="p-1 rounded hover:bg-bg-hover text-text-secondary"

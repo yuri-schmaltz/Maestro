@@ -39,7 +39,7 @@ export function LoraGuideTooltip({ guide }: { guide: string }) {
           onMouseEnter={() => setShow(true)}
           onMouseLeave={() => setShow(false)}
         >
-          <div className="text-[11px] text-text-secondary leading-relaxed whitespace-pre-wrap">{guide}</div>
+          <div className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">{guide}</div>
         </div>,
         document.body,
       )}
@@ -62,7 +62,7 @@ export function LoraAgeChip({ released, downloaded }: LoraDates) {
     downloaded ? `Downloaded ${new Date(downloaded).toLocaleDateString()}` : null,
   ].filter(Boolean).join(' — ')
   return (
-    <span className="text-[9px] text-text-muted shrink-0 tabular-nums" title={tip}>
+    <span className="text-2xs text-text-muted shrink-0 tabular-nums" title={tip}>
       {age}
     </span>
   )
@@ -92,7 +92,7 @@ export function LoraSortToggle({ sort, onChange }: { sort: LoraPickerSort; onCha
   return (
     <button
       onClick={() => onChange(newest ? 'name' : 'newest')}
-      className={`text-[10px] flex items-center gap-0.5 transition-colors ${
+      className={`text-2xs flex items-center gap-0.5 transition-colors ${
         newest ? 'text-accent-blue hover:text-accent-blue-hover' : 'text-text-muted hover:text-accent-blue'
       }`}
       title={newest
@@ -215,13 +215,13 @@ export function LoraSelector() {
 
   const loraHeader = (
     <div className="flex items-center justify-between mb-1.5">
-      <label className="text-[11px] text-text-muted uppercase tracking-wider">LoRAs</label>
+      <label className="text-xs text-text-muted uppercase tracking-wider">LoRAs</label>
       <div className="flex items-center gap-2">
         <LoraSortToggle sort={sortMode} onChange={setSortSticky} />
         <button
           onClick={handleCheckUpdates}
           disabled={checking || !modelType}
-          className="text-[10px] text-text-muted hover:text-accent-blue flex items-center gap-0.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="text-2xs text-text-muted hover:text-accent-blue flex items-center gap-0.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           title={lastCheckedAt
             ? `Check CivitAI for newer LoRA versions (last checked ${formatRelative(lastCheckedAt)})`
             : 'Check CivitAI for newer LoRA versions'}
@@ -232,7 +232,7 @@ export function LoraSelector() {
           Check
           {updatableCount > 0 && (
             <span
-              className="ml-0.5 px-1 rounded bg-amber-500/20 text-indicator-warning text-[9px] font-medium"
+              className="ml-0.5 px-1 rounded bg-amber-500/20 text-indicator-warning text-2xs font-medium"
               title={`${updatableCount} update${updatableCount === 1 ? '' : 's'} available`}
             >
               {updatableCount}
@@ -241,7 +241,7 @@ export function LoraSelector() {
         </button>
         <button
           onClick={() => openBrowser(true, modelType)}
-          className="text-[10px] text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5 transition-colors"
+          className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5 transition-colors"
           title="Browse CivitAI"
         >
           <Globe size={10} />
@@ -252,7 +252,7 @@ export function LoraSelector() {
   )
 
   const compatibilityNotice = loraCompatibilityNote ? (
-    <div className="mb-2 flex items-start gap-1.5 rounded-lg border border-border bg-bg-tertiary px-2.5 py-2 text-[10px] leading-relaxed text-text-secondary">
+    <div className="mb-2 flex items-start gap-1.5 rounded-lg border border-border bg-bg-tertiary px-2.5 py-2 text-2xs leading-relaxed text-text-secondary">
       <Info size={11} className="mt-0.5 shrink-0 text-accent-blue" />
       <span>{loraCompatibilityNote}</span>
     </div>
@@ -429,7 +429,7 @@ export function LoraSelector() {
             disabled={updatableCount === 0}
             className="w-3 h-3 rounded border-border accent-amber-500 disabled:opacity-40"
           />
-          <span className={`text-[10px] uppercase tracking-wider flex items-center gap-0.5 ${
+          <span className={`text-2xs uppercase tracking-wider flex items-center gap-0.5 ${
             updatableOnly ? 'text-indicator-warning' : updatableCount > 0 ? 'text-text-muted' : 'text-text-muted'
           }`}>
             <ArrowUpCircle size={10} />
@@ -456,7 +456,7 @@ export function LoraSelector() {
             onChange={e => setShowNsfwSticky(e.target.checked)}
             className="w-3 h-3 rounded border-border accent-red-500"
           />
-          <span className={`text-[10px] uppercase tracking-wider ${showNsfw ? 'text-red-400' : 'text-text-muted'}`}>
+          <span className={`text-2xs uppercase tracking-wider ${showNsfw ? 'text-red-400' : 'text-text-muted'}`}>
             NSFW
           </span>
         </label>
@@ -535,12 +535,12 @@ export function LoraSelector() {
       {activatedLoras.length > 0 && (
         <div className="mt-3 space-y-2">
           <div className="flex items-center justify-between">
-            <div className="text-[10px] text-text-muted uppercase tracking-wider">
+            <div className="text-2xs text-text-muted uppercase tracking-wider">
               Selected ({activatedLoras.length})
             </div>
             <button
               onClick={() => { for (const l of [...activatedLoras]) toggleLora(l) }}
-              className="text-[10px] text-text-muted hover:text-red-400 transition-colors"
+              className="text-2xs text-text-muted hover:text-red-400 transition-colors"
             >
               Clear all
             </button>
@@ -623,7 +623,7 @@ export function LoraSelector() {
                   return (
                   <div key={i} className="flex items-center gap-2">
                     {phases > 1 && (
-                      <span className="text-[10px] text-text-muted w-12 shrink-0" title={phaseRec?.label || ''}>
+                      <span className="text-2xs text-text-muted w-12 shrink-0" title={phaseRec?.label || ''}>
                         Phase {i + 1}
                       </span>
                     )}
@@ -643,7 +643,7 @@ export function LoraSelector() {
                         className="w-full relative z-10"
                       />
                     </div>
-                    <span className={`text-[10px] w-8 text-right shrink-0 ${valueColor}`}>
+                    <span className={`text-2xs w-8 text-right shrink-0 ${valueColor}`}>
                       {w.toFixed(2)}
                     </span>
                   </div>

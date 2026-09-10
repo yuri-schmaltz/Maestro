@@ -393,7 +393,7 @@ function PreviewVisual({
       {asset.type === 'image' ? (
         <img src={asset.url} alt="" draggable={false} className="pointer-events-none h-full w-full select-none" style={{ objectFit: item.fit }} />
       ) : asset.missing ? (
-        <div className="grid h-full w-full place-items-center bg-red-950/70 text-[10px] font-semibold uppercase tracking-wider text-red-100">Media offline</div>
+        <div className="grid h-full w-full place-items-center bg-red-950/70 text-2xs font-semibold uppercase tracking-wider text-red-100">Media offline</div>
       ) : (
         <>
           <video
@@ -419,7 +419,7 @@ function PreviewVisual({
             }}
           />
           {!sourceUrl && waitingForMobileProxy && (
-            <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/75 px-4 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70">
+            <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/75 px-4 text-center text-2xs font-semibold uppercase tracking-[0.16em] text-white/70">
               Preparing smooth mobile preview…
             </div>
           )}
@@ -1131,7 +1131,7 @@ export function EditorPreview() {
           {activeVisual.length === 0 && activeText.length === 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-white/25">
               <Play size={28} />
-              <span className="text-[10px]">Drop media onto the timeline</span>
+              <span className="text-2xs">Drop media onto the timeline</span>
             </div>
           )}
           </div>
@@ -1161,7 +1161,7 @@ export function EditorPreview() {
         <button type="button" onClick={() => seek(playhead + frameDuration)} className="hidden rounded p-1.5 text-text-muted hover:bg-bg-hover hover:text-text-primary sm:block" title="Next frame">
           <SkipForward size={13} />
         </button>
-        <span className="w-[88px] font-mono text-[10px] text-text-secondary">
+        <span className="w-[88px] font-mono text-2xs text-text-secondary">
           {formatEditorTime(playhead, true, project.canvas.fps)}
         </span>
         <input
@@ -1174,7 +1174,7 @@ export function EditorPreview() {
           className="min-w-0 flex-1 accent-[var(--color-accent-blue)]"
           aria-label="Playhead"
         />
-        <span className="hidden w-11 text-right font-mono text-[9px] text-text-muted sm:block">{formatEditorTime(duration)}</span>
+        <span className="hidden w-11 text-right font-mono text-2xs text-text-muted sm:block">{formatEditorTime(duration)}</span>
         <button type="button" onClick={() => void canvasRef.current?.requestFullscreen?.()} className="rounded p-1.5 text-text-muted hover:bg-bg-hover hover:text-text-primary" title="Fullscreen preview">
           <Maximize2 size={13} />
         </button>

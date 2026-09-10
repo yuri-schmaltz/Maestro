@@ -622,7 +622,7 @@ export function InputsPanel() {
 
   return (
     <div>
-      <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">Inputs</label>
+      <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Inputs</label>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {/* Extend-from source video (Extend mode only) — the timeline anchor. */}
         {isExtend && (continueVideo ? (
@@ -632,7 +632,7 @@ export function InputsPanel() {
             <button onClick={e => { e.stopPropagation(); clearContinueVideo(); if (selected === 'extend') setSelected(null) }}
               className="absolute top-1 right-1 z-10 rounded-full bg-black/45 text-white p-0.5 hover:bg-black/70" aria-label="Remove"><X size={12} /></button>
             <div className="absolute inset-x-0 bottom-0 bg-black/55 px-1.5 py-1">
-              <span className="text-[10px] text-white/95">Extend from{continueVideoDuration > 0 ? ` · ${continueVideoDuration.toFixed(1)}s` : ''}</span>
+              <span className="text-2xs text-white/95">Extend from{continueVideoDuration > 0 ? ` · ${continueVideoDuration.toFixed(1)}s` : ''}</span>
             </div>
           </div>
         ) : (
@@ -663,7 +663,7 @@ export function InputsPanel() {
             <button onClick={e => { e.stopPropagation(); removeFrameTile(tile) }}
               className="absolute top-1 right-1 z-10 rounded-full bg-black/45 text-white p-0.5 hover:bg-black/70 transition-colors" aria-label="Remove"><X size={12} /></button>
             <div className="absolute inset-x-0 bottom-0 bg-black/55 px-1.5 py-1">
-              <span className="text-[10px] text-white/95">{windowInfo.windowCount > 1 ? `W${tile.window + 1} · ` : ''}{offsetLabel(tile.offset)}</span>
+              <span className="text-2xs text-white/95">{windowInfo.windowCount > 1 ? `W${tile.window + 1} · ` : ''}{offsetLabel(tile.offset)}</span>
             </div>
           </div>
         ))}
@@ -725,11 +725,11 @@ export function InputsPanel() {
               dragOverIndex === i ? 'border-accent-blue border-2' : selected === `ref-${i}` ? 'border-accent-blue' : 'border-border hover:border-border-light'
             }`}>
             <img src={URL.createObjectURL(file)} alt={`Ref ${i + 1}`} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
-            <span className="absolute top-1 left-1 z-10 rounded bg-black/55 text-white text-[9px] px-1">{i + 1}</span>
+            <span className="absolute top-1 left-1 z-10 rounded bg-black/55 text-white text-2xs px-1">{i + 1}</span>
             <button onClick={e => { e.stopPropagation(); removeImageRef(i); if (selected === `ref-${i}`) setSelected(null) }}
               className="absolute top-1 right-1 z-10 rounded-full bg-black/45 text-white p-0.5 hover:bg-black/70" aria-label="Remove"><X size={12} /></button>
             <div className="absolute inset-x-0 bottom-0 bg-black/55 px-1.5 py-1">
-              <span className="text-[10px] text-white/95">{i === 0 && hasLandscapeMode && imageRefType === 'KI' ? 'Main ref' : 'Reference'}</span>
+              <span className="text-2xs text-white/95">{i === 0 && hasLandscapeMode && imageRefType === 'KI' ? 'Main ref' : 'Reference'}</span>
             </div>
           </div>
         ))}
@@ -743,13 +743,13 @@ export function InputsPanel() {
           <div className="flex items-center gap-1.5">
             {windowInfo.windowCount > 1 && (
               <>
-                <span className="text-[10px] text-text-muted shrink-0">Window</span>
+                <span className="text-2xs text-text-muted shrink-0">Window</span>
                 <select value={selectedFrameTile.window}
                   onChange={e => setFramePosition(selectedFrameTile, parseInt(e.target.value), selectedFrameTile.offset)}
-                  className="shrink-0 bg-bg-secondary border border-border rounded px-1 py-0.5 text-[11px] text-text-primary focus:outline-none focus:border-accent-blue">
+                  className="shrink-0 bg-bg-secondary border border-border rounded px-1 py-0.5 text-xs text-text-primary focus:outline-none focus:border-accent-blue">
                   {Array.from({ length: windowInfo.windowCount }, (_, wi) => <option key={wi} value={wi}>{wi + 1}</option>)}
                 </select>
-                <span className="text-[10px] text-text-muted shrink-0">at</span>
+                <span className="text-2xs text-text-muted shrink-0">at</span>
               </>
             )}
             <div className="flex gap-0.5 flex-1">
@@ -759,7 +759,7 @@ export function InputsPanel() {
                 return (
                   <button key={preset.value} disabled={disabled}
                     onClick={() => setFramePosition(selectedFrameTile, selectedFrameTile.window, preset.value)}
-                    className={`flex-1 text-[10px] py-0.5 rounded transition-colors ${
+                    className={`flex-1 text-2xs py-0.5 rounded transition-colors ${
                       active ? 'bg-accent-blue text-white'
                         : disabled ? 'bg-bg-secondary text-text-muted cursor-not-allowed'
                         : 'bg-bg-secondary text-text-muted hover:text-text-primary hover:bg-bg-hover'
@@ -781,7 +781,7 @@ export function InputsPanel() {
                 onChange={e => setParam('input_video_strength', parseFloat(e.target.value))} className="w-full h-1 accent-accent-blue" />
             </>
           ) : null}
-          <p className="text-[9px] text-text-muted">{frameRoutingHint(selectedFrameTile)}</p>
+          <p className="text-2xs text-text-muted">{frameRoutingHint(selectedFrameTile)}</p>
         </Strip>
       )}
 
@@ -791,7 +791,7 @@ export function InputsPanel() {
           <Row label="Source video strength" value={inputVideoStrength.toFixed(2)} />
           <input type="range" min={0} max={1} step={0.05} value={inputVideoStrength}
             onChange={e => setParam('input_video_strength', parseFloat(e.target.value))} className="w-full h-1 accent-accent-blue" />
-          <p className="text-[9px] text-text-muted">1.0 = seamless continuation; lower gives more creative freedom. New content is appended after the source.</p>
+          <p className="text-2xs text-text-muted">1.0 = seamless continuation; lower gives more creative freedom. New content is appended after the source.</p>
         </Strip>
       )}
 
@@ -799,7 +799,7 @@ export function InputsPanel() {
       {selected === 'audio' && hasSoundtrack && (
         <Strip>
           {h3MediaSources ? (
-            <p className="text-[9px] text-text-muted">
+            <p className="text-2xs text-text-muted">
               H3 preserves this soundtrack and uses it to condition the new video.
             </p>
           ) : (
@@ -809,18 +809,18 @@ export function InputsPanel() {
                 onChange={e => setParam('audio_scale', parseFloat(e.target.value))} className="w-full h-1 accent-accent-blue" />
               <label className="flex items-center gap-2 cursor-pointer pt-1">
                 <input type="checkbox" checked={audioPT.includes('N')} onChange={() => toggleAudioFlag('N')} className="accent-accent-blue" />
-                <span className="text-[10px] text-text-secondary">Normalize audio volume</span>
+                <span className="text-2xs text-text-secondary">Normalize audio volume</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={audioPT.includes('V')} onChange={() => toggleAudioFlag('V')} className="accent-accent-blue" />
-                <span className="text-[10px] text-text-secondary">
+                <span className="text-2xs text-text-secondary">
                   {modelOptions?.architecture === 'ltx2_25'
                     ? 'Isolate vocals for better lip sync'
                     : 'Remove background music'}
                 </span>
               </label>
               {modelOptions?.architecture === 'ltx2_25' && (
-                <p className="text-[9px] text-text-muted">
+                <p className="text-2xs text-text-muted">
                   Conditions mouth motion on the vocal stem while keeping the original song in the finished video.
                 </p>
               )}
@@ -834,13 +834,13 @@ export function InputsPanel() {
         <Strip>
           {h3VideoEditing && audioBase !== '2' && (
             <>
-              <label className="text-[10px] text-text-muted uppercase tracking-wider">
+              <label className="text-2xs text-text-muted uppercase tracking-wider">
                 Visual behavior
               </label>
               <select
                 value={h3ControlVisualMode}
                 onChange={event => setH3ControlVisualMode(event.target.value as 'prompt' | 'whole' | 'inside' | 'outside')}
-                className="w-full bg-bg-secondary border border-border rounded-lg px-2 py-1.5 text-[11px] text-text-primary focus:outline-none focus:border-accent-blue"
+                className="w-full bg-bg-secondary border border-border rounded-lg px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent-blue"
               >
                 <option value="prompt">Generate new visuals from prompt</option>
                 <option value="whole">Edit the whole source video</option>
@@ -856,20 +856,20 @@ export function InputsPanel() {
                     onChange={event => setParam('denoising_strength', parseFloat(event.target.value))}
                     className="w-full h-1 accent-accent-blue"
                   />
-                  <p className="text-[9px] text-text-muted">0 preserves the source; 1 gives the prompt full freedom.</p>
+                  <p className="text-2xs text-text-muted">0 preserves the source; 1 gives the prompt full freedom.</p>
                 </>
               )}
               {(h3ControlVisualMode === 'inside' || h3ControlVisualMode === 'outside') && (
                 <>
                   <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-bg-secondary px-2 py-1.5">
-                    <span className="min-w-0 truncate text-[10px] text-text-secondary">
+                    <span className="min-w-0 truncate text-2xs text-text-secondary">
                       {controlMaskName || 'No mask video selected'}
                     </span>
                     <div className="flex shrink-0 items-center gap-1">
                       <button
                         type="button"
                         onClick={() => pickFile('.mp4,.webm,.mkv,.mov', handleAddControlMask)}
-                        className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-accent-blue hover:bg-bg-hover"
+                        className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-2xs text-accent-blue hover:bg-bg-hover"
                       >
                         <Upload size={11} /> {controlMaskName ? 'Replace' : 'Add mask'}
                       </button>
@@ -885,7 +885,7 @@ export function InputsPanel() {
                       )}
                     </div>
                   </div>
-                  <p className={`text-[9px] ${params.video_mask ? 'text-text-muted' : 'text-red-400'}`}>
+                  <p className={`text-2xs ${params.video_mask ? 'text-text-muted' : 'text-red-400'}`}>
                     White marks the selection. Add a tracked mask video matching the source duration.
                   </p>
                   <Row label="Mask protection duration" value={Number(params.masking_strength ?? 1.0).toFixed(2)} />
@@ -899,7 +899,7 @@ export function InputsPanel() {
               )}
             </>
           )}
-          <label className="text-[10px] text-text-muted uppercase tracking-wider">
+          <label className="text-2xs text-text-muted uppercase tracking-wider">
             Audio behavior
           </label>
           <select
@@ -929,7 +929,7 @@ export function InputsPanel() {
                 )
               }
             }}
-            className="w-full bg-bg-secondary border border-border rounded-lg px-2 py-1.5 text-[11px] text-text-primary focus:outline-none focus:border-accent-blue"
+            className="w-full bg-bg-secondary border border-border rounded-lg px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent-blue"
           >
             <option value="K">Use control video's audio</option>
             {h3MediaSources ? (
@@ -944,7 +944,7 @@ export function InputsPanel() {
               <option value="A">Use uploaded soundtrack</option>
             )}
           </select>
-          <p className="text-[9px] text-text-muted">
+          <p className="text-2xs text-text-muted">
             {h3MediaSources
               ? (audioBase === '2'
                 ? 'The source pictures remain unchanged while H3 creates synchronized audio.'
@@ -962,7 +962,7 @@ export function InputsPanel() {
           <Row label="Identity scale" value={String(identityScale)} />
           <input type="range" min={0} max={10} step={0.5} value={identityScale}
             onChange={e => setIdentityScale(parseFloat(e.target.value))} className="w-full h-1 accent-accent-blue" />
-          <p className="text-[9px] text-text-muted">~5s voice sample. With an active ID-LoRA, keeps the speaker's voice consistent across clips.</p>
+          <p className="text-2xs text-text-muted">~5s voice sample. With an active ID-LoRA, keeps the speaker's voice consistent across clips.</p>
         </Strip>
       )}
 
@@ -972,18 +972,18 @@ export function InputsPanel() {
           {hasLandscapeMode && hasPeopleMode && (
             <div className="flex bg-bg-tertiary rounded-lg p-0.5 border border-border">
               <button onClick={() => setImageRefType('KI')}
-                className={`flex-1 text-[10px] py-1 rounded-md transition-all ${imageRefType === 'KI' ? 'bg-bg-active text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>Subject / Landscape</button>
+                className={`flex-1 text-2xs py-1 rounded-md transition-all ${imageRefType === 'KI' ? 'bg-bg-active text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>Subject / Landscape</button>
               <button onClick={() => setImageRefType('I')}
-                className={`flex-1 text-[10px] py-1 rounded-md transition-all ${imageRefType === 'I' ? 'bg-bg-active text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>People / Objects</button>
+                className={`flex-1 text-2xs py-1 rounded-md transition-all ${imageRefType === 'I' ? 'bg-bg-active text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>People / Objects</button>
             </div>
           )}
           {hasLandscapeMode && imageRefType === 'KI' && (
-            <p className="text-[9px] text-text-muted">First image is the main subject/landscape; the rest are people/objects. Drag tiles to reorder.</p>
+            <p className="text-2xs text-text-muted">First image is the main subject/landscape; the rest are people/objects. Drag tiles to reorder.</p>
           )}
           {refBgLabel && (
             <label className="flex items-start gap-2 cursor-pointer">
               <input type="checkbox" checked={removeBackgroundRefs} onChange={e => setRemoveBackgroundRefs(e.target.checked)} className="mt-0.5 accent-accent-blue shrink-0" />
-              <span className="text-[10px] text-text-secondary leading-tight">{refBgLabel}</span>
+              <span className="text-2xs text-text-secondary leading-tight">{refBgLabel}</span>
             </label>
           )}
         </Strip>
@@ -998,8 +998,8 @@ function Strip({ children }: { children: React.ReactNode }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between">
-      <label className="text-[10px] text-text-muted">{label}</label>
-      <span className="text-[10px] text-text-muted tabular-nums">{value}</span>
+      <label className="text-2xs text-text-muted">{label}</label>
+      <span className="text-2xs text-text-muted tabular-nums">{value}</span>
     </div>
   )
 }
@@ -1021,7 +1021,7 @@ function AddTile({ label, icon, onClick, onDropFile, dropAccept }: {
       onDragOver={onDropFile ? (e => e.preventDefault()) : undefined}
       className="w-[90px] h-[90px] shrink-0 rounded-xl border border-dashed border-border hover:border-accent-blue flex flex-col items-center justify-center gap-1 text-text-muted hover:text-text-primary transition-colors">
       {icon ?? <Plus size={18} />}
-      <span className="text-[10px] text-center px-1">{label}</span>
+      <span className="text-2xs text-center px-1">{label}</span>
     </button>
   )
 }
@@ -1058,22 +1058,22 @@ function Tile({ role, imgSrc, icon, badge, selected, filledIcon, filledLabel, on
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-bg-tertiary/50 text-text-secondary">
               {filledIcon}
-              {filledLabel && <span className="text-[8px] text-text-muted px-1 truncate max-w-full">{filledLabel}</span>}
+              {filledLabel && <span className="text-2xs text-text-muted px-1 truncate max-w-full">{filledLabel}</span>}
             </div>
           )}
-          {badge !== undefined && <span className="absolute top-1 left-1 z-10 rounded bg-black/55 text-white text-[9px] px-1">{badge}</span>}
+          {badge !== undefined && <span className="absolute top-1 left-1 z-10 rounded bg-black/55 text-white text-2xs px-1">{badge}</span>}
           <button onClick={e => { e.stopPropagation(); onClear() }}
             className="absolute top-1 right-1 z-10 rounded-full bg-black/45 text-white p-0.5 hover:bg-black/70 transition-colors" aria-label="Remove">
             <X size={12} />
           </button>
           <div className="absolute inset-x-0 bottom-0 bg-black/55 px-1.5 py-1">
-            <span className="text-[10px] text-white/95">{role}</span>
+            <span className="text-2xs text-white/95">{role}</span>
           </div>
         </>
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-bg-tertiary/40 text-text-muted">
           {icon ?? <Upload size={15} />}
-          <span className="text-[10px] text-center px-1">{role}</span>
+          <span className="text-2xs text-center px-1">{role}</span>
         </div>
       )}
     </div>

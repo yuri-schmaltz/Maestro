@@ -181,7 +181,7 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
         </button>
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-semibold text-text-primary truncate">{model.name}</h2>
-          <div className="text-[10px] text-text-muted">
+          <div className="text-2xs text-text-muted">
             by {model.creator?.username || 'Unknown'}
             {model.type && <span className="ml-1.5 text-accent-blue">{model.type}</span>}
           </div>
@@ -217,7 +217,7 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
           {/* Version selector */}
           {versions.length > 1 && (
             <div>
-              <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1 block">Version</label>
+              <label className="text-xs text-text-muted uppercase tracking-wider mb-1 block">Version</label>
               <select
                 value={selectedVersionIdx}
                 onChange={e => { setSelectedVersionIdx(Number(e.target.value)); setSelectedFileIdx(0) }}
@@ -235,7 +235,7 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
           {/* File selector */}
           {files.length > 1 && (
             <div>
-              <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1 block">File</label>
+              <label className="text-xs text-text-muted uppercase tracking-wider mb-1 block">File</label>
               <select
                 value={selectedFileIdx}
                 onChange={e => setSelectedFileIdx(Number(e.target.value))}
@@ -254,22 +254,22 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
           {/* Info badges */}
           <div className="flex flex-wrap gap-2">
             {version && (
-              <span className="text-[10px] px-2 py-1 rounded bg-bg-active text-text-secondary">
+              <span className="text-2xs px-2 py-1 rounded bg-bg-active text-text-secondary">
                 {version.baseModel}
               </span>
             )}
             {!isCheckpoint && localArch && (
-              <span className="text-[10px] px-2 py-1 rounded bg-accent-blue/10 text-accent-blue">
+              <span className="text-2xs px-2 py-1 rounded bg-accent-blue/10 text-accent-blue">
                 Target: {localArch}
               </span>
             )}
             {!isCheckpoint && !localArch && version && (
-              <span className="text-[10px] px-2 py-1 rounded bg-amber-500/10 text-indicator-warning">
+              <span className="text-2xs px-2 py-1 rounded bg-amber-500/10 text-indicator-warning">
                 Unknown architecture
               </span>
             )}
             {file && (
-              <span className="text-[10px] px-2 py-1 rounded bg-bg-active text-text-muted">
+              <span className="text-2xs px-2 py-1 rounded bg-bg-active text-text-muted">
                 {formatBytes(file.sizeKB * 1024)}
               </span>
             )}
@@ -280,13 +280,13 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
             <div>
               <div className="flex items-center gap-1 mb-1.5">
                 <Tag size={11} className="text-text-muted" />
-                <span className="text-[11px] text-text-muted uppercase tracking-wider">Trigger Words</span>
+                <span className="text-xs text-text-muted uppercase tracking-wider">Trigger Words</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {trainedWords.map(word => (
                   <span
                     key={word}
-                    className="text-[11px] px-2 py-0.5 rounded-full bg-bg-active text-text-secondary border border-border"
+                    className="text-xs px-2 py-0.5 rounded-full bg-bg-active text-text-secondary border border-border"
                   >
                     {word}
                   </span>
@@ -298,7 +298,7 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
           {/* Description */}
           {sanitizedDescription && (
             <div>
-              <div className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5">Description</div>
+              <div className="text-xs text-text-muted uppercase tracking-wider mb-1.5">Description</div>
               <div
                 className="text-xs text-text-secondary leading-relaxed max-h-[200px] overflow-y-auto bg-bg-active rounded-lg px-3 py-2 border border-border prose-sm"
                 dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
@@ -309,7 +309,7 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
           {/* Target: checkpoint → base-architecture picker; lora → directory */}
           {isCheckpoint ? (
             <div>
-              <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <label className="text-xs text-text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5">
                 <Boxes size={12} /> Import as model
               </label>
               <select
@@ -329,12 +329,12 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
                   </optgroup>
                 ))}
               </select>
-              <p className="text-[10px] text-text-muted mt-1 leading-snug">
+              <p className="text-2xs text-text-muted mt-1 leading-snug">
                 The base model this checkpoint was trained for{baseModel ? ` (CivitAI base: ${baseModel})` : ''}.
                 Compatible SafeTensor shapes are verified before the file is installed.
               </p>
               {checkpointSupportReason && (
-                <div className="flex items-start gap-2 mt-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-text-primary leading-snug">
+                <div className="flex items-start gap-2 mt-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-text-primary leading-snug">
                   <AlertTriangle size={13} className="text-indicator-warning shrink-0 mt-0.5" />
                   <span>{checkpointSupportReason}</span>
                 </div>
@@ -343,7 +343,7 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
           ) : (
             loraDirs.length > 0 && (
               <div>
-                <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1 block">Save to Directory</label>
+                <label className="text-xs text-text-muted uppercase tracking-wider mb-1 block">Save to Directory</label>
                 <select
                   value={targetDirOverride}
                   onChange={e => setTargetDirOverride(e.target.value)}
@@ -367,9 +367,9 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
                 onChange={e => setAutoQuantize(e.target.checked)}
                 className="w-3.5 h-3.5 rounded accent-accent-blue mt-0.5"
               />
-              <span className="text-[11px] text-text-secondary leading-snug">
+              <span className="text-xs text-text-secondary leading-snug">
                 Optimize VRAM (load as int8)
-                <span className="block text-[10px] text-text-muted">
+                <span className="block text-2xs text-text-muted">
                   Recommended for large checkpoints — runs at roughly half the VRAM with minimal quality loss.
                   {fileBytes > 0 ? ` File: ${formatBytes(fileBytes)}.` : ''}
                 </span>
@@ -409,7 +409,7 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
                 {activeDownload.status === 'completed' && activeDownload.warnings && activeDownload.warnings.length > 0 && (
                   <div className="space-y-1 mt-1">
                     {activeDownload.warnings.map((w, i) => (
-                      <div key={i} className="text-[11px] text-indicator-warning bg-amber-500/10 border border-amber-500/30 rounded px-2 py-1.5 leading-snug">
+                      <div key={i} className="text-xs text-indicator-warning bg-amber-500/10 border border-amber-500/30 rounded px-2 py-1.5 leading-snug">
                         {w}
                       </div>
                     ))}
@@ -419,7 +419,7 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
             ) : (
               <>
                 {activeDownload?.status === 'failed' && (
-                  <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-[11px] text-red-400 leading-snug">
+                  <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-400 leading-snug">
                     Failed: {activeDownload.error || 'Download failed'}. You can retry below.
                   </div>
                 )}
@@ -431,7 +431,7 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
                     crisp error if the response turns out to be bogus,
                     so the user has a complete loop. */}
                 {!civitaiKeySet && (
-                  <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-text-primary leading-snug">
+                  <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-text-primary leading-snug">
                     <KeyRound size={12} className="text-indicator-warning shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
                       No CivitAI API key set. Most NSFW or restricted LoRAs

@@ -127,7 +127,7 @@ export function VideoTimelineSelector({
       </div>
 
       {/* Timeline bar */}
-      <div className="text-[9px] text-text-muted flex justify-between">
+      <div className="text-2xs text-text-muted flex justify-between">
         <span>{formatTime(startTime)}</span>
         <span className="text-accent-blue">{formatTime(endTime - startTime)} selected</span>
         <span>{formatTime(duration)}</span>
@@ -145,7 +145,7 @@ export function VideoTimelineSelector({
             <img key={i} src={src} className="h-full flex-1 object-cover" draggable={false} />
           )) : (
             <div className="w-full h-full bg-bg-tertiary flex items-center justify-center">
-              <span className="text-[9px] text-text-muted">Loading thumbnails...</span>
+              <span className="text-2xs text-text-muted">Loading thumbnails...</span>
             </div>
           )}
         </div>

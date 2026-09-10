@@ -44,13 +44,13 @@ function DirectorPresetPicker({ mode, modelType }: { mode: 'image' | 'video'; mo
 
   return (
     <div className="mb-2">
-      <label className="text-[10px] text-text-muted uppercase tracking-wider mb-1 block">Presets</label>
+      <label className="text-2xs text-text-muted uppercase tracking-wider mb-1 block">Presets</label>
       <div className="flex flex-wrap gap-1">
         {modePresets.map(p => (
           <button
             key={p.id}
             onClick={() => applyPreset(p)}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] border border-border text-text-secondary hover:bg-bg-hover hover:text-text-primary hover:border-accent-blue transition-colors"
+            className="flex items-center gap-1 px-2 py-1 rounded text-2xs border border-border text-text-secondary hover:bg-bg-hover hover:text-text-primary hover:border-accent-blue transition-colors"
             title={`${p.activated_loras.length} LoRA(s): ${p.activated_loras.map(l => l.replace(/\.(safetensors|sft)$/i, '')).join(', ')}`}
           >
             <FolderOpen size={9} className="shrink-0" />
@@ -277,7 +277,7 @@ export function DirectorLoraSelector({ mode, modelType }: {
         <div className="text-xs text-text-muted">No LoRAs found</div>
         <button
           onClick={() => openBrowser(true, modelType)}
-          className="text-[10px] text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
+          className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
         >
           <Globe size={10} /> Browse
         </button>
@@ -292,12 +292,12 @@ export function DirectorLoraSelector({ mode, modelType }: {
 
       {/* Header with Browse */}
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-[10px] text-text-muted uppercase tracking-wider">LoRAs</label>
+        <label className="text-2xs text-text-muted uppercase tracking-wider">LoRAs</label>
         <div className="flex items-center gap-2">
           <LoraSortToggle sort={sortMode} onChange={setSortSticky} />
           <button
             onClick={() => openBrowser(true, modelType)}
-            className="text-[10px] text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5 transition-colors"
+            className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5 transition-colors"
             title="Browse CivitAI"
           >
             <Globe size={10} /> Browse
@@ -371,7 +371,7 @@ export function DirectorLoraSelector({ mode, modelType }: {
               )}
               {isActive && phases === 1 && (
                 <label
-                  className="flex items-center gap-1 shrink-0 text-[9px] text-text-muted"
+                  className="flex items-center gap-1 shrink-0 text-2xs text-text-muted"
                   title="LoRA strength"
                 >
                   <span>Strength</span>
@@ -385,13 +385,13 @@ export function DirectorLoraSelector({ mode, modelType }: {
                       const value = Number.parseFloat(e.target.value)
                       if (Number.isFinite(value)) updateWeight(filename, 0, value)
                     }}
-                    className="w-12 rounded border border-border bg-bg-secondary px-1 py-0.5 text-right text-[10px] tabular-nums text-text-primary focus:border-accent-blue focus:outline-none"
+                    className="w-12 rounded border border-border bg-bg-secondary px-1 py-0.5 text-right text-2xs tabular-nums text-text-primary focus:border-accent-blue focus:outline-none"
                     aria-label={`${displayName(filename)} LoRA strength`}
                   />
                 </label>
               )}
               {isActive && phases > 1 && (
-                <span className="shrink-0 text-[9px] text-text-muted" title="Adjust each phase below">
+                <span className="shrink-0 text-2xs text-text-muted" title="Adjust each phase below">
                   {phases} phases
                 </span>
               )}
@@ -407,12 +407,12 @@ export function DirectorLoraSelector({ mode, modelType }: {
       {activatedLoras.length > 0 && (
         <div className="mt-2 space-y-1.5">
           <div className="flex items-center justify-between">
-            <div className="text-[10px] text-text-muted uppercase tracking-wider">
+            <div className="text-2xs text-text-muted uppercase tracking-wider">
               LoRA strength ({activatedLoras.length})
             </div>
             <button
               onClick={clearAll}
-              className="text-[10px] text-text-muted hover:text-red-400 transition-colors"
+              className="text-2xs text-text-muted hover:text-red-400 transition-colors"
             >
               Clear all
             </button>
@@ -472,7 +472,7 @@ export function DirectorLoraSelector({ mode, modelType }: {
                   return (
                     <div key={i} className="flex items-center gap-2">
                       <span
-                        className="text-[10px] text-text-muted w-12 shrink-0"
+                        className="text-2xs text-text-muted w-12 shrink-0"
                         title={phaseRec?.label || ''}
                       >
                         {phases > 1 ? `Phase ${i + 1}` : 'Strength'}
@@ -504,7 +504,7 @@ export function DirectorLoraSelector({ mode, modelType }: {
                           const value = Number.parseFloat(e.target.value)
                           if (Number.isFinite(value)) updateWeight(filename, i, value)
                         }}
-                        className={`w-12 shrink-0 rounded border border-border bg-bg-secondary px-1 py-0.5 text-right text-[10px] tabular-nums focus:border-accent-blue focus:outline-none ${valueColor}`}
+                        className={`w-12 shrink-0 rounded border border-border bg-bg-secondary px-1 py-0.5 text-right text-2xs tabular-nums focus:border-accent-blue focus:outline-none ${valueColor}`}
                         aria-label={`${displayName(filename)} ${phases > 1 ? `phase ${i + 1}` : ''} LoRA strength value`.replace(/\s+/g, ' ').trim()}
                       />
                     </div>

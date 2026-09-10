@@ -41,7 +41,7 @@ export function ScailResolutionSelector({
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-1">
-        <label className="text-[10px] text-text-muted uppercase tracking-wider">
+        <label className="text-2xs text-text-muted uppercase tracking-wider">
           Output quality
         </label>
         <InfoTooltip
@@ -70,8 +70,8 @@ export function ScailResolutionSelector({
                   : 'border-border bg-bg-secondary/40 text-text-secondary hover:border-accent-blue/50'
               } ${disabled ? 'cursor-not-allowed opacity-45' : ''}`}
             >
-              <span className="block text-[10px] font-medium">{option.label}</span>
-              <span className="block text-[8px] text-text-muted">{option.detail}</span>
+              <span className="block text-2xs font-medium">{option.label}</span>
+              <span className="block text-2xs text-text-muted">{option.detail}</span>
             </button>
           )
         })}

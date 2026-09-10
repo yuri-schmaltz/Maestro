@@ -144,7 +144,7 @@ export function MixerControls() {
     <div className="space-y-3">
       {/* Base Track */}
       <div>
-        <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
           Base Track <span className="normal-case text-text-muted">(full duration)</span>
         </label>
         <FileUploadZone
@@ -158,8 +158,8 @@ export function MixerControls() {
           <div className="flex items-center gap-3 mt-1.5">
             <div className="flex-1">
               <div className="flex items-center justify-between">
-                <span className="text-[9px] text-text-muted">Volume</span>
-                <span className="text-[9px] text-text-muted">{baseTrack.volume}%</span>
+                <span className="text-2xs text-text-muted">Volume</span>
+                <span className="text-2xs text-text-muted">{baseTrack.volume}%</span>
               </div>
               <input type="range" min={0} max={100} step={1}
                 value={baseTrack.volume}
@@ -168,7 +168,7 @@ export function MixerControls() {
               />
             </div>
             {baseTrack.durationSec && (
-              <span className="text-[9px] text-text-muted shrink-0">{baseTrack.durationSec}s</span>
+              <span className="text-2xs text-text-muted shrink-0">{baseTrack.durationSec}s</span>
             )}
           </div>
         )}
@@ -177,19 +177,19 @@ export function MixerControls() {
       {/* Overlay Tracks */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="text-[11px] text-text-muted uppercase tracking-wider">
+          <label className="text-xs text-text-muted uppercase tracking-wider">
             Overlay Tracks
           </label>
           <button
             onClick={() => setOverlays(prev => [...prev, { ...emptyTrack(), volume: 30 }])}
-            className="flex items-center gap-1 text-[10px] text-accent-blue hover:text-accent-blue/80 transition-colors"
+            className="flex items-center gap-1 text-2xs text-accent-blue hover:text-accent-blue/80 transition-colors"
           >
             <Plus size={11} /> Add
           </button>
         </div>
 
         {overlays.length === 0 && (
-          <p className="text-[9px] text-text-muted text-center py-2">
+          <p className="text-2xs text-text-muted text-center py-2">
             Add overlay tracks (SFX, ambience) to layer on top of the base track.
           </p>
         )}
@@ -198,7 +198,7 @@ export function MixerControls() {
           {overlays.map((track, idx) => (
             <div key={track.id} className="bg-bg-tertiary/50 border border-border rounded-lg p-2 space-y-1.5">
               <div className="flex items-center gap-1.5">
-                <span className="text-[9px] text-text-muted shrink-0">{idx + 1}.</span>
+                <span className="text-2xs text-text-muted shrink-0">{idx + 1}.</span>
                 <div className="flex-1 min-w-0">
                   {!track.path ? (
                     <FileUploadZone
@@ -210,9 +210,9 @@ export function MixerControls() {
                     />
                   ) : (
                     <div className="flex items-center gap-1.5 bg-bg-tertiary rounded px-2 py-1">
-                      <span className="text-[10px] text-text-primary truncate flex-1">{track.filename}</span>
+                      <span className="text-2xs text-text-primary truncate flex-1">{track.filename}</span>
                       {track.durationSec && (
-                        <span className="text-[9px] text-text-muted shrink-0">{track.durationSec}s</span>
+                        <span className="text-2xs text-text-muted shrink-0">{track.durationSec}s</span>
                       )}
                     </div>
                   )}
@@ -229,19 +229,19 @@ export function MixerControls() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] text-text-muted">Start</span>
-                      <span className="text-[9px] text-text-muted">{track.startTime}s</span>
+                      <span className="text-2xs text-text-muted">Start</span>
+                      <span className="text-2xs text-text-muted">{track.startTime}s</span>
                     </div>
                     <input type="number" min={0} step={0.1}
                       value={track.startTime}
                       onChange={e => updateOverlay(track.id, { startTime: Math.max(0, parseFloat(e.target.value) || 0) })}
-                      className="w-full bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-[10px] text-text-primary focus:outline-none focus:border-accent-blue"
+                      className="w-full bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-2xs text-text-primary focus:outline-none focus:border-accent-blue"
                     />
                   </div>
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] text-text-muted">Volume</span>
-                      <span className="text-[9px] text-text-muted">{track.volume}%</span>
+                      <span className="text-2xs text-text-muted">Volume</span>
+                      <span className="text-2xs text-text-muted">{track.volume}%</span>
                     </div>
                     <input type="range" min={0} max={100} step={1}
                       value={track.volume}
@@ -258,7 +258,7 @@ export function MixerControls() {
 
       {/* Duration summary */}
       {canMix && (
-        <div className="text-[10px] text-text-muted text-center">
+        <div className="text-2xs text-text-muted text-center">
           Total duration: ~{totalDuration()}s
         </div>
       )}
@@ -285,12 +285,12 @@ export function MixerControls() {
 
       {/* Result / Error */}
       {mixResult && (
-        <div className="text-[10px] text-indicator-success bg-green-500/10 border border-green-500/20 rounded px-2 py-1.5">
+        <div className="text-2xs text-indicator-success bg-green-500/10 border border-green-500/20 rounded px-2 py-1.5">
           Saved: {mixResult}
         </div>
       )}
       {error && (
-        <div className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1.5">
+        <div className="text-2xs text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1.5">
           {error}
         </div>
       )}

@@ -115,7 +115,7 @@ export function OomRecoveryBanner() {
           <AlertTriangle size={18} className="text-indicator-warning shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium text-text-primary">Out of VRAM</div>
-            <div className="text-[12px] text-text-secondary mt-0.5">
+            <div className="text-sm text-text-secondary mt-0.5">
               {context} {vramHint}
             </div>
           </div>
@@ -132,7 +132,7 @@ export function OomRecoveryBanner() {
         <div className="px-4 py-3 space-y-2.5">
           {canLower ? (
             <>
-              <div className="text-[12px] text-text-secondary leading-snug">
+              <div className="text-sm text-text-secondary leading-snug">
                 Lower VRAM headroom from <span className="font-mono text-text-primary">{oom.current_coefficient.toFixed(2)}</span> to{' '}
                 <span className="font-mono text-indicator-warning">{oom.suggested_coefficient!.toFixed(2)}</span> to reserve more memory for generation spikes
                 (long videos, VAE decode). About ~5% slower per generation.
@@ -152,7 +152,7 @@ export function OomRecoveryBanner() {
                   Dismiss
                 </button>
               </div>
-              <div className="text-[10px] text-text-muted">
+              <div className="text-2xs text-text-muted">
                 After applying, re-run the generation — it'll use the new headroom on next model load.
               </div>
             </>
@@ -160,7 +160,7 @@ export function OomRecoveryBanner() {
             // current_coefficient is at the 0.50 floor — coefficient
             // can't help anymore. Need a different fix.
             <>
-              <div className="text-[12px] text-text-secondary leading-snug">
+              <div className="text-sm text-text-secondary leading-snug">
                 VRAM headroom is already at <span className="font-mono">{oom.current_coefficient.toFixed(2)}</span> (the safe minimum).
                 Lowering it further won't help. Try a smaller model variant (e.g. INT8 or GGUF), reduce resolution, or shorten video length.
               </div>
@@ -177,9 +177,9 @@ export function OomRecoveryBanner() {
 
           {/* Truncated original error — collapsed by default to avoid
               overwhelming the user with stack-trace-flavored text */}
-          <details className="text-[10px] text-text-muted">
+          <details className="text-2xs text-text-muted">
             <summary className="cursor-pointer hover:text-text-secondary">Show error details</summary>
-            <div className="mt-1 font-mono text-[10px] bg-bg-primary/40 rounded px-2 py-1.5 break-all">
+            <div className="mt-1 font-mono text-2xs bg-bg-primary/40 rounded px-2 py-1.5 break-all">
               {oom.message}
             </div>
           </details>

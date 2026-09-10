@@ -37,7 +37,7 @@ export function EditSubModeToggle() {
         <button
           key={m.value}
           onClick={() => setEditSubMode(m.value)}
-          className={`flex-1 text-[10px] py-1.5 rounded-md transition-all whitespace-nowrap ${
+          className={`flex-1 text-2xs py-1.5 rounded-md transition-all whitespace-nowrap ${
             editSubMode === m.value
               ? 'bg-bg-active text-text-primary'
               : 'text-text-secondary hover:text-text-primary'

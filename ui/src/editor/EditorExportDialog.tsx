@@ -107,7 +107,7 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-cta/15 text-cta"><Film size={16} /></span>
             <div>
               <h2 className="text-sm font-semibold text-text-primary">Export video</h2>
-              <p className="text-[9px] text-text-muted">{project.name} · {formatEditorTime(duration)} timeline</p>
+              <p className="text-2xs text-text-muted">{project.name} · {formatEditorTime(duration)} timeline</p>
             </div>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-text-muted hover:bg-bg-hover hover:text-text-primary" aria-label="Close export settings">
@@ -119,7 +119,7 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
           <div className="grid gap-4 md:grid-cols-[1fr_240px]">
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[9px] font-medium uppercase tracking-wider text-text-muted">File name</label>
+                <label className="text-2xs font-medium uppercase tracking-wider text-text-muted">File name</label>
                 <div className="flex items-center rounded-lg border border-border bg-bg-tertiary focus-within:border-accent-blue/60">
                   <input
                     value={project.export.filename}
@@ -127,12 +127,12 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
                     onChange={event => setExportSettings({ filename: safeFilename(event.target.value) })}
                     className="min-w-0 flex-1 bg-transparent px-3 py-2 text-xs text-text-primary outline-none"
                   />
-                  <span className="border-l border-border px-2.5 text-[10px] text-text-muted">.mp4</span>
+                  <span className="border-l border-border px-2.5 text-2xs text-text-muted">.mp4</span>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[9px] font-medium uppercase tracking-wider text-text-muted">Resolution</label>
+                <label className="text-2xs font-medium uppercase tracking-wider text-text-muted">Resolution</label>
                 <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5">
                   {RESOLUTIONS.map(option => (
                     <button
@@ -142,8 +142,8 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
                       className={`rounded-lg border px-2 py-2 text-left transition-colors ${project.export.resolution === option.value ? 'border-accent-blue/60 bg-accent-blue/10 text-text-primary' : 'border-border bg-bg-tertiary text-text-secondary hover:border-border-light hover:bg-bg-hover'}`}
                       title={option.detail}
                     >
-                      <span className="block text-[10px] font-medium">{option.label}</span>
-                      <span className="mt-0.5 block truncate text-[8px] text-text-muted">{option.detail}</span>
+                      <span className="block text-2xs font-medium">{option.label}</span>
+                      <span className="mt-0.5 block truncate text-2xs text-text-muted">{option.detail}</span>
                     </button>
                   ))}
                 </div>
@@ -151,7 +151,7 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-medium uppercase tracking-wider text-text-muted">Frame rate</label>
+                  <label className="text-2xs font-medium uppercase tracking-wider text-text-muted">Frame rate</label>
                   <select
                     value={String(project.export.frame_rate)}
                     onChange={event => setExportSettings({
@@ -159,7 +159,7 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
                         ? 'project'
                         : Number(event.target.value) as 24 | 30 | 60,
                     })}
-                    className="w-full rounded-lg border border-border bg-bg-tertiary px-2.5 py-2 text-[10px] text-text-primary outline-none focus:border-accent-blue/60"
+                    className="w-full rounded-lg border border-border bg-bg-tertiary px-2.5 py-2 text-2xs text-text-primary outline-none focus:border-accent-blue/60"
                   >
                     <option value="project">Project ({project.canvas.fps.toFixed(project.canvas.fps % 1 ? 2 : 0)} fps)</option>
                     <option value="24">24 fps</option>
@@ -168,22 +168,22 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-medium uppercase tracking-wider text-text-muted">Codec</label>
+                  <label className="text-2xs font-medium uppercase tracking-wider text-text-muted">Codec</label>
                   <select
                     value={project.export.codec}
                     onChange={event => setExportSettings({ codec: event.target.value as EditorExportSettings['codec'] })}
-                    className="w-full rounded-lg border border-border bg-bg-tertiary px-2.5 py-2 text-[10px] text-text-primary outline-none focus:border-accent-blue/60"
+                    className="w-full rounded-lg border border-border bg-bg-tertiary px-2.5 py-2 text-2xs text-text-primary outline-none focus:border-accent-blue/60"
                   >
                     <option value="h264">H.264 · Most compatible</option>
                     <option value="h265">H.265 · Smaller master</option>
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-medium uppercase tracking-wider text-text-muted">Encoder</label>
+                  <label className="text-2xs font-medium uppercase tracking-wider text-text-muted">Encoder</label>
                   <select
                     value={project.export.encoder || 'auto'}
                     onChange={event => setExportSettings({ encoder: event.target.value as EditorExportSettings['encoder'] })}
-                    className="w-full rounded-lg border border-border bg-bg-tertiary px-2.5 py-2 text-[10px] text-text-primary outline-none focus:border-accent-blue/60"
+                    className="w-full rounded-lg border border-border bg-bg-tertiary px-2.5 py-2 text-2xs text-text-primary outline-none focus:border-accent-blue/60"
                   >
                     <option value="auto">Auto{capabilities ? ` · ${capabilities.recommended}` : ''}</option>
                     <option value="software">Software · compatible</option>
@@ -195,7 +195,7 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[9px] font-medium uppercase tracking-wider text-text-muted">Quality</label>
+                <label className="text-2xs font-medium uppercase tracking-wider text-text-muted">Quality</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {QUALITY.map(option => (
                     <button
@@ -204,8 +204,8 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
                       onClick={() => setExportSettings({ quality: option.value })}
                       className={`rounded-lg border px-2.5 py-2 text-left transition-colors ${project.export.quality === option.value ? 'border-accent-blue/60 bg-accent-blue/10 text-text-primary' : 'border-border bg-bg-tertiary text-text-secondary hover:border-border-light hover:bg-bg-hover'}`}
                     >
-                      <span className="block text-[10px] font-medium">{option.label}</span>
-                      <span className="text-[8px] text-text-muted">{option.detail}</span>
+                      <span className="block text-2xs font-medium">{option.label}</span>
+                      <span className="text-2xs text-text-muted">{option.detail}</span>
                     </button>
                   ))}
                 </div>
@@ -216,7 +216,7 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
                 onClick={() => setExportSettings({ include_audio: !project.export.include_audio })}
                 className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left ${project.export.include_audio ? 'border-accent-blue/35 bg-accent-blue/5' : 'border-border bg-bg-tertiary'}`}
               >
-                <span className="flex items-center gap-2 text-[10px] text-text-secondary">
+                <span className="flex items-center gap-2 text-2xs text-text-secondary">
                   {project.export.include_audio ? <Volume2 size={13} className="text-accent-blue" /> : <VolumeX size={13} className="text-text-muted" />}
                   Include timeline audio
                 </span>
@@ -231,24 +231,24 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
                     <Sparkles size={12} />
                   </span>
                   <div>
-                    <div className="text-[10px] font-medium text-text-primary">Finishing</div>
-                    <p className="mt-0.5 text-[8px] leading-relaxed text-text-muted">Optional passes run after the timeline is rendered. Upscale runs before grain.</p>
+                    <div className="text-2xs font-medium text-text-primary">Finishing</div>
+                    <p className="mt-0.5 text-2xs leading-relaxed text-text-muted">Optional passes run after the timeline is rendered. Upscale runs before grain.</p>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-medium uppercase tracking-wider text-text-muted">AI upscale</label>
+                  <label className="text-2xs font-medium uppercase tracking-wider text-text-muted">AI upscale</label>
                   <select
                     value={project.export.spatial_upsampling || ''}
                     onChange={event => setExportSettings({ spatial_upsampling: event.target.value as EditorUpscaleMethod })}
-                    className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-2 text-[10px] text-text-primary outline-none focus:border-accent-blue/60"
+                    className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-2 text-2xs text-text-primary outline-none focus:border-accent-blue/60"
                   >
                     {UPSCALE_OPTIONS.map(option => (
                       <option key={option.value || 'off'} value={option.value}>{option.label}</option>
                     ))}
                   </select>
                   {upscaleOption.scale > 1 && (
-                    <p className="text-[8px] leading-relaxed text-text-muted">FlashVSR may download its model on first use and substantially increases render time.</p>
+                    <p className="text-2xs leading-relaxed text-text-muted">FlashVSR may download its model on first use and substantially increases render time.</p>
                   )}
                 </div>
 
@@ -259,7 +259,7 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
                   })}
                   className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left ${(project.export.film_grain_intensity || 0) > 0 ? 'border-accent-blue/35 bg-accent-blue/5' : 'border-border bg-bg-secondary'}`}
                 >
-                  <span className="text-[10px] text-text-secondary">Film grain</span>
+                  <span className="text-2xs text-text-secondary">Film grain</span>
                   <span className={`h-4 w-7 rounded-full p-0.5 transition-colors ${(project.export.film_grain_intensity || 0) > 0 ? 'bg-accent-blue' : 'bg-bg-active'}`}>
                     <span className={`block h-3 w-3 rounded-full bg-white transition-transform ${(project.export.film_grain_intensity || 0) > 0 ? 'translate-x-3' : ''}`} />
                   </span>
@@ -267,7 +267,7 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
 
                 {(project.export.film_grain_intensity || 0) > 0 && (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="space-y-1 text-[8px] text-text-muted">
+                    <label className="space-y-1 text-2xs text-text-muted">
                       <span className="flex justify-between"><span>Intensity</span><span>{(project.export.film_grain_intensity || 0).toFixed(2)}</span></span>
                       <input
                         type="range"
@@ -279,7 +279,7 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
                         className="w-full accent-accent-blue"
                       />
                     </label>
-                    <label className="space-y-1 text-[8px] text-text-muted">
+                    <label className="space-y-1 text-2xs text-text-muted">
                       <span className="flex justify-between"><span>Color</span><span>{(project.export.film_grain_saturation ?? 0.5).toFixed(2)}</span></span>
                       <input
                         type="range"
@@ -298,8 +298,8 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
 
             <aside className="space-y-3">
               <div className="rounded-xl border border-border bg-bg-tertiary p-3">
-                <div className="text-[9px] font-medium uppercase tracking-wider text-text-muted">Delivery summary</div>
-                <dl className="mt-2.5 space-y-1.5 text-[10px]">
+                <div className="text-2xs font-medium uppercase tracking-wider text-text-muted">Delivery summary</div>
+                <dl className="mt-2.5 space-y-1.5 text-2xs">
                   <div className="flex justify-between gap-3"><dt className="text-text-muted">Frame</dt><dd className="font-mono text-text-secondary">{deliveryDimensions.width}×{deliveryDimensions.height}</dd></div>
                   <div className="flex justify-between gap-3"><dt className="text-text-muted">Rate</dt><dd className="font-mono text-text-secondary">{outputFps.toFixed(outputFps % 1 ? 2 : 0)} fps</dd></div>
                   <div className="flex justify-between gap-3"><dt className="text-text-muted">Duration</dt><dd className="font-mono text-text-secondary">{formatEditorTime(duration)}</dd></div>
@@ -309,13 +309,13 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
 
               {lastExport && (
                 <div className="rounded-xl border border-green-500/25 bg-green-500/5 p-3">
-                  <div className="flex items-center gap-1.5 text-[10px] font-medium text-indicator-success"><CheckCircle2 size={12} /> Latest export</div>
-                  <div className="mt-1.5 truncate text-[9px] text-text-secondary" title={lastExport.filename}>{lastExport.filename}</div>
+                  <div className="flex items-center gap-1.5 text-2xs font-medium text-indicator-success"><CheckCircle2 size={12} /> Latest export</div>
+                  <div className="mt-1.5 truncate text-2xs text-text-secondary" title={lastExport.filename}>{lastExport.filename}</div>
                   <div className="mt-2 grid grid-cols-2 gap-1.5">
-                    <a href={api.getFileUrl(lastExport.filename, lastExport.workspace)} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1 rounded-md border border-border bg-bg-secondary px-2 py-1.5 text-[9px] text-text-secondary hover:border-accent-blue/40 hover:text-accent-blue">
+                    <a href={api.getFileUrl(lastExport.filename, lastExport.workspace)} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-1 rounded-md border border-border bg-bg-secondary px-2 py-1.5 text-2xs text-text-secondary hover:border-accent-blue/40 hover:text-accent-blue">
                       <ExternalLink size={10} /> Open
                     </a>
-                    <a href={api.getFileUrl(lastExport.filename, lastExport.workspace)} download={lastExport.filename} className="flex items-center justify-center gap-1 rounded-md border border-border bg-bg-secondary px-2 py-1.5 text-[9px] text-text-secondary hover:border-accent-blue/40 hover:text-accent-blue">
+                    <a href={api.getFileUrl(lastExport.filename, lastExport.workspace)} download={lastExport.filename} className="flex items-center justify-center gap-1 rounded-md border border-border bg-bg-secondary px-2 py-1.5 text-2xs text-text-secondary hover:border-accent-blue/40 hover:text-accent-blue">
                       <Download size={10} /> Save file
                     </a>
                   </div>
@@ -324,10 +324,10 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
 
               {(project.exports || []).length > 1 && (
                 <div className="rounded-xl border border-border bg-bg-tertiary p-3">
-                  <div className="text-[9px] font-medium uppercase tracking-wider text-text-muted">Recent exports</div>
+                  <div className="text-2xs font-medium uppercase tracking-wider text-text-muted">Recent exports</div>
                   <div className="mt-2 space-y-1.5">
                     {(project.exports || []).slice(1, 5).map(record => (
-                      <a key={record.id} href={api.getFileUrl(record.filename, record.workspace)} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 text-[9px] text-text-muted hover:bg-bg-hover hover:text-text-secondary">
+                      <a key={record.id} href={api.getFileUrl(record.filename, record.workspace)} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 text-2xs text-text-muted hover:bg-bg-hover hover:text-text-secondary">
                         <span className="truncate">{record.filename}</span>
                         <ExternalLink size={9} className="shrink-0" />
                       </a>
@@ -342,26 +342,26 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
         <footer className="shrink-0 border-t border-border bg-bg-tertiary/50 px-4 py-3">
           {exportJobId ? (
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-[10px]">
+              <div className="flex items-center justify-between text-2xs">
                 <span className="flex items-center gap-1.5 text-text-secondary">
                   <Loader2 size={11} className={`${exportQueueStatus === 'held' ? '' : 'animate-spin'} text-accent-blue`} />
                   {exportQueueStatus === 'held' ? 'Held in the universal queue' : 'Rendering through the universal queue'}
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="font-mono text-text-primary">{Math.round(exportProgress * 100)}%</span>
-                  <button type="button" onClick={() => stopGeneration(exportJobId)} className="rounded border border-red-500/25 px-1.5 py-0.5 text-[8px] text-red-300 hover:bg-red-500/10">Cancel</button>
+                  <button type="button" onClick={() => stopGeneration(exportJobId)} className="rounded border border-red-500/25 px-1.5 py-0.5 text-2xs text-red-300 hover:bg-red-500/10">Cancel</button>
                 </span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-bg-active"><div className="h-full rounded-full bg-accent-blue transition-all" style={{ width: `${Math.max(1, exportProgress * 100)}%` }} /></div>
             </div>
           ) : (
             <div className="flex items-center justify-between gap-3">
-              <p className="hidden text-[9px] text-text-muted sm:block">The project stays editable while a new non-destructive file is rendered.</p>
+              <p className="hidden text-2xs text-text-muted sm:block">The project stays editable while a new non-destructive file is rendered.</p>
               <button
                 type="button"
                 onClick={() => void exportProject('queue')}
                 disabled={duration <= 0}
-                className="ml-auto flex items-center gap-1.5 rounded-lg border border-border bg-bg-secondary px-3 py-2 text-[10px] font-medium text-text-secondary hover:border-accent-blue/40 hover:text-accent-blue disabled:opacity-40"
+                className="ml-auto flex items-center gap-1.5 rounded-lg border border-border bg-bg-secondary px-3 py-2 text-2xs font-medium text-text-secondary hover:border-accent-blue/40 hover:text-accent-blue disabled:opacity-40"
                 title="Hold this export in Maestro's universal queue"
               >
                 Add to queue

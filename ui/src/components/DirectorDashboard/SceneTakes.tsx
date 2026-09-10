@@ -28,15 +28,15 @@ export function SceneTakes({ pid, clip, busy }: { pid: string; clip: PipelineCli
               {kind === 'video'
                 ? <video src={getFileUrl(take.filename)} controls preload="none" className="w-full aspect-video bg-black" />
                 : <img src={getFileUrl(take.filename)} alt={`Take ${index + 1}`} className="w-full aspect-video object-contain" />}
-              <p className="text-[10px] mt-1">Take {index + 1}{selected ? ' · selected' : ''}</p>
-              <details className="text-[10px] text-text-muted"><summary>Prompt and source settings</summary><pre className="whitespace-pre-wrap break-all max-h-44 overflow-auto">{JSON.stringify(take.settings, null, 2)}</pre></details>
-              <button disabled={busy || saving || selected} className="text-accent-blue text-[10px] mt-2 disabled:opacity-40" onClick={() => void choose(kind, take.filename)}>
+              <p className="text-2xs mt-1">Take {index + 1}{selected ? ' · selected' : ''}</p>
+              <details className="text-2xs text-text-muted"><summary>Prompt and source settings</summary><pre className="whitespace-pre-wrap break-all max-h-44 overflow-auto">{JSON.stringify(take.settings, null, 2)}</pre></details>
+              <button disabled={busy || saving || selected} className="text-accent-blue text-2xs mt-2 disabled:opacity-40" onClick={() => void choose(kind, take.filename)}>
                 {kind === 'video' ? 'Approve this take' : 'Use this image'}
               </button>
             </div>
           })}
         </div>
-        <p className="text-[10px] text-text-muted mt-2">The selected take is used for future rejoin and Director imports into Editor. Existing timelines keep their current media.</p>
+        <p className="text-2xs text-text-muted mt-2">The selected take is used for future rejoin and Director imports into Editor. Existing timelines keep their current media.</p>
       </details>
     })}
     {error && <p role="alert" className="text-xs text-red-400">{error}</p>}

@@ -101,7 +101,7 @@ export function ImageRefSection() {
 
   return (
     <div className="space-y-2">
-      <label className="text-[11px] text-text-muted uppercase tracking-wider block">
+      <label className="text-xs text-text-muted uppercase tracking-wider block">
         {isAdaptiveImageGenerate ? 'Source / Reference Images (Optional)' : 'Reference Images'}
       </label>
 
@@ -138,17 +138,17 @@ export function ImageRefSection() {
               className="w-full h-full object-cover pointer-events-none"
             />
             {i === 0 && imageRefs.length > 1 && hasLandscapeMode && imageRefType === 'KI' && (
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[8px] text-white text-center py-0.5">
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-2xs text-white text-center py-0.5">
                 Main
               </div>
             )}
             {i === 0 && isAdaptiveImageGenerate && (
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[8px] text-white text-center py-0.5">
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-2xs text-white text-center py-0.5">
                 Source
               </div>
             )}
             {/* Position number */}
-            <span className="absolute top-0.5 left-0.5 bg-black/60 text-white text-[8px] px-1 rounded pointer-events-none">
+            <span className="absolute top-0.5 left-0.5 bg-black/60 text-white text-2xs px-1 rounded pointer-events-none">
               {i + 1}
             </span>
             <button
@@ -169,7 +169,7 @@ export function ImageRefSection() {
             onClick={handleFileSelect}
           >
             <Upload size={14} className="text-text-muted" />
-            <span className="text-[8px] text-text-muted">Add</span>
+            <span className="text-2xs text-text-muted">Add</span>
           </div>
         )}
       </div>
@@ -179,7 +179,7 @@ export function ImageRefSection() {
           type="button"
           onClick={() => void addSelectedGalleryImage()}
           disabled={!selectedGalleryImage || !canAddMore || copyingGalleryImage}
-          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-bg-tertiary py-1.5 text-[11px] text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-bg-tertiary py-1.5 text-xs text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
         >
           <ImageIcon size={12} />
           {copyingGalleryImage
@@ -191,13 +191,13 @@ export function ImageRefSection() {
       )}
 
       {maxRefs != null && (
-        <p className="text-[9px] text-text-muted">
+        <p className="text-2xs text-text-muted">
           Up to {maxRefs} reference image{maxRefs === 1 ? '' : 's'}.
         </p>
       )}
 
       {isAdaptiveImageGenerate && imageRefs.length > 0 && (
-        <p className="text-[10px] text-text-muted">
+        <p className="text-2xs text-text-muted">
           Describe the finished image below. Add more images when the model supports multi-reference editing.
         </p>
       )}
@@ -207,7 +207,7 @@ export function ImageRefSection() {
         <div className="flex bg-bg-tertiary rounded-lg p-0.5 border border-border">
           <button
             onClick={() => setImageRefType('KI')}
-            className={`flex-1 text-[10px] py-1.5 rounded-md transition-all ${
+            className={`flex-1 text-2xs py-1.5 rounded-md transition-all ${
               imageRefType === 'KI'
                 ? 'bg-bg-active text-text-primary'
                 : 'text-text-secondary hover:text-text-primary'
@@ -217,7 +217,7 @@ export function ImageRefSection() {
           </button>
           <button
             onClick={() => setImageRefType('I')}
-            className={`flex-1 text-[10px] py-1.5 rounded-md transition-all ${
+            className={`flex-1 text-2xs py-1.5 rounded-md transition-all ${
               imageRefType === 'I'
                 ? 'bg-bg-active text-text-primary'
                 : 'text-text-secondary hover:text-text-primary'
@@ -230,7 +230,7 @@ export function ImageRefSection() {
 
       {/* Hint text */}
       {imageRefs.length > 0 && hasLandscapeMode && imageRefType === 'KI' && (
-        <p className="text-[10px] text-text-muted">
+        <p className="text-2xs text-text-muted">
           First image is the main subject/landscape. Additional images are people/objects to inject. Drag to reorder.
         </p>
       )}
@@ -244,7 +244,7 @@ export function ImageRefSection() {
             onChange={e => setRemoveBackgroundRefs(e.target.checked)}
             className="mt-0.5 w-3.5 h-3.5 rounded border-border bg-bg-tertiary accent-accent-blue shrink-0"
           />
-          <span className="text-[10px] text-text-secondary leading-tight">{bgLabel}</span>
+          <span className="text-2xs text-text-secondary leading-tight">{bgLabel}</span>
         </label>
       )}
     </div>

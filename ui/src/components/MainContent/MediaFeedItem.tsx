@@ -677,7 +677,7 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
                 )}
               </div>
               {cardPrompt && (
-                <div className="text-[11px] text-text-muted truncate mt-0.5" title={cardPrompt}>
+                <div className="text-xs text-text-muted truncate mt-0.5" title={cardPrompt}>
                   {effectiveWindowPrompts.length > 0 && (
                     <span className="text-accent-blue">
                       {generatedWindowPrompts ? 'AI window 1' : 'Window 1'} &middot;{' '}
@@ -688,9 +688,9 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
               )}
             </>
           ) : metaLoaded ? (
-            <div className="text-[11px] text-text-muted truncate">{file.name}</div>
+            <div className="text-xs text-text-muted truncate">{file.name}</div>
           ) : (
-            <div className="text-[11px] text-text-muted animate-pulse">Loading...</div>
+            <div className="text-xs text-text-muted animate-pulse">Loading...</div>
           )}
         </div>
 
@@ -780,7 +780,7 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
                 actionMenuOpensDown ? 'top-full mt-2' : 'bottom-full mb-2'
               }`}
             >
-              <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+              <div className="px-2 py-1.5 text-2xs font-semibold uppercase tracking-wider text-text-muted">
                 Clip actions
               </div>
               {params && (
@@ -910,13 +910,13 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
                           key={ws.name}
                           role="menuitem"
                           onClick={() => handleMove(ws.name)}
-                          className="w-full px-3 py-2 text-left text-[11px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+                          className="w-full px-3 py-2 text-left text-xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
                         >
                           {ws.name}
                         </button>
                       ))}
                       {workspaces.filter(ws => ws.name !== activeWorkspace).length === 0 && (
-                        <div className="px-3 py-2 text-[10px] text-text-muted">No other workspaces</div>
+                        <div className="px-3 py-2 text-2xs text-text-muted">No other workspaces</div>
                       )}
                     </div>
                   )}
@@ -951,41 +951,41 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
         >
           <div className="flex flex-wrap gap-1.5 mb-3">
             {h3Workflow && (
-              <span className="rounded-full border border-border bg-bg-tertiary px-2 py-0.5 text-[10px] text-text-secondary">
+              <span className="rounded-full border border-border bg-bg-tertiary px-2 py-0.5 text-2xs text-text-secondary">
                 {h3Workflow}
               </span>
             )}
             {resolution && (
-              <span className="rounded-full border border-border bg-bg-tertiary px-2 py-0.5 text-[10px] text-text-secondary">
+              <span className="rounded-full border border-border bg-bg-tertiary px-2 py-0.5 text-2xs text-text-secondary">
                 {resolution}
               </span>
             )}
             {inferenceSteps != null && (
-              <span className="rounded-full border border-border bg-bg-tertiary px-2 py-0.5 text-[10px] text-text-secondary">
+              <span className="rounded-full border border-border bg-bg-tertiary px-2 py-0.5 text-2xs text-text-secondary">
                 {inferenceSteps} steps
               </span>
             )}
             {isMultiWindow && (
-              <span className="rounded-full border border-border bg-bg-tertiary px-2 py-0.5 text-[10px] text-text-secondary">
+              <span className="rounded-full border border-border bg-bg-tertiary px-2 py-0.5 text-2xs text-text-secondary">
                 {windowCount} windows
               </span>
             )}
             {isMultiWindow && sceneDurationSeconds > 0 && (
-              <span className="rounded-full border border-border bg-bg-tertiary px-2 py-0.5 text-[10px] text-text-secondary">
+              <span className="rounded-full border border-border bg-bg-tertiary px-2 py-0.5 text-2xs text-text-secondary">
                 {formatDuration(sceneDurationSeconds, true)} scene
               </span>
             )}
             {optimizationLabels.map(label => (
               <span
                 key={label}
-                className="rounded-full border border-accent-blue/30 bg-accent-blue/10 px-2 py-0.5 text-[10px] text-accent-blue"
+                className="rounded-full border border-accent-blue/30 bg-accent-blue/10 px-2 py-0.5 text-2xs text-accent-blue"
               >
                 {label}
               </span>
             ))}
           </div>
 
-          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-[11px]">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
             <dt className="text-text-muted">Model</dt>
             <dd className="text-text-secondary break-words">{modelLabel || modelType || 'Unknown'}</dd>
             {h3Workflow && (
@@ -1082,10 +1082,10 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
           {isMultiWindow && (
             <div className="mt-3 rounded-lg border border-border bg-bg-tertiary/70 p-2.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-text-muted">
+                <div className="text-2xs font-medium uppercase tracking-wide text-text-muted">
                   Window timing
                 </div>
-                <div className="text-[10px] text-text-muted">
+                <div className="text-2xs text-text-muted">
                   {windowCount} windows
                   {sceneDurationSeconds > 0
                     ? ` · ${formatDuration(sceneDurationSeconds, true)} scene`
@@ -1100,7 +1100,7 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
                   {timedWindowSeconds.map((seconds, windowIndex) => (
                     <div
                       key={`window-timing-${windowIndex}`}
-                      className="flex items-center justify-between gap-2 rounded-md border border-border/70 bg-bg-secondary px-2 py-1.5 text-[10px]"
+                      className="flex items-center justify-between gap-2 rounded-md border border-border/70 bg-bg-secondary px-2 py-1.5 text-2xs"
                     >
                       <span className="text-text-muted">Window {windowIndex + 1}</span>
                       <span className="font-medium text-text-secondary">
@@ -1110,7 +1110,7 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
                   ))}
                 </div>
               ) : (
-                <div className="mt-2 text-[10px] leading-relaxed text-text-muted">
+                <div className="mt-2 text-2xs leading-relaxed text-text-muted">
                   Per-window completion times are recorded for new multi-window generations.
                 </div>
               )}
@@ -1119,10 +1119,10 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
 
           {activeLoras.length > 0 && (
             <div className="mt-3">
-              <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-text-muted">Active LoRAs</div>
+              <div className="mb-1 text-2xs font-medium uppercase tracking-wide text-text-muted">Active LoRAs</div>
               <div className="space-y-1">
                 {activeLoras.map((lora, loraIndex) => (
-                  <div key={`${lora}-${loraIndex}`} className="flex gap-2 text-[11px]">
+                  <div key={`${lora}-${loraIndex}`} className="flex gap-2 text-xs">
                     <span className="min-w-0 flex-1 break-all text-text-secondary">{lora}</span>
                     {loraWeights[loraIndex] && (
                       <span className="shrink-0 text-text-muted">{loraWeights[loraIndex]}x</span>
@@ -1136,19 +1136,19 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
           {prompt && (
             <div className="mt-3">
               <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-text-muted">
+                <span className="text-2xs font-medium uppercase tracking-wide text-text-muted">
                   {effectiveWindowPrompts.length > 0 ? 'Source prompt' : 'Prompt'}
                 </span>
                 <button
                   type="button"
                   onClick={handleCopyPrompt}
-                  className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-text-muted hover:bg-bg-hover hover:text-text-primary"
+                  className="flex items-center gap-1 rounded px-1.5 py-0.5 text-2xs text-text-muted hover:bg-bg-hover hover:text-text-primary"
                 >
                   {copied ? <Check size={10} className="text-accent-green" /> : <Copy size={10} />}
                   {copied ? 'Copied' : 'Copy'}
                 </button>
               </div>
-              <div className="max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-bg-tertiary p-2 text-[11px] leading-relaxed text-text-secondary">
+              <div className="max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-bg-tertiary p-2 text-xs leading-relaxed text-text-secondary">
                 {prompt}
               </div>
             </div>
@@ -1156,11 +1156,11 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
           {originalPrompt && originalPrompt.trim() !== prompt.trim() && (
             <div className="mt-3">
               <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-text-muted">Original prompt</span>
+                <span className="text-2xs font-medium uppercase tracking-wide text-text-muted">Original prompt</span>
                 <button
                   type="button"
                   onClick={handleCopyOriginalPrompt}
-                  className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-text-muted hover:bg-bg-hover hover:text-text-primary"
+                  className="flex items-center gap-1 rounded px-1.5 py-0.5 text-2xs text-text-muted hover:bg-bg-hover hover:text-text-primary"
                   title="Copy original prompt"
                   aria-label="Copy original prompt"
                 >
@@ -1168,14 +1168,14 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
                   {copiedOriginalPrompt ? 'Copied' : 'Copy'}
                 </button>
               </div>
-              <div className="max-h-28 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-bg-tertiary p-2 text-[11px] leading-relaxed text-text-secondary">
+              <div className="max-h-28 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-bg-tertiary p-2 text-xs leading-relaxed text-text-secondary">
                 {originalPrompt}
               </div>
             </div>
           )}
           {effectiveWindowPrompts.length > 0 && (
             <div className="mt-3">
-              <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-text-muted">
+              <div className="mb-1 text-2xs font-medium uppercase tracking-wide text-text-muted">
                 {windowPromptsHeading} ({effectiveWindowPrompts.length})
               </div>
               <div className="space-y-2">
@@ -1185,10 +1185,10 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
                     className="overflow-hidden rounded-lg border border-border bg-bg-tertiary"
                     open={effectiveWindowPrompts.length <= 2}
                   >
-                    <summary className="cursor-pointer select-none px-2 py-1.5 text-[11px] font-medium text-text-secondary hover:bg-bg-hover">
+                    <summary className="cursor-pointer select-none px-2 py-1.5 text-xs font-medium text-text-secondary hover:bg-bg-hover">
                       Window {windowIndex + 1}
                     </summary>
-                    <div className="whitespace-pre-wrap break-words border-t border-border px-2 py-2 text-[11px] leading-relaxed text-text-secondary">
+                    <div className="whitespace-pre-wrap break-words border-t border-border px-2 py-2 text-xs leading-relaxed text-text-secondary">
                       {windowPrompt}
                     </div>
                   </details>
@@ -1198,16 +1198,16 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
           )}
           {h3PlanningWarnings.length > 0 && (
             <div className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-2">
-              <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-amber-300">
+              <div className="mb-1 text-2xs font-medium uppercase tracking-wide text-amber-300">
                 Planning notes
               </div>
               {h3PlanningWarnings.map((warning, warningIndex) => (
-                <div key={`h3-planning-warning-${warningIndex}`} className="text-[11px] leading-relaxed text-text-secondary">
+                <div key={`h3-planning-warning-${warningIndex}`} className="text-xs leading-relaxed text-text-secondary">
                   {warning}
                 </div>
               ))}
               {h3PlanningDiagnostics.length > 0 && (
-                <details className="mt-1 text-[10px] text-text-muted">
+                <details className="mt-1 text-2xs text-text-muted">
                   <summary className="cursor-pointer select-none">Why repair was needed</summary>
                   <ul className="mt-1 list-disc space-y-0.5 pl-4">
                     {h3PlanningDiagnostics.map((diagnostic, diagnosticIndex) => (
@@ -1220,11 +1220,11 @@ export function MediaFeedItem({ file, index, isActive, onActivate, onPlaybackSta
           )}
           {h3PlanningNotes.length > 0 && (
             <div className="mt-3 rounded-lg border border-border bg-bg-tertiary p-2">
-              <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-text-muted">
+              <div className="mb-1 text-2xs font-medium uppercase tracking-wide text-text-muted">
                 H3 timing notes
               </div>
               {h3PlanningNotes.map((note, noteIndex) => (
-                <div key={`h3-planning-note-${noteIndex}`} className="text-[11px] leading-relaxed text-text-secondary">
+                <div key={`h3-planning-note-${noteIndex}`} className="text-xs leading-relaxed text-text-secondary">
                   {note}
                 </div>
               ))}

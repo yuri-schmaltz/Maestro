@@ -75,11 +75,11 @@ export function RecipesOverlay() {
       <div className="px-4 py-3 border-b border-border flex items-center gap-2 shrink-0">
         <BookMarked size={16} className="text-accent-blue shrink-0" />
         <h1 className="text-sm font-semibold text-text-primary">Recipes</h1>
-        <span className="text-[11px] text-text-muted">one-click presets — pick a look, tweak the prompt, generate</span>
+        <span className="text-xs text-text-muted">one-click presets — pick a look, tweak the prompt, generate</span>
         <div className="flex-1" />
         <button
           onClick={handleImport}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] bg-bg-tertiary border border-border rounded-lg text-text-secondary hover:text-text-primary hover:border-border-light transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-bg-tertiary border border-border rounded-lg text-text-secondary hover:text-text-primary hover:border-border-light transition-colors"
         >
           <Upload size={12} /> Import
         </button>
@@ -94,7 +94,7 @@ export function RecipesOverlay() {
         <div className="px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/30">
           <div className="flex items-start gap-2">
             <AlertTriangle size={14} className="text-indicator-warning shrink-0 mt-0.5" />
-            <div className="flex-1 text-[11px] text-text-primary">
+            <div className="flex-1 text-xs text-text-primary">
               <div className="font-medium mb-1">
                 Applied — but this recipe uses {missing.loras.length} LoRA
                 {missing.loras.length > 1 ? 's' : ''} you don't have installed:
@@ -105,23 +105,23 @@ export function RecipesOverlay() {
                 ))}
               </div>
               {!civitaiKeySet && missing.loras.some(l => l.source_url) && (
-                <div className="mt-1.5 text-[10px] text-text-secondary leading-snug">
+                <div className="mt-1.5 text-2xs text-text-secondary leading-snug">
                   Auto-download needs a free CivitAI API key.{' '}
                   <button onClick={openCivitaiKeySettings} className="underline hover:text-text-primary">Add one in Settings</button>
                   {' '}— then click Download. Or use each “Open source” link to grab it manually.
                 </div>
               )}
-              <div className="mt-1.5 text-[10px] text-text-secondary">
+              <div className="mt-1.5 text-2xs text-text-secondary">
                 The recipe is applied and ready — you just need the LoRA before you Generate.
               </div>
             </div>
             <button onClick={() => { setMissing(null); setOpen(false) }}
-              className="text-[10px] text-text-secondary hover:text-text-primary shrink-0">Dismiss</button>
+              className="text-2xs text-text-secondary hover:text-text-primary shrink-0">Dismiss</button>
           </div>
         </div>
       )}
       {error && (
-        <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/30 text-[11px] text-chip-red">{error}</div>
+        <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/30 text-xs text-chip-red">{error}</div>
       )}
 
       {/* Grid */}
@@ -174,7 +174,7 @@ function RecipeGridCard({ card, applying, onApply, onDelete }: {
             : <Play size={22} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />}
         </div>
         {card.nsfw && (
-          <span className="absolute top-1.5 left-1.5 text-[8px] uppercase tracking-wide bg-red-500/80 text-white rounded px-1 py-0.5">Mature</span>
+          <span className="absolute top-1.5 left-1.5 text-2xs uppercase tracking-wide bg-red-500/80 text-white rounded px-1 py-0.5">Mature</span>
         )}
       </button>
 
@@ -190,9 +190,9 @@ function RecipeGridCard({ card, applying, onApply, onDelete }: {
           )}
         </div>
         {card.description && (
-          <div className="text-[10px] text-text-muted leading-snug line-clamp-2">{card.description}</div>
+          <div className="text-2xs text-text-muted leading-snug line-clamp-2">{card.description}</div>
         )}
-        <div className="mt-auto pt-1 flex items-center gap-2 text-[9px] text-text-muted">
+        <div className="mt-auto pt-1 flex items-center gap-2 text-2xs text-text-muted">
           <span className="capitalize">{card.mode}</span>
           {card.lora_count > 0 && (
             <span className="flex items-center gap-0.5"><Layers size={9} /> {card.lora_count}</span>

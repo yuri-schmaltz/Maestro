@@ -111,6 +111,7 @@ interface EditorState {
 
   uploadMedia: (file: File, trackId?: string) => Promise<void>
   relinkMedia: (assetId: string, file: File) => Promise<void>
+  removeLibraryAsset: (asset: EditorAsset) => Promise<void>
   addMedia: (asset: EditorAsset, at?: number, trackId?: string) => Promise<void>
   importDirectorRun: (pipelineId: string, at?: number) => Promise<void>
   rerunDirectorClip: (itemId: string, prompt?: string) => Promise<void>
@@ -658,6 +659,32 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       })
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unable to load media' })
+    }
+  },
+
+  /**
+   * Delete a media asset from the library. Two paths depending on origin:
+   *   - workspace outputs: DELETE /api/v1/outputs/{name}?workspace=...
+   *   - uploads: DELETE /api/v1/uploads/{name}
+   * After a successful API call the asset is removed from the in-memory
+   * `library` so the UI updates immediately; if the call fails the store
+   * surfaces the error via `error` and keeps the library intact.
+   */
+  removeLibraryAsset: async (asset) => {
+    try {
+      if (asset.origin === 'upload') {
+        await api.deleteUpload(asset.name)
+      } else {
+        const workspace = asset.workspace && asset.workspace !== '__uploads__'
+          ? asset.workspace
+          : get().workspace
+        await api.deleteOutput(asset.name, workspace)
+      }
+      set(state => ({
+        library: state.library.filter(item => !(item.name === asset.name && item.origin === asset.origin)),
+      }))
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Unable to delete media' })
     }
   },
 

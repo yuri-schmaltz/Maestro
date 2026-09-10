@@ -166,7 +166,7 @@ export function EditorWorkspace() {
         </div>
       )}
       {error && (
-        <div className="pointer-events-none absolute bottom-4 left-1/2 z-[110] max-w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-red-500/30 bg-red-950/90 px-3 py-2 text-[10px] text-red-200 shadow-xl">
+        <div className="pointer-events-none absolute bottom-4 left-1/2 z-[110] max-w-[min(520px,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-red-500/30 bg-red-950/90 px-3 py-2 text-2xs text-red-200 shadow-xl">
           {error}
         </div>
       )}

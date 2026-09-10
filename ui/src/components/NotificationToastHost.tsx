@@ -49,7 +49,7 @@ export function NotificationToastHost() {
             />
             <div className="min-w-0 flex-1">
               <div className="text-xs font-medium text-text-primary">{alert.title}</div>
-              <div className="mt-0.5 text-[10px] leading-relaxed text-text-secondary">{alert.body}</div>
+              <div className="mt-0.5 text-2xs leading-relaxed text-text-secondary">{alert.body}</div>
             </div>
             <button
               type="button"

@@ -133,7 +133,7 @@ export function ToolsPanel({
     <div className="flex flex-col gap-4">
       {!embedded && (
       <div>
-        <div className="flex items-center gap-1.5 text-[11px] text-text-muted uppercase tracking-wider mb-2">
+        <div className="flex items-center gap-1.5 text-xs text-text-muted uppercase tracking-wider mb-2">
           <Wrench size={12} /> Tools — post-process any clip
         </div>
         {/* Tool selector */}
@@ -155,7 +155,7 @@ export function ToolsPanel({
 
       {/* Source media — upload, or use the matching gallery selection. */}
       <div>
-        <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
           Source {mediaKind === 'image' ? 'Image' : 'Clip'}
         </label>
         {sourcePath ? (
@@ -170,7 +170,7 @@ export function ToolsPanel({
               {mediaKind === 'image'
                 ? <ImageIcon size={12} className="text-accent-blue shrink-0" />
                 : <Film size={12} className="text-accent-blue shrink-0" />}
-              <span className="flex-1 min-w-0 truncate text-[11px] text-text-primary">{sourceName}</span>
+              <span className="flex-1 min-w-0 truncate text-xs text-text-primary">{sourceName}</span>
               <button onClick={() => setSource(null)} className="p-0.5 text-text-muted hover:text-red-400 transition-colors" title="Clear">
                 <X size={12} />
               </button>
@@ -183,7 +183,7 @@ export function ToolsPanel({
               className={`border-2 border-dashed border-border rounded-lg p-3 text-center cursor-pointer hover:border-accent-blue transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
             >
               <Upload size={16} className="mx-auto mb-1 text-text-muted" />
-              <p className="text-[11px] text-text-secondary">
+              <p className="text-xs text-text-secondary">
                 {uploading ? 'Uploading...' : `Upload ${mediaKind === 'image' ? 'an image' : 'a video clip'}`}
               </p>
               <input
@@ -197,7 +197,7 @@ export function ToolsPanel({
             <button
               onClick={useCurrentClip}
               disabled={!currentMatchesMedia}
-              className="w-full text-[11px] py-1.5 rounded-md border border-border bg-bg-tertiary text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="w-full text-xs py-1.5 rounded-md border border-border bg-bg-tertiary text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {currentMatchesMedia
                 ? `Use selected gallery ${mediaKind}`
@@ -210,7 +210,7 @@ export function ToolsPanel({
       {/* Tool params */}
       {tool === 'upscale' ? (
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">Upscale Method</label>
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Upscale Method</label>
           <select
             value={method}
             onChange={e => setMethod(e.target.value)}
@@ -221,11 +221,11 @@ export function ToolsPanel({
             ))}
           </select>
           {flashvsrOff && (
-            <p className="text-[10px] text-indicator-warning mt-1.5 leading-snug">
+            <p className="text-2xs text-indicator-warning mt-1.5 leading-snug">
               FlashVSR is disabled in Settings → Services. Enable it, or pick a Lanczos method.
             </p>
           )}
-          <p className="text-[10px] text-text-muted mt-1.5 leading-snug">
+          <p className="text-2xs text-text-muted mt-1.5 leading-snug">
             FlashVSR is model-based super-resolution (sharper, slower; weights download on first use). Lanczos is a fast classic resize.
             {mediaKind === 'video' ? " The clip's audio is preserved." : ''}
           </p>
@@ -234,7 +234,7 @@ export function ToolsPanel({
         <div className="space-y-4">
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] text-text-muted uppercase tracking-wider">Grain Intensity</label>
+              <label className="text-xs text-text-muted uppercase tracking-wider">Grain Intensity</label>
               <span className="text-xs text-text-secondary">{grainIntensity.toFixed(2)}</span>
             </div>
             <input
@@ -248,7 +248,7 @@ export function ToolsPanel({
           </div>
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] text-text-muted uppercase tracking-wider">Grain Saturation</label>
+              <label className="text-xs text-text-muted uppercase tracking-wider">Grain Saturation</label>
               <span className="text-xs text-text-secondary">{grainSaturation.toFixed(2)}</span>
             </div>
             <input
@@ -260,13 +260,13 @@ export function ToolsPanel({
               onChange={event => setGrainSaturation(Number(event.target.value))}
             />
           </div>
-          <p className="text-[10px] text-text-muted leading-snug">
+          <p className="text-2xs text-text-muted leading-snug">
             Adds film grain to the full clip as a new finished copy. The original video and its audio are preserved.
           </p>
         </div>
       ) : (
         <div className="space-y-2">
-          <label className="text-[11px] text-text-muted uppercase tracking-wider block">Replace Voice (SeedVC)</label>
+          <label className="text-xs text-text-muted uppercase tracking-wider block">Replace Voice (SeedVC)</label>
           <div className="flex gap-1.5 text-xs">
             {([['single', 'Single Voice'], ['two', 'Two Voices']] as const).map(([val, label]) => (
               <button
@@ -282,7 +282,7 @@ export function ToolsPanel({
               </button>
             ))}
           </div>
-          <p className="text-[10px] text-text-muted leading-snug">
+          <p className="text-2xs text-text-muted leading-snug">
             {revoiceMode === 'single'
               ? 'Replaces every voice in the clip with the reference voice.'
               : 'Auto-detects 2 speakers; preserves background music & silence. First detected → Voice A, second → Voice B.'}
@@ -292,13 +292,13 @@ export function ToolsPanel({
             const label = revoiceMode === 'two' ? (idx === 0 ? 'Voice A' : 'Voice B') : 'Reference Voice'
             return (
               <div key={idx}>
-                <label className="text-[10px] text-text-muted uppercase tracking-wider mb-1 block">{label}</label>
+                <label className="text-2xs text-text-muted uppercase tracking-wider mb-1 block">{label}</label>
                 {!ref || !ref.path ? (
                   <div
                     onClick={() => vcFileRefs[idx].current?.click()}
                     className={`border-2 border-dashed border-border rounded-lg p-2 text-center cursor-pointer hover:border-accent-blue transition-colors ${vcUploading === idx ? 'opacity-50 pointer-events-none' : ''}`}
                   >
-                    <p className="text-[11px] text-text-secondary">{vcUploading === idx ? 'Uploading...' : `Upload ${label.toLowerCase()} sample`}</p>
+                    <p className="text-xs text-text-secondary">{vcUploading === idx ? 'Uploading...' : `Upload ${label.toLowerCase()} sample`}</p>
                     <input
                       ref={vcFileRefs[idx]}
                       type="file"
@@ -310,7 +310,7 @@ export function ToolsPanel({
                 ) : (
                   <div className="flex items-center gap-2 bg-bg-tertiary border border-border rounded-lg px-2 py-1.5">
                     <Mic size={12} className="text-accent-blue shrink-0" />
-                    <span className="flex-1 min-w-0 truncate text-[11px] text-text-primary">{ref.filename}</span>
+                    <span className="flex-1 min-w-0 truncate text-xs text-text-primary">{ref.filename}</span>
                     <button onClick={() => setRevoiceRef(idx, null)} className="p-0.5 text-text-muted hover:text-red-400 transition-colors" title="Remove">
                       <X size={12} />
                     </button>

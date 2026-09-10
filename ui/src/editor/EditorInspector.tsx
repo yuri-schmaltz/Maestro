@@ -25,7 +25,7 @@ import { DEFAULT_EDITOR_FONT, EDITOR_FONT_OPTIONS, editorFontStack } from './edi
 import { useEditorStore } from './useEditorStore'
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-[9px] font-medium uppercase tracking-wider text-text-muted">{children}</label>
+  return <label className="text-2xs font-medium uppercase tracking-wider text-text-muted">{children}</label>
 }
 
 function NumberField({
@@ -53,7 +53,7 @@ function NumberField({
         max={max}
         step={step}
         onChange={event => onChange(Number(event.target.value))}
-        className="w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-[10px] text-text-primary outline-none focus:border-accent-blue/60"
+        className="w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-2xs text-text-primary outline-none focus:border-accent-blue/60"
       />
     </div>
   )
@@ -78,7 +78,7 @@ function SliderField({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <FieldLabel>{label}</FieldLabel>
-        <span className="font-mono text-[9px] text-text-secondary">{value.toFixed(step < 0.1 ? 2 : 1)}</span>
+        <span className="font-mono text-2xs text-text-secondary">{value.toFixed(step < 0.1 ? 2 : 1)}</span>
       </div>
       <input type="range" min={min} max={max} step={step} value={value} onChange={event => onChange(Number(event.target.value))} className="w-full accent-[var(--color-accent-blue)]" />
     </div>
@@ -98,10 +98,10 @@ function DirectorRerunPanel({ item }: { item: EditorTimelineItem }) {
   return (
     <div className="overflow-hidden rounded-xl border border-accent-blue/25 bg-accent-blue/5">
       <div className="flex items-center justify-between gap-2 border-b border-accent-blue/15 px-3 py-2.5">
-        <span className="flex items-center gap-1.5 text-[10px] font-medium text-accent-blue">
+        <span className="flex items-center gap-1.5 text-2xs font-medium text-accent-blue">
           <Clapperboard size={12} /> Director shot {source.clip_index + 1}
         </span>
-        <span className="max-w-[92px] truncate font-mono text-[7px] text-text-muted" title={source.pipeline_id}>
+        <span className="max-w-[92px] truncate font-mono text-2xs text-text-muted" title={source.pipeline_id}>
           {source.pipeline_id}
         </span>
       </div>
@@ -112,21 +112,21 @@ function DirectorRerunPanel({ item }: { item: EditorTimelineItem }) {
             value={prompt}
             onChange={event => setPrompt(event.target.value)}
             rows={6}
-            className="mt-1 w-full resize-y rounded-lg border border-border bg-bg-tertiary px-2 py-2 text-[9px] leading-relaxed text-text-primary outline-none focus:border-accent-blue/60"
+            className="mt-1 w-full resize-y rounded-lg border border-border bg-bg-tertiary px-2 py-2 text-2xs leading-relaxed text-text-primary outline-none focus:border-accent-blue/60"
           />
         </div>
         <button
           type="button"
           onClick={() => void rerunDirectorClip(item.id, prompt)}
           disabled={Boolean(directorRerunItemId)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent-blue px-2 py-2 text-[9px] font-semibold text-white hover:brightness-110 disabled:cursor-wait disabled:opacity-45"
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent-blue px-2 py-2 text-2xs font-semibold text-white hover:brightness-110 disabled:cursor-wait disabled:opacity-45"
         >
           {directorRerunItemId === item.id
             ? <Loader2 size={11} className="animate-spin" />
             : <RotateCcw size={11} />}
           {directorRerunItemId === item.id ? 'Regenerating in Director…' : 'Re-run Director shot'}
         </button>
-        <p className="text-[8px] leading-relaxed text-text-muted">
+        <p className="text-2xs leading-relaxed text-text-muted">
           Uses the original Director model, references, soundtrack timing, LoRAs, and settings. The new render becomes the active take; the current take stays available.
         </p>
       </div>
@@ -216,7 +216,7 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
     <aside className={`min-h-0 overflow-y-auto bg-bg-secondary ${compact ? 'h-full' : 'w-[270px] shrink-0 border-l border-border'}`}>
       <div className="sticky top-0 z-10 flex h-10 items-center gap-2 border-b border-border bg-bg-secondary/95 px-3 backdrop-blur">
         <SlidersHorizontal size={12} className="text-accent-blue" />
-        <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-secondary">
+        <h2 className="text-2xs font-semibold uppercase tracking-[0.12em] text-text-secondary">
           {item ? 'Clip inspector' : selectedTrack ? 'Track inspector' : 'Project inspector'}
         </h2>
       </div>
@@ -229,9 +229,9 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
 
           {track.type === 'video' && asset?.type === 'video' && (
             <div className="overflow-hidden rounded-xl border border-accent-warm/25 bg-accent-warm/5">
-              <button type="button" onClick={() => setAiExpanded(value => !value)} className="flex w-full items-center justify-between px-3 py-2.5 text-[10px] font-medium text-accent-warm hover:bg-accent-warm/10">
+              <button type="button" onClick={() => setAiExpanded(value => !value)} className="flex w-full items-center justify-between px-3 py-2.5 text-2xs font-medium text-accent-warm hover:bg-accent-warm/10">
                 <span className="flex items-center gap-1.5"><WandSparkles size={12} /> Edit clip with Maestro AI</span>
-                <span className="text-[9px]">{aiExpanded ? 'Hide' : 'Choose tool'}</span>
+                <span className="text-2xs">{aiExpanded ? 'Hide' : 'Choose tool'}</span>
               </button>
               {aiExpanded && (
                 <div className="space-y-2 border-t border-accent-warm/15 p-2.5">
@@ -241,7 +241,7 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
                         key={mode}
                         type="button"
                         onClick={() => setAiReturnMode(mode)}
-                        className={`rounded-md px-2 py-1.5 text-[9px] ${aiReturnMode === mode ? 'bg-bg-active text-text-primary' : 'text-text-muted hover:text-text-secondary'}`}
+                        className={`rounded-md px-2 py-1.5 text-2xs ${aiReturnMode === mode ? 'bg-bg-active text-text-primary' : 'text-text-muted hover:text-text-secondary'}`}
                       >
                         {mode === 'alternate' ? 'Add alternate take' : 'Replace on timeline'}
                       </button>
@@ -257,16 +257,16 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
                         className="rounded-lg border border-border bg-bg-secondary px-2 py-2 text-left hover:border-accent-warm/40 hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-35"
                         title={aiRoundTripActive ? 'Finish or cancel the current AI round trip first.' : tool.description}
                       >
-                        <span className="block text-[9px] font-medium text-text-primary">{tool.label}</span>
-                        <span className="mt-0.5 block text-[7px] leading-snug text-text-muted">{tool.description}</span>
+                        <span className="block text-2xs font-medium text-text-primary">{tool.label}</span>
+                        <span className="mt-0.5 block text-2xs leading-snug text-text-muted">{tool.description}</span>
                       </button>
                     ))}
                   </div>
-                  <p className="text-[8px] leading-relaxed text-text-muted">Maestro tracks the next queued generation and returns its output to this exact clip automatically.</p>
+                  <p className="text-2xs leading-relaxed text-text-muted">Maestro tracks the next queued generation and returns its output to this exact clip automatically.</p>
                 </div>
               )}
               {roundTrip?.itemId === item.id && (
-                <div className={`flex items-center justify-between gap-2 border-t px-2.5 py-2 text-[8px] ${roundTrip.status === 'failed' ? 'border-red-500/20 text-red-300' : roundTrip.status === 'completed' ? 'border-emerald-500/20 text-emerald-300' : 'border-accent-blue/20 text-accent-blue'}`}>
+                <div className={`flex items-center justify-between gap-2 border-t px-2.5 py-2 text-2xs ${roundTrip.status === 'failed' ? 'border-red-500/20 text-red-300' : roundTrip.status === 'completed' ? 'border-emerald-500/20 text-emerald-300' : 'border-accent-blue/20 text-accent-blue'}`}>
                   <span className="truncate">{roundTrip.status === 'armed' ? 'Waiting for generation…' : roundTrip.status === 'completed' ? 'AI result returned to Editor' : roundTrip.status === 'failed' ? roundTrip.error : `${roundTrip.status} in universal queue…`}</span>
                   <button type="button" onClick={cancelAIRoundTrip} className="shrink-0 underline opacity-75 hover:opacity-100">Dismiss</button>
                 </div>
@@ -275,7 +275,7 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
           )}
 
           {selectedItemIds.length > 1 && (
-            <div className="rounded-lg border border-accent-warm/25 bg-accent-warm/5 px-2.5 py-2 text-[9px] text-accent-warm">
+            <div className="rounded-lg border border-accent-warm/25 bg-accent-warm/5 px-2.5 py-2 text-2xs text-accent-warm">
               {selectedItemIds.length} clips selected. Move, duplicate, copy, delete, or link them as a group; this inspector edits the primary clip.
             </div>
           )}
@@ -284,9 +284,9 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
             <input
               value={item.name}
               onChange={event => updateItem(item.id, { name: event.target.value.slice(0, 140) })}
-              className="mt-1 w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-[10px] text-text-primary outline-none focus:border-accent-blue/60"
+              className="mt-1 w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-2xs text-text-primary outline-none focus:border-accent-blue/60"
             />
-            <p className="mt-1 truncate text-[8px] text-text-muted">{track.name}{asset ? ` · ${asset.width || '—'}×${asset.height || '—'}` : ''}</p>
+            <p className="mt-1 truncate text-2xs text-text-muted">{track.name}{asset ? ` · ${asset.width || '—'}×${asset.height || '—'}` : ''}</p>
           </div>
 
           {asset?.missing && (
@@ -294,8 +294,8 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
               <div className="flex items-start gap-2">
                 <TriangleAlert size={13} className="mt-0.5 shrink-0 text-red-300" />
                 <div className="min-w-0 flex-1">
-                  <div className="text-[10px] font-medium text-red-200">Source media is offline</div>
-                  <p className="mt-0.5 break-all text-[8px] leading-relaxed text-red-200/70">{asset.name}</p>
+                  <div className="text-2xs font-medium text-red-200">Source media is offline</div>
+                  <p className="mt-0.5 break-all text-2xs leading-relaxed text-red-200/70">{asset.name}</p>
                 </div>
               </div>
               <input
@@ -312,7 +312,7 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
               <button
                 type="button"
                 onClick={() => relinkInputRef.current?.click()}
-                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-400/25 bg-bg-secondary py-2 text-[9px] font-medium text-red-100 hover:border-red-300/45"
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-400/25 bg-bg-secondary py-2 text-2xs font-medium text-red-100 hover:border-red-300/45"
               >
                 <FolderOpen size={11} /> Relink source file
               </button>
@@ -323,18 +323,18 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
             <div className="space-y-1.5 rounded-lg border border-border bg-bg-tertiary p-2.5">
               <div className="flex items-center justify-between">
                 <FieldLabel>Alternate takes</FieldLabel>
-                <span className="text-[8px] text-text-muted">{Math.max(1, takeIds.indexOf(item.asset_id || '') + 1)} of {takeIds.length}</span>
+                <span className="text-2xs text-text-muted">{Math.max(1, takeIds.indexOf(item.asset_id || '') + 1)} of {takeIds.length}</span>
               </div>
               <select
                 value={item.asset_id || ''}
                 onChange={event => setActiveTake(item.id, event.target.value)}
-                className="w-full rounded-md border border-border bg-bg-secondary px-2 py-1.5 text-[10px] text-text-primary outline-none focus:border-accent-blue/60"
+                className="w-full rounded-md border border-border bg-bg-secondary px-2 py-1.5 text-2xs text-text-primary outline-none focus:border-accent-blue/60"
               >
                 {takeIds.map((assetId, index) => (
                   <option key={assetId} value={assetId}>Take {index + 1} · {project.assets[assetId]?.name || 'Missing media'}</option>
                 ))}
               </select>
-              <p className="text-[8px] leading-relaxed text-text-muted">Switch takes without changing timing, transforms, titles, or the rest of the edit.</p>
+              <p className="text-2xs leading-relaxed text-text-muted">Switch takes without changing timing, transforms, titles, or the rest of the edit.</p>
             </div>
           )}
 
@@ -345,14 +345,14 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
                 value={item.text || ''}
                 onChange={event => updateItem(item.id, { text: event.target.value })}
                 rows={3}
-                className="w-full resize-none rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-[10px] text-text-primary outline-none focus:border-accent-blue/60"
+                className="w-full resize-none rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-2xs text-text-primary outline-none focus:border-accent-blue/60"
               />
               <div className="space-y-1">
                 <FieldLabel>Font</FieldLabel>
                 <select
                   value={item.style?.font_family || DEFAULT_EDITOR_FONT}
                   onChange={event => patchStyle('font_family', event.target.value)}
-                  className="w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-[10px] text-text-primary outline-none focus:border-accent-blue/60"
+                  className="w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-2xs text-text-primary outline-none focus:border-accent-blue/60"
                   style={{ fontFamily: editorFontStack(item.style?.font_family) }}
                 >
                   {EDITOR_FONT_OPTIONS.map(option => (
@@ -424,7 +424,7 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
               {track.type === 'video' && (
                 <div className="grid grid-cols-2 gap-1 rounded-lg bg-bg-tertiary p-1">
                   {(['contain', 'cover'] as const).map(fit => (
-                    <button key={fit} type="button" onClick={() => updateItem(item.id, { fit })} className={`rounded-md py-1 text-[9px] capitalize ${item.fit === fit ? 'bg-bg-active text-text-primary' : 'text-text-muted hover:text-text-secondary'}`}>{fit}</button>
+                    <button key={fit} type="button" onClick={() => updateItem(item.id, { fit })} className={`rounded-md py-1 text-2xs capitalize ${item.fit === fit ? 'bg-bg-active text-text-primary' : 'text-text-muted hover:text-text-secondary'}`}>{fit}</button>
                   ))}
                 </div>
               )}
@@ -446,7 +446,7 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
                       fade_in: transition === 'none' ? 0 : Math.max(item.fade_in || 0, Math.min(0.5, item.duration / 2)),
                     })
                   }}
-                  className="w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-[10px] text-text-primary outline-none"
+                  className="w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-2xs text-text-primary outline-none"
                 >
                   <option value="none">None</option>
                   <option value="dissolve">Dissolve</option>
@@ -464,7 +464,7 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
                       fade_out: transition === 'none' ? 0 : Math.max(item.fade_out || 0, Math.min(0.5, item.duration / 2)),
                     })
                   }}
-                  className="w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-[10px] text-text-primary outline-none"
+                  className="w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-2xs text-text-primary outline-none"
                 >
                   <option value="none">None</option>
                   <option value="dissolve">Dissolve</option>
@@ -477,23 +477,23 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => updateItem(item.id, { disabled: !item.disabled })} className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-tertiary py-2 text-[9px] text-text-secondary hover:bg-bg-hover">
+            <button type="button" onClick={() => updateItem(item.id, { disabled: !item.disabled })} className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-tertiary py-2 text-2xs text-text-secondary hover:bg-bg-hover">
               {item.disabled ? <Eye size={11} /> : <EyeOff size={11} />} {item.disabled ? 'Enable' : 'Disable'}
             </button>
             {track.type !== 'text' && (
-              <button type="button" onClick={() => updateItem(item.id, { muted: !item.muted })} className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-tertiary py-2 text-[9px] text-text-secondary hover:bg-bg-hover">
+              <button type="button" onClick={() => updateItem(item.id, { muted: !item.muted })} className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-tertiary py-2 text-2xs text-text-secondary hover:bg-bg-hover">
                 {item.muted ? <Volume2 size={11} /> : <VolumeX size={11} />} {item.muted ? 'Unmute' : 'Mute'}
               </button>
             )}
           </div>
 
           {track.type === 'video' && asset?.has_audio && !item.muted && (
-            <button type="button" onClick={detachSelectedAudio} className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent-blue/20 bg-accent-blue/5 py-2 text-[10px] text-accent-blue hover:bg-accent-blue/10">
+            <button type="button" onClick={detachSelectedAudio} className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent-blue/20 bg-accent-blue/5 py-2 text-2xs text-accent-blue hover:bg-accent-blue/10">
               <AudioLines size={11} /> Detach audio to its own track
             </button>
           )}
 
-          <button type="button" onClick={deleteSelected} className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 py-2 text-[10px] text-red-400 hover:bg-red-500/10">
+          <button type="button" onClick={deleteSelected} className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 py-2 text-2xs text-red-400 hover:bg-red-500/10">
             <Trash2 size={11} /> Remove clip
           </button>
         </div>
@@ -504,9 +504,9 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
             <input
               value={selectedTrack.name}
               onChange={event => renameTrack(selectedTrack.id, event.target.value)}
-              className="mt-1 w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-[10px] text-text-primary outline-none focus:border-accent-blue/60"
+              className="mt-1 w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-2xs text-text-primary outline-none focus:border-accent-blue/60"
             />
-            <p className="mt-1 text-[8px] capitalize text-text-muted">{selectedTrack.type} · {selectedTrack.items.length} clips</p>
+            <p className="mt-1 text-2xs capitalize text-text-muted">{selectedTrack.type} · {selectedTrack.items.length} clips</p>
           </div>
           {selectedTrack.type !== 'text' && (
             <SliderField label="Track volume" value={selectedTrack.volume ?? 1} min={0} max={2} step={0.01} onChange={value => setTrackVolume(selectedTrack.id, value)} />
@@ -515,17 +515,17 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
             <NumberField label="Layer order" value={selectedTrack.z_index} min={-100} max={100} step={1} onChange={value => setTrackZIndex(selectedTrack.id, value)} />
           )}
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => toggleTrackMute(selectedTrack.id)} className={`flex items-center justify-center gap-1.5 rounded-lg border py-2 text-[9px] ${selectedTrack.muted ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-border bg-bg-tertiary text-text-secondary hover:bg-bg-hover'}`}>
+            <button type="button" onClick={() => toggleTrackMute(selectedTrack.id)} className={`flex items-center justify-center gap-1.5 rounded-lg border py-2 text-2xs ${selectedTrack.muted ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-border bg-bg-tertiary text-text-secondary hover:bg-bg-hover'}`}>
               {selectedTrack.muted ? <VolumeX size={11} /> : <Volume2 size={11} />} {selectedTrack.muted ? 'Muted' : 'Audible'}
             </button>
-            <button type="button" onClick={() => toggleTrackLock(selectedTrack.id)} className={`flex items-center justify-center gap-1.5 rounded-lg border py-2 text-[9px] ${selectedTrack.locked ? 'border-accent-blue/30 bg-accent-blue/10 text-accent-blue' : 'border-border bg-bg-tertiary text-text-secondary hover:bg-bg-hover'}`}>
+            <button type="button" onClick={() => toggleTrackLock(selectedTrack.id)} className={`flex items-center justify-center gap-1.5 rounded-lg border py-2 text-2xs ${selectedTrack.locked ? 'border-accent-blue/30 bg-accent-blue/10 text-accent-blue' : 'border-border bg-bg-tertiary text-text-secondary hover:bg-bg-hover'}`}>
               {selectedTrack.locked ? <Lock size={11} /> : <Unlock size={11} />} {selectedTrack.locked ? 'Locked' : 'Unlocked'}
             </button>
           </div>
           <button
             type="button"
             onClick={() => confirmTrackRemoval(selectedTrack.id, selectedTrack.name, selectedTrack.items.length)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 py-2 text-[10px] text-red-400 hover:bg-red-500/10"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 py-2 text-2xs text-red-400 hover:bg-red-500/10"
             title={selectedTrack.items.length ? 'Remove track and its clips' : 'Remove track'}
           >
             <Trash2 size={11} /> Remove track{selectedTrack.items.length ? ` + ${selectedTrack.items.length} clip${selectedTrack.items.length === 1 ? '' : 's'}` : ''}
@@ -534,8 +534,8 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
       ) : (
         <div className="space-y-4 p-3">
           <div className="rounded-lg border border-border bg-bg-tertiary p-2.5">
-            <div className="text-[10px] font-medium text-text-primary">{editorCanvasLabel(project.canvas.width, project.canvas.height)} canvas</div>
-            <div className="mt-0.5 text-[8px] text-text-muted">{project.canvas.width} × {project.canvas.height} · {project.canvas.fps} fps</div>
+            <div className="text-2xs font-medium text-text-primary">{editorCanvasLabel(project.canvas.width, project.canvas.height)} canvas</div>
+            <div className="mt-0.5 text-2xs text-text-muted">{project.canvas.width} × {project.canvas.height} · {project.canvas.fps} fps</div>
           </div>
           <div className="space-y-2">
             <FieldLabel>Canvas</FieldLabel>
@@ -551,17 +551,17 @@ export function EditorInspector({ compact = false }: { compact?: boolean }) {
           </div>
           <div className="space-y-2">
             <FieldLabel>Export</FieldLabel>
-            <select value={project.export.quality} onChange={event => setExportSettings({ quality: event.target.value as 'draft' | 'balanced' | 'high' })} className="w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-[10px] text-text-primary outline-none">
+            <select value={project.export.quality} onChange={event => setExportSettings({ quality: event.target.value as 'draft' | 'balanced' | 'high' })} className="w-full rounded-md border border-border bg-bg-tertiary px-2 py-1.5 text-2xs text-text-primary outline-none">
               <option value="draft">Draft · fastest</option>
               <option value="balanced">Balanced</option>
               <option value="high">High quality</option>
             </select>
-            <label className="flex items-center justify-between rounded-md border border-border bg-bg-tertiary px-2 py-2 text-[9px] text-text-secondary">
+            <label className="flex items-center justify-between rounded-md border border-border bg-bg-tertiary px-2 py-2 text-2xs text-text-secondary">
               Include audio
               <input type="checkbox" checked={project.export.include_audio} onChange={event => setExportSettings({ include_audio: event.target.checked })} className="accent-[var(--color-accent-blue)]" />
             </label>
           </div>
-          <p className="text-[9px] leading-relaxed text-text-muted">Select a clip to edit timing, framing, speed, volume, opacity, and text. All edits remain non-destructive until export.</p>
+          <p className="text-2xs leading-relaxed text-text-muted">Select a clip to edit timing, framing, speed, volume, opacity, and text. All edits remain non-destructive until export.</p>
         </div>
       )}
     </aside>

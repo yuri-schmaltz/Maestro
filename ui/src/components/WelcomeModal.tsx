@@ -86,7 +86,7 @@ function Row({ icon, title, children }: { icon: React.ReactNode; title: string; 
       </div>
       <div className="flex-1">
         <div className="text-xs font-medium text-text-primary">{title}</div>
-        <div className="text-[11px] text-text-muted mt-0.5 leading-relaxed">{children}</div>
+        <div className="text-xs text-text-muted mt-0.5 leading-relaxed">{children}</div>
       </div>
     </div>
   )

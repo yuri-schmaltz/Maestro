@@ -57,16 +57,16 @@ export function ModelCard({ model, onClick }: Props) {
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-2 pt-6">
         <div className="text-xs font-medium text-white truncate">{model.name}</div>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="flex items-center gap-0.5 text-[10px] text-white/70">
+          <span className="flex items-center gap-0.5 text-2xs text-white/70">
             <ThumbsUp size={9} />
             {formatCount(model.stats.thumbsUpCount)}
           </span>
-          <span className="flex items-center gap-0.5 text-[10px] text-white/70">
+          <span className="flex items-center gap-0.5 text-2xs text-white/70">
             <Download size={9} />
             {formatCount(model.stats.downloadCount)}
           </span>
           {model.creator?.username && (
-            <span className="text-[10px] text-white/50 truncate ml-auto">
+            <span className="text-2xs text-white/50 truncate ml-auto">
               {model.creator.username}
             </span>
           )}
@@ -75,7 +75,7 @@ export function ModelCard({ model, onClick }: Props) {
 
       {/* Type badge */}
       <div className="absolute top-1.5 left-1.5">
-        <span className="text-[9px] px-1.5 py-0.5 rounded bg-black/60 text-white/80 font-medium">
+        <span className="text-2xs px-1.5 py-0.5 rounded bg-black/60 text-white/80 font-medium">
           {model.type}
         </span>
       </div>

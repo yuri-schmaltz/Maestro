@@ -45,7 +45,7 @@ export function FileUploadZone({ label, accept, filename, onFile, onClear }: {
       }}
     >
       <Upload size={14} className="text-text-muted" />
-      <span className="text-[10px] text-text-muted text-center">{label}</span>
+      <span className="text-2xs text-text-muted text-center">{label}</span>
     </div>
   )
 }

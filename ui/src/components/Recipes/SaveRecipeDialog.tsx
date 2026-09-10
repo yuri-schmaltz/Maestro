@@ -36,13 +36,13 @@ export function SaveRecipeDialog({ defaultNsfw, onSave, onCancel }: {
           <BookMarked size={16} className="text-accent-blue" />
           <h2 className="text-sm font-semibold text-text-primary">Save as Recipe</h2>
         </div>
-        <p className="text-[11px] text-text-muted mb-3 leading-snug">
+        <p className="text-xs text-text-muted mb-3 leading-snug">
           Captures this generation's model, LoRAs, and settings as a one-click
           preset. Its thumbnail comes from this output. Applying a recipe later
           prepopulates the prompt so you just edit the subject.
         </p>
 
-        <label className="text-[10px] text-text-muted uppercase tracking-wider mb-1 block">Name</label>
+        <label className="text-2xs text-text-muted uppercase tracking-wider mb-1 block">Name</label>
         <input
           autoFocus
           value={name}
@@ -52,7 +52,7 @@ export function SaveRecipeDialog({ defaultNsfw, onSave, onCancel }: {
           className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue mb-3"
         />
 
-        <label className="text-[10px] text-text-muted uppercase tracking-wider mb-1 block">Description (optional)</label>
+        <label className="text-2xs text-text-muted uppercase tracking-wider mb-1 block">Description (optional)</label>
         <textarea
           value={description}
           onChange={e => setDescription(e.target.value)}
@@ -63,10 +63,10 @@ export function SaveRecipeDialog({ defaultNsfw, onSave, onCancel }: {
 
         <label className="flex items-center gap-2 cursor-pointer mb-4">
           <input type="checkbox" checked={nsfw} onChange={e => setNsfw(e.target.checked)} className="accent-accent-blue" />
-          <span className="text-[11px] text-text-secondary">Mature recipe (hidden unless mature mode is on)</span>
+          <span className="text-xs text-text-secondary">Mature recipe (hidden unless mature mode is on)</span>
         </label>
 
-        {error && <div className="text-[11px] text-red-400 mb-3">{error}</div>}
+        {error && <div className="text-xs text-red-400 mb-3">{error}</div>}
 
         <div className="flex items-center justify-end gap-2">
           <button onClick={onCancel} disabled={saving}

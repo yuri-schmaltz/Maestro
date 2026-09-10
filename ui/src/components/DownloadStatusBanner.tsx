@@ -109,23 +109,23 @@ export function DownloadStatusBanner() {
                     Downloading model files
                   </div>
                   {downloads.length > 1 && (
-                    <div className="text-[10px] text-text-muted shrink-0">
+                    <div className="text-2xs text-text-muted shrink-0">
                       {downloads.length} files
                     </div>
                   )}
                 </div>
               )}
               {stalled && downloads.length > 1 && (
-                <div className="text-[10px] text-text-muted text-right -mt-0.5 mb-0.5">
+                <div className="text-2xs text-text-muted text-right -mt-0.5 mb-0.5">
                   {downloads.length} files
                 </div>
               )}
-              <div className="text-[10px] text-text-muted truncate" title={featured.filename}>
+              <div className="text-2xs text-text-muted truncate" title={featured.filename}>
                 {featured.filename}
               </div>
               <DownloadProgressBar download={featured} stalled={!!stalled} />
               {stalled && (
-                <div className="text-[11px] text-text-secondary mt-1.5 leading-snug">
+                <div className="text-xs text-text-secondary mt-1.5 leading-snug">
                   No progress for {Math.round(featured.seconds_since_progress)}s.
                   The download will resume from where it left off as soon as
                   the connection recovers — no action needed from you.
@@ -168,14 +168,14 @@ function DownloadProgressBar({
         />
       </div>
       <div className="flex items-center justify-between mt-1">
-        <span className="text-[10px] text-text-muted">
+        <span className="text-2xs text-text-muted">
           {_formatBytes(download.downloaded_bytes)}
           {download.total_bytes !== null && (
             <> / {_formatBytes(download.total_bytes)}</>
           )}
         </span>
         {pct !== null && (
-          <span className={`text-[10px] tabular-nums ${
+          <span className={`text-2xs tabular-nums ${
             stalled ? 'text-indicator-warning' : 'text-text-secondary'
           }`}>
             {pct}%

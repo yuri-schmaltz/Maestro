@@ -381,11 +381,11 @@ export function LoraBrowser() {
                 {importing ? <Loader2 size={12} className="animate-spin" /> : 'Import'}
               </button>
             </div>
-            <p className="text-[9px] text-text-muted">
+            <p className="text-2xs text-text-muted">
               Paste a HuggingFace model URL. Downloads the LoRA, saves metadata, example media, and generates a usage guide.
             </p>
             {importStatus && (
-              <div className={`text-[10px] ${importStatus.startsWith('Error') ? 'text-red-400' : 'text-accent-blue'}`}>
+              <div className={`text-2xs ${importStatus.startsWith('Error') ? 'text-red-400' : 'text-accent-blue'}`}>
                 {importStatus}
               </div>
             )}
@@ -433,7 +433,7 @@ export function LoraBrowser() {
             <span className="font-semibold">No CivitAI API key configured.</span>{' '}
             Most NSFW, restricted, and early-access LoRAs require a key to
             download — without one, those downloads will fail with an error.
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
               <a
                 href="https://civitai.com/user/account"
                 target="_blank"
@@ -578,7 +578,7 @@ export function LoraBrowser() {
                 : <RefreshCw size={11} />}
               Check
               {updatableCount > 0 && !checkingUpdates && (
-                <span className="ml-0.5 px-1 rounded bg-amber-500/20 text-indicator-warning text-[10px] font-medium">
+                <span className="ml-0.5 px-1 rounded bg-amber-500/20 text-indicator-warning text-2xs font-medium">
                   {updatableCount}
                 </span>
               )}
@@ -607,7 +607,7 @@ export function LoraBrowser() {
                   the CivitAI search view too, so the user knows there
                   are updates worth investigating without clicking through. */}
               {updatableCount > 0 && (
-                <span className="ml-0.5 px-1 rounded bg-amber-500/20 text-indicator-warning text-[10px] font-medium">
+                <span className="ml-0.5 px-1 rounded bg-amber-500/20 text-indicator-warning text-2xs font-medium">
                   {updatableCount}
                 </span>
               )}
@@ -693,7 +693,7 @@ export function LoraBrowser() {
               ) : (
               <>
               {deleteError && (
-                <div className="mb-3 px-3 py-2 text-[11px] text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg leading-snug">{deleteError}</div>
+                <div className="mb-3 px-3 py-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg leading-snug">{deleteError}</div>
               )}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
                 {filtered.map(lora => {
@@ -729,31 +729,31 @@ export function LoraBrowser() {
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-text-muted gap-1">
                           <HardDrive size={20} className="opacity-30" />
-                          <span className="text-[9px] opacity-40">No metadata</span>
+                          <span className="text-2xs opacity-40">No metadata</span>
                         </div>
                       )}
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-2 pt-6">
                       <div className="text-xs font-medium text-white truncate">{lora.name || lora.filename.replace(/\.(safetensors|sft)$/i, '')}</div>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-black/60 text-white/80">{lora.directory}</span>
+                        <span className="text-2xs px-1.5 py-0.5 rounded bg-black/60 text-white/80">{lora.directory}</span>
                         {lora.linked && (
                           <span
-                            className="text-[9px] px-1.5 py-0.5 rounded bg-accent-blue/70 text-white"
+                            className="text-2xs px-1.5 py-0.5 rounded bg-accent-blue/70 text-white"
                             title="From a linked install's loras folder (read-only) — guides and metadata are stored in Maestro"
                           >
                             Linked
                           </span>
                         )}
                         {lora.has_guide && <BookOpen size={9} className="text-accent-green" />}
-                        {lora.base_model && <span className="text-[9px] text-white/50">{lora.base_model}</span>}
+                        {lora.base_model && <span className="text-2xs text-white/50">{lora.base_model}</span>}
                         {typeof lora.size_bytes === 'number' && (
-                          <span className="text-[9px] text-white/50 ml-auto shrink-0">{formatBytes(lora.size_bytes)}</span>
+                          <span className="text-2xs text-white/50 ml-auto shrink-0">{formatBytes(lora.size_bytes)}</span>
                         )}
                       </div>
                       {(lora.downloaded_at || lora.released_at) && (
                         <div
-                          className="text-[9px] text-white/40 mt-0.5 truncate"
+                          className="text-2xs text-white/40 mt-0.5 truncate"
                           title={`Downloaded ${lora.downloaded_at ? new Date(lora.downloaded_at).toLocaleDateString() : 'unknown'}${lora.released_at ? ` — released ${new Date(lora.released_at).toLocaleDateString()}` : ''}`}
                         >
                           {installedSort === 'released' && lora.released_at
@@ -766,13 +766,13 @@ export function LoraBrowser() {
                       {lora.trained_words.length > 0 && (
                         <div className="flex items-center gap-0.5 mt-1 overflow-hidden">
                           <Tag size={8} className="text-white/50 shrink-0" />
-                          <span className="text-[9px] text-white/60 truncate">{lora.trained_words.join(', ')}</span>
+                          <span className="text-2xs text-white/60 truncate">{lora.trained_words.join(', ')}</span>
                         </div>
                       )}
                     </div>
                     {!lora.civitai_model_id && (
                       <div className="absolute top-1.5 right-1.5">
-                        <span className={`text-[8px] px-1 py-0.5 rounded bg-black/60 ${lora.hf_repo_id ? 'text-amber-300/80' : 'text-white/50'}`}>
+                        <span className={`text-2xs px-1 py-0.5 rounded bg-black/60 ${lora.hf_repo_id ? 'text-amber-300/80' : 'text-white/50'}`}>
                           {lora.hf_repo_id ? 'HuggingFace' : 'Local only'}
                         </span>
                       </div>
@@ -785,7 +785,7 @@ export function LoraBrowser() {
                     {lora.update_status === 'available' && (
                       <div className="absolute top-1.5 left-1.5">
                         <span
-                          className="flex items-center gap-0.5 text-[8px] px-1 py-0.5 rounded bg-amber-500/90 text-white font-medium shadow-sm"
+                          className="flex items-center gap-0.5 text-2xs px-1 py-0.5 rounded bg-amber-500/90 text-white font-medium shadow-sm"
                           title={lora.latest_published_at
                             ? `Update available — published ${new Date(lora.latest_published_at).toLocaleDateString()}`
                             : 'Update available on CivitAI'}
@@ -845,7 +845,7 @@ export function LoraBrowser() {
               <div className="flex flex-col items-center justify-center py-16 text-text-muted">
                 <div className="max-w-md w-full px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-text-primary text-sm leading-relaxed">
                   <div className="font-semibold mb-1">CivitAI is unavailable</div>
-                  <div className="text-[12px] text-text-secondary">{searchError}</div>
+                  <div className="text-sm text-text-secondary">{searchError}</div>
                 </div>
               </div>
             )}

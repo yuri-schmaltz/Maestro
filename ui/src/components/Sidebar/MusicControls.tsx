@@ -55,14 +55,14 @@ function StyleField({
 }) {
   return (
     <div>
-      <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">{label}</label>
+      <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">{label}</label>
       <AutoGrowTextarea
         value={value}
         onChange={onChange}
         placeholder={placeholder}
         extraClass="min-h-[5rem]"
       />
-      {help && <p className="text-[10px] text-text-muted leading-snug mt-1.5">{help}</p>}
+      {help && <p className="text-2xs text-text-muted leading-snug mt-1.5">{help}</p>}
     </div>
   )
 }
@@ -70,14 +70,14 @@ function StyleField({
 function LyricsField({ value, onChange, help }: { value: string; onChange: (v: string) => void; help?: string }) {
   return (
     <div>
-      <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">Lyrics</label>
+      <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Lyrics</label>
       <AutoGrowTextarea
         value={value}
         onChange={onChange}
         placeholder={'[Verse]\nYour lyrics here…\n[Chorus]\n…'}
         extraClass="min-h-[8rem] font-mono"
       />
-      {help && <p className="text-[10px] text-text-muted leading-snug mt-1.5">{help}</p>}
+      {help && <p className="text-2xs text-text-muted leading-snug mt-1.5">{help}</p>}
     </div>
   )
 }
@@ -140,10 +140,10 @@ export function MusicControls() {
     <div className="space-y-3">
       {/* Header + instrumental toggle */}
       <div className="flex items-center justify-between">
-        <label className="text-[11px] text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+        <label className="text-xs text-text-muted uppercase tracking-wider flex items-center gap-1.5">
           <Music size={12} /> Song
         </label>
-        <label className="flex items-center gap-1.5 cursor-pointer group text-[10px] text-text-secondary hover:text-text-primary transition-colors">
+        <label className="flex items-center gap-1.5 cursor-pointer group text-2xs text-text-secondary hover:text-text-primary transition-colors">
           <input
             type="checkbox"
             checked={instrumental}
@@ -157,7 +157,7 @@ export function MusicControls() {
       {/* Describe → let the LLM write it (optional — fields below are editable) */}
       <div className="space-y-2">
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">Describe your song</label>
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Describe your song</label>
           <AutoGrowTextarea
             value={description}
             onChange={setDescription}
@@ -177,8 +177,8 @@ export function MusicControls() {
           {writing ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
           {writing ? 'Writing…' : 'Write Song'}
         </button>
-        {writeError && <p className="text-[10px] text-red-400 leading-snug">{writeError}</p>}
-        <p className="text-[10px] text-text-muted leading-snug">
+        {writeError && <p className="text-2xs text-red-400 leading-snug">{writeError}</p>}
+        <p className="text-2xs text-text-muted leading-snug">
           Let the LLM write the {isMusic3 ? 'structured Music3 caption' : 'Style'}{instrumental ? '' : ' + Lyrics'} from your description — or fill them in yourself below. Either way, edit and Generate.
         </p>
       </div>

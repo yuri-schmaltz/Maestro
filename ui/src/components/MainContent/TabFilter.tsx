@@ -88,7 +88,7 @@ export function TabFilter() {
               key={tab.value}
               ref={mediaFilter === tab.value ? selectedTabRef : undefined}
               onClick={() => setMediaFilter(tab.value)}
-              className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-[10px] font-medium transition-all xl:px-3 xl:py-1.5 xl:text-xs ${
+              className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-2xs font-medium transition-all xl:px-3 xl:py-1.5 xl:text-xs ${
                 mediaFilter === tab.value
                   ? tab.value === 'favorites' ? 'bg-red-500/20 text-chip-red'
                   : tab.value === 'multiclip' ? 'bg-purple-500/20 text-chip-purple'

@@ -82,7 +82,7 @@ export function ControlVideoSection() {
       {/* Standard control media upload */}
       {showUpload && (
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
             Control {mediaType}
           </label>
           <FileUploadZone

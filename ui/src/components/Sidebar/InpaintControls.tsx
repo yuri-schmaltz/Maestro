@@ -128,7 +128,7 @@ export function InpaintControls() {
           which Pinokio menu item to click. Inpaint won't work at all
           without SAM so this needs to be unmissable. */}
       {samStatus === 'not_installed' && (
-        <div className="flex items-start gap-2 text-[11px] text-text-primary bg-amber-500/10 border border-amber-500/40 rounded-lg px-3 py-2.5">
+        <div className="flex items-start gap-2 text-xs text-text-primary bg-amber-500/10 border border-amber-500/40 rounded-lg px-3 py-2.5">
           <Download size={14} className="shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="font-medium text-text-primary">Inpaint requires SAM 3.1 (not installed)</p>
@@ -143,7 +143,7 @@ export function InpaintControls() {
           than the not-installed case because the on-demand startup
           might still recover. */}
       {samStatus === 'unavailable' && editVideoPath && !editMasksPath && (
-        <div className="flex items-start gap-2 text-[10px] text-indicator-warning bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+        <div className="flex items-start gap-2 text-2xs text-indicator-warning bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
           <AlertTriangle size={14} className="shrink-0 mt-0.5" />
           <div>
             <p className="font-medium">SAM service not available</p>
@@ -162,7 +162,7 @@ export function InpaintControls() {
         >
           <Upload size={24} className="mx-auto mb-2 text-text-muted" />
           <p className="text-xs text-text-secondary">Drop a video or click to upload</p>
-          <p className="text-[9px] text-text-muted mt-1">Describe what to change — AI segments and replaces</p>
+          <p className="text-2xs text-text-muted mt-1">Describe what to change — AI segments and replaces</p>
           <input ref={fileRef} type="file" accept="video/*" className="hidden"
             onChange={e => { if (e.target.files?.[0]) handleUpload(e.target.files[0]) }} />
         </div>
@@ -180,12 +180,12 @@ export function InpaintControls() {
                 <img src={`data:image/png;base64,${editMaskPreview}`} alt="Mask preview"
                   className="w-full h-full object-contain" />
                 <button onClick={() => setShowingMask(false)}
-                  className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/70 text-[10px] text-white/80 hover:text-white">
+                  className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/70 text-2xs text-white/80 hover:text-white">
                   Show timeline
                 </button>
               </div>
               {editDetectedTarget && (
-                <p className="text-[9px] text-accent-blue mt-1">SAM target: {editDetectedTarget}</p>
+                <p className="text-2xs text-accent-blue mt-1">SAM target: {editDetectedTarget}</p>
               )}
             </div>
           ) : (
@@ -200,19 +200,19 @@ export function InpaintControls() {
               />
               {editMaskPreview && (
                 <button onClick={() => setShowingMask(true)}
-                  className="text-[9px] text-accent-blue hover:text-accent-blue/80 mt-1">
+                  className="text-2xs text-accent-blue hover:text-accent-blue/80 mt-1">
                   Show mask preview
                 </button>
               )}
             </div>
           )}
-          <p className="text-[9px] text-text-muted mt-1 truncate">{editVideoFile.name}</p>
+          <p className="text-2xs text-text-muted mt-1 truncate">{editVideoFile.name}</p>
         </div>
       )}
 
       {/* SAM Target — what to segment */}
       <div>
-        <label className="text-[10px] text-text-muted uppercase tracking-wider mb-1 block">
+        <label className="text-2xs text-text-muted uppercase tracking-wider mb-1 block">
           What to select <span className="normal-case text-text-muted">(for SAM segmentation)</span>
         </label>
         <input
@@ -227,8 +227,8 @@ export function InpaintControls() {
             checked={useStore.getState().editInvertMask}
             onChange={e => useStore.setState({ editInvertMask: e.target.checked, editMasksPath: null, editMaskPreview: null })}
             className="w-3 h-3 rounded border-border accent-accent-blue" />
-          <span className="text-[10px] text-text-secondary">Invert mask</span>
-          <span className="text-[9px] text-text-muted ml-auto">Edit everything except selection</span>
+          <span className="text-2xs text-text-secondary">Invert mask</span>
+          <span className="text-2xs text-text-muted ml-auto">Edit everything except selection</span>
         </label>
       </div>
 
@@ -236,12 +236,12 @@ export function InpaintControls() {
       <div className="flex items-center gap-2">
         <button onClick={handlePreviewMask}
           disabled={previewing || !editVideoPath || !samTarget.trim()}
-          className="flex-1 py-1.5 rounded-lg text-[10px] font-medium border border-border text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5">
+          className="flex-1 py-1.5 rounded-lg text-2xs font-medium border border-border text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5">
           <Eye size={12} />
           {previewing ? 'Segmenting...' : 'Preview Mask'}
         </button>
         {editMasksPath && (
-          <div className="flex items-center gap-1 text-[9px] text-indicator-success shrink-0">
+          <div className="flex items-center gap-1 text-2xs text-indicator-success shrink-0">
             <div className="w-1.5 h-1.5 rounded-full bg-indicator-success" />
             Cached
           </div>
@@ -250,15 +250,15 @@ export function InpaintControls() {
 
       {/* Advanced */}
       <button onClick={() => setShowAdvanced(!showAdvanced)}
-        className="text-[10px] text-text-muted hover:text-text-primary transition-colors">
+        className="text-2xs text-text-muted hover:text-text-primary transition-colors">
         {showAdvanced ? '▾' : '▸'} Advanced
       </button>
       {showAdvanced && (
         <div className="space-y-3 pl-2 border-l border-border/50">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] text-text-muted uppercase tracking-wider">Prompt Strength</label>
-              <span className="text-[10px] text-text-secondary">{promptStrength.toFixed(1)}</span>
+              <label className="text-2xs text-text-muted uppercase tracking-wider">Prompt Strength</label>
+              <span className="text-2xs text-text-secondary">{promptStrength.toFixed(1)}</span>
             </div>
             <input
               type="range"
@@ -267,15 +267,15 @@ export function InpaintControls() {
               onChange={e => setPromptStrength(parseFloat(e.target.value))}
               className="w-full"
             />
-            <p className="text-[9px] text-text-muted mt-0.5">
+            <p className="text-2xs text-text-muted mt-0.5">
               CFG — how hard the model follows your prompt inside the masked region.
               1.0 ≈ prompt ignored (output looks like original). 3–4 ≈ balanced. 5+ ≈ strong, may distort.
             </p>
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] text-text-muted uppercase tracking-wider">Retake Strength</label>
-              <span className="text-[10px] text-text-secondary">{retakeStrength.toFixed(2)}</span>
+              <label className="text-2xs text-text-muted uppercase tracking-wider">Retake Strength</label>
+              <span className="text-2xs text-text-secondary">{retakeStrength.toFixed(2)}</span>
             </div>
             <input
               type="range"
@@ -284,7 +284,7 @@ export function InpaintControls() {
               onChange={e => setRetakeStrength(parseFloat(e.target.value))}
               className="w-full"
             />
-            <p className="text-[9px] text-text-muted mt-0.5">
+            <p className="text-2xs text-text-muted mt-0.5">
               How aggressively the masked region is re-generated. 0.1–0.4 = subtle tweak, keeps source look.
               0.7–0.9 = full replacement with prompt content.
             </p>
@@ -293,9 +293,9 @@ export function InpaintControls() {
       )}
 
       {/* Status */}
-      {error && <div className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1.5">{error}</div>}
+      {error && <div className="text-2xs text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1.5">{error}</div>}
 
-      <p className="text-[9px] text-text-muted text-center">
+      <p className="text-2xs text-text-muted text-center">
         Preview Mask checks targeting. Use the prompt below for what to generate, then click Generate.
       </p>
     </div>

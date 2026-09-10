@@ -151,7 +151,7 @@ export function OutpaintControls() {
         >
           <Upload size={24} className="mx-auto mb-2 text-text-muted" />
           <p className="text-xs text-text-secondary">Drop a video or image to outpaint</p>
-          <p className="text-[10px] text-text-muted mt-1">or click to browse</p>
+          <p className="text-2xs text-text-muted mt-1">or click to browse</p>
           <input
             ref={fileRef}
             type="file"
@@ -167,7 +167,7 @@ export function OutpaintControls() {
               implicitly (OutpaintCanvas will re-fit on next mount when
               srcW/srcH return to 0). */}
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] text-text-muted truncate flex-1">{editVideoFile.name}</p>
+            <p className="text-2xs text-text-muted truncate flex-1">{editVideoFile.name}</p>
             <button
               onClick={() => clearEditVideo()}
               className="shrink-0 p-1 rounded text-text-muted hover:bg-bg-hover hover:text-red-400 transition-colors"
@@ -204,13 +204,13 @@ export function OutpaintControls() {
         </>
       )}
 
-      {error && <p className="text-[10px] text-red-400">{error}</p>}
+      {error && <p className="text-2xs text-red-400">{error}</p>}
 
       {/* Output Quality button group (replaces the legacy dropdown).
           Always shown — the chosen quality applies to whatever clip is
           loaded next, so it's useful to set even before upload. */}
       <div>
-        <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
           Output Quality
         </label>
         <div className="grid grid-cols-5 gap-1">
@@ -219,7 +219,7 @@ export function OutpaintControls() {
               key={q.v}
               onClick={() => setOutpaintResolutionPreset(q.v as Quality)}
               title={q.hint}
-              className={`px-1 py-1.5 rounded text-[10px] border transition-colors ${
+              className={`px-1 py-1.5 rounded text-2xs border transition-colors ${
                 outpaintResolutionPreset === q.v
                   ? 'border-accent-blue bg-accent-blue/15 text-accent-blue'
                   : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
@@ -229,7 +229,7 @@ export function OutpaintControls() {
             </button>
           ))}
         </div>
-        <p className="text-[10px] text-text-muted mt-1">
+        <p className="text-2xs text-text-muted mt-1">
           Auto keeps full source resolution after padding. Pick a preset to scale down for lower-VRAM models.
         </p>
       </div>
@@ -237,7 +237,7 @@ export function OutpaintControls() {
       {/* Advanced remains collapsed so the default workflow stays simple. */}
       <button
         onClick={() => setShowAdvanced(!showAdvanced)}
-        className="text-[10px] text-text-muted hover:text-text-primary transition-colors"
+        className="text-2xs text-text-muted hover:text-text-primary transition-colors"
       >
         {showAdvanced ? '▾' : '▸'} Advanced
       </button>
@@ -254,13 +254,13 @@ export function OutpaintControls() {
               className="w-3 h-3 mt-0.5 rounded border-border accent-accent-blue shrink-0"
             />
             <div className="flex-1">
-              <span className="text-[10px] text-text-secondary">
+              <span className="text-2xs text-text-secondary">
                 Preserve original scene
               </span>
-              <span className="ml-1 text-[9px] text-accent-blue">
+              <span className="ml-1 text-2xs text-accent-blue">
                 Recommended
               </span>
-              <p className="text-[9px] text-text-muted mt-0.5">
+              <p className="text-2xs text-text-muted mt-0.5">
                 Protects the source and softly blends the new area.
               </p>
             </div>
@@ -274,8 +274,8 @@ export function OutpaintControls() {
               className="w-3 h-3 mt-0.5 rounded border-border accent-accent-blue shrink-0"
             />
             <div className="flex-1">
-              <span className="text-[10px] text-text-secondary">Preserve source audio</span>
-              <p className="text-[9px] text-text-muted mt-0.5">
+              <span className="text-2xs text-text-secondary">Preserve source audio</span>
+              <p className="text-2xs text-text-muted mt-0.5">
                 Re-mux the original soundtrack into the outpainted clip. The model would otherwise generate fresh audio that doesn't match the source.
               </p>
             </div>
@@ -289,8 +289,8 @@ export function OutpaintControls() {
               className="w-3 h-3 mt-0.5 rounded border-border accent-accent-blue shrink-0"
             />
             <div className="flex-1">
-              <span className="text-[10px] text-text-secondary">Trim window smear</span>
-              <p className="text-[9px] text-text-muted mt-0.5">
+              <span className="text-2xs text-text-secondary">Trim window smear</span>
+              <p className="text-2xs text-text-muted mt-0.5">
                 Trim the last few frames of each sliding-window segment where the model occasionally smears the boundary.
               </p>
             </div>

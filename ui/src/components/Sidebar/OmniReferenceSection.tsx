@@ -417,7 +417,7 @@ export function OmniReferenceSection({
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <label className="text-[11px] text-text-muted uppercase tracking-wider">
+          <label className="text-xs text-text-muted uppercase tracking-wider">
             {scope === 'director' ? 'Omni References' : 'References & Characters'}
           </label>
           <span
@@ -429,7 +429,7 @@ export function OmniReferenceSection({
             <Info size={12} />
           </span>
         </div>
-        <span className="text-[9px] text-text-muted">{references.length}/{limits.total}</span>
+        <span className="text-2xs text-text-muted">{references.length}/{limits.total}</span>
       </div>
 
       <div className="rounded-lg border border-border bg-bg-tertiary/50 overflow-hidden">
@@ -440,17 +440,17 @@ export function OmniReferenceSection({
           onClick={() => setLibraryOpen(open => !open)}
           className="w-full flex items-center justify-between gap-2 px-2.5 py-2 text-left hover:bg-bg-tertiary disabled:opacity-50"
         >
-          <span className="flex items-center gap-1.5 text-[10px] font-medium text-text-primary">
+          <span className="flex items-center gap-1.5 text-2xs font-medium text-text-primary">
             <BookUser size={13} className="text-accent-blue" />
             Characters
-            <span className="text-[9px] font-normal text-text-muted">{characters.length}</span>
+            <span className="text-2xs font-normal text-text-muted">{characters.length}</span>
           </span>
           <ChevronDown size={13} className={`text-text-muted transition-transform ${libraryOpen ? 'rotate-180' : ''}`} />
         </button>
 
         {libraryOpen && (
           <div className="border-t border-border p-2 space-y-2">
-            <p className="text-[9px] leading-relaxed text-text-muted">
+            <p className="text-2xs leading-relaxed text-text-muted">
               Add a saved name to your prompt normally. Maestro binds its picture or video and voice to one H3 Subject automatically.
             </p>
 
@@ -474,15 +474,15 @@ export function OmniReferenceSection({
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] text-text-primary truncate" title={character.name}>{character.name}</p>
-                        <p className="text-[8px] text-text-muted truncate">
+                        <p className="text-2xs text-text-primary truncate" title={character.name}>{character.name}</p>
+                        <p className="text-2xs text-text-muted truncate">
                           {character.visual.type === 'video' ? 'video' : 'image'}{character.voice ? ' + voice' : ''}
                         </p>
                         <button
                           type="button"
                           disabled={disabled || added}
                           onClick={() => addCharacter(character)}
-                          className={`text-[9px] ${added ? 'text-indicator-success' : 'text-accent-blue hover:text-text-primary'}`}
+                          className={`text-2xs ${added ? 'text-indicator-success' : 'text-accent-blue hover:text-text-primary'}`}
                         >
                           {added ? 'Added' : 'Add to run'}
                         </button>
@@ -506,7 +506,7 @@ export function OmniReferenceSection({
               type="button"
               disabled={disabled}
               onClick={() => setCharacterFormOpen(open => !open)}
-              className="flex items-center gap-1 text-[9px] text-accent-blue hover:text-text-primary"
+              className="flex items-center gap-1 text-2xs text-accent-blue hover:text-text-primary"
             >
               <UserPlus size={11} /> {characterFormOpen ? 'Close new character' : 'Save a new character'}
             </button>
@@ -518,9 +518,9 @@ export function OmniReferenceSection({
                   disabled={disabled || savingCharacter}
                   onChange={event => setCharacterName(event.target.value)}
                   placeholder="Character name"
-                  className="w-full bg-bg-tertiary border border-border rounded px-2 py-1 text-[10px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
+                  className="w-full bg-bg-tertiary border border-border rounded px-2 py-1 text-2xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
                 />
-                <label className="block rounded border border-dashed border-border px-2 py-1.5 text-[9px] text-text-secondary cursor-pointer hover:border-border-light">
+                <label className="block rounded border border-dashed border-border px-2 py-1.5 text-2xs text-text-secondary cursor-pointer hover:border-border-light">
                   <span className="font-medium">Image or video:</span> {characterVisual?.name || 'Choose visual reference'}
                   <input
                     type="file"
@@ -534,7 +534,7 @@ export function OmniReferenceSection({
                     }}
                   />
                 </label>
-                <label className="block rounded border border-dashed border-border px-2 py-1.5 text-[9px] text-text-secondary cursor-pointer hover:border-border-light">
+                <label className="block rounded border border-dashed border-border px-2 py-1.5 text-2xs text-text-secondary cursor-pointer hover:border-border-light">
                   <span className="font-medium">Voice (optional):</span> {characterVoice?.name || 'Choose audio or video'}
                   <input
                     type="file"
@@ -547,7 +547,7 @@ export function OmniReferenceSection({
                   />
                 </label>
                 {characterVisual && mediaType(characterVisual) === 'video' && !characterVoice && (
-                  <label className="flex items-center gap-1.5 text-[9px] text-text-secondary cursor-pointer">
+                  <label className="flex items-center gap-1.5 text-2xs text-text-secondary cursor-pointer">
                     <input
                       type="checkbox"
                       checked={useVideoVoice}
@@ -558,14 +558,14 @@ export function OmniReferenceSection({
                     Use this video's audio as the voice reference
                   </label>
                 )}
-                <p className="text-[8px] leading-relaxed text-text-muted">
+                <p className="text-2xs leading-relaxed text-text-muted">
                   Videos remain saved at full length. For each run Maestro makes H3-ready cached copies: 2–15 seconds each and 15 seconds total (three 10s clips become 5s each).
                 </p>
                 <button
                   type="button"
                   disabled={disabled || savingCharacter}
                   onClick={() => void saveCharacter()}
-                  className="w-full rounded bg-accent-blue px-2 py-1.5 text-[9px] font-medium text-white disabled:opacity-50 flex items-center justify-center gap-1"
+                  className="w-full rounded bg-accent-blue px-2 py-1.5 text-2xs font-medium text-white disabled:opacity-50 flex items-center justify-center gap-1"
                 >
                   {savingCharacter ? <Loader2 size={11} className="animate-spin" /> : <UserPlus size={11} />}
                   {savingCharacter ? 'Saving…' : 'Save and add'}
@@ -588,7 +588,7 @@ export function OmniReferenceSection({
         aria-disabled={disabled}
       >
         {uploading ? <Loader2 size={14} className="animate-spin text-accent-blue" /> : <Plus size={14} className="text-text-muted" />}
-        <span className="text-[10px] text-text-secondary">{uploading ? 'Uploading references…' : 'Add images, videos, or audio'}</span>
+        <span className="text-2xs text-text-secondary">{uploading ? 'Uploading references…' : 'Add images, videos, or audio'}</span>
         {/* Do not add a mixed-media `accept` filter here. iOS/WebKit can
             grey out valid audio files when audio, image, and video types are
             combined. Maestro validates the selected files in addFiles(). */}
@@ -650,10 +650,10 @@ export function OmniReferenceSection({
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <BookUser size={12} className="text-accent-blue shrink-0" />
-                      <span className="text-[10px] font-medium text-text-primary truncate" title={characterName}>{characterName}</span>
-                      <span className="rounded-full bg-accent-blue/10 px-1.5 py-0.5 text-[8px] text-accent-blue shrink-0">Character</span>
+                      <span className="text-2xs font-medium text-text-primary truncate" title={characterName}>{characterName}</span>
+                      <span className="rounded-full bg-accent-blue/10 px-1.5 py-0.5 text-2xs text-accent-blue shrink-0">Character</span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] text-text-muted">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-2xs text-text-muted">
                       <span>{visual?.type === 'video' ? 'Video identity' : 'Image identity'}</span>
                       {voiceEntry && (
                         <span
@@ -664,12 +664,12 @@ export function OmniReferenceSection({
                         </span>
                       )}
                     </div>
-                    <p className="text-[8px] text-text-muted truncate" title={item.entries.map(entry => labels[entry.index]).join(' + ')}>
+                    <p className="text-2xs text-text-muted truncate" title={item.entries.map(entry => labels[entry.index]).join(' + ')}>
                       {item.entries.map(entry => labels[entry.index]).join(' + ')} · Bound together as one H3 subject
                     </p>
                     {visualEntry?.reference.type === 'image' && (
                       <label
-                        className="flex items-center gap-1.5 text-[9px] text-text-secondary cursor-pointer"
+                        className="flex items-center gap-1.5 text-2xs text-text-secondary cursor-pointer"
                         title="Remove the portrait's source background on CPU and place the character on neutral white before H3 sees it. Enable this when the source background leaks into the scene; leave it off to preserve more natural lighting context."
                       >
                         <input
@@ -726,15 +726,15 @@ export function OmniReferenceSection({
                 </div>
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-medium text-text-primary">{labels[index]}</span>
-                    <span className="text-[9px] text-text-muted truncate">{reference.filename}</span>
+                    <span className="text-2xs font-medium text-text-primary">{labels[index]}</span>
+                    <span className="text-2xs text-text-muted truncate">{reference.filename}</span>
                   </div>
                   <input
                     value={reference.role ?? ''}
                     disabled={disabled}
                     onChange={event => patchReference(index, { role: event.target.value })}
                     placeholder="Who or what is this? (helps Enhance)"
-                    className="w-full bg-bg-primary border border-border rounded px-2 py-1 text-[10px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
+                    className="w-full bg-bg-primary border border-border rounded px-2 py-1 text-2xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
                   />
                   {reference.type === 'audio' && (
                     <select
@@ -745,7 +745,7 @@ export function OmniReferenceSection({
                         event.target.value as MiniMaxH3AudioIntent,
                       )}
                       title="Voice reference is reused for identity in every clip. Music / performance timeline adopts the track duration, preserves the exact soundtrack and advances through it across sequence clips. It automatically enables a multi-window sequence when needed. Style-only borrows musical character rather than exact audio or timing."
-                      className="w-full bg-bg-primary border border-border rounded px-2 py-1 text-[10px] text-text-secondary focus:outline-none focus:border-accent-blue"
+                      className="w-full bg-bg-primary border border-border rounded px-2 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue"
                     >
                       <option value="voice">Voice reference</option>
                       <option value="drive">Music / performance timeline</option>
@@ -754,7 +754,7 @@ export function OmniReferenceSection({
                   )}
                   {reference.type === 'image' && (reference.image_intent ?? 'identity') === 'identity' && (
                     <label
-                      className="flex items-center gap-1.5 text-[9px] text-text-secondary cursor-pointer"
+                      className="flex items-center gap-1.5 text-2xs text-text-secondary cursor-pointer"
                       title="Remove this identity portrait's source background on CPU before H3 sees it. Enable this when the source background leaks into the scene; leave it off to preserve more natural lighting context. Scene, style, and composition references are never altered."
                     >
                       <input
@@ -768,7 +768,7 @@ export function OmniReferenceSection({
                     </label>
                   )}
                   {reference.type === 'video' && (
-                    <div className="flex items-center gap-1.5 text-[9px] text-text-secondary">
+                    <div className="flex items-center gap-1.5 text-2xs text-text-secondary">
                       <label className="cursor-pointer hover:text-text-primary">
                         {reference.audio_path ? 'Replace audio' : 'Attach audio'}
                         {/* iOS has also shipped audio-only picker regressions.
@@ -802,7 +802,7 @@ export function OmniReferenceSection({
                     </div>
                   )}
                   {reference.type === 'video' && (reference.has_audio || reference.audio_path) && (
-                    <label className="flex items-center gap-1.5 text-[9px] text-text-secondary cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-2xs text-text-secondary cursor-pointer">
                       <input
                         type="checkbox"
                         disabled={disabled}
@@ -835,7 +835,7 @@ export function OmniReferenceSection({
             disabled={disabled}
             onChange={event => setDetail(event.target.value as 'match' | 'max')}
             title="Match output preserves the selected output-sized preparation and avoids reference upscaling. High detail follows the official Ref2VA PDD 2048px-short-edge recipe, but can use substantially more memory and time."
-            className="bg-bg-tertiary border border-border rounded px-2 py-1 text-[9px] text-text-secondary focus:outline-none focus:border-accent-blue"
+            className="bg-bg-tertiary border border-border rounded px-2 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue"
           >
             {(modelOptions?.omni_reference_detail_choices ?? [
               ['Match output (faster)', 'match'],
@@ -846,12 +846,12 @@ export function OmniReferenceSection({
       )}
 
       {references.filter(reference => reference.type === 'video').reduce((sum, reference) => sum + (Number(reference.duration_seconds) || 0), 0) > 15 && (
-        <p className="text-[8px] leading-relaxed text-text-muted">
+        <p className="text-2xs leading-relaxed text-text-muted">
           These video references exceed H3's 15-second combined limit. Maestro will balance cached trimmed copies across them; your originals and saved characters remain unchanged.
         </p>
       )}
 
-      {error && <p className="text-[9px] text-indicator-error">{error}</p>}
+      {error && <p className="text-2xs text-indicator-error">{error}</p>}
     </section>
   )
 }

@@ -45,7 +45,7 @@ export function AnchorReturnBanner() {
     <div className="px-3 py-2 bg-accent-blue/10 border-b border-accent-blue/30">
       <div className="flex items-center gap-2 mb-1.5">
         <ArrowLeft size={12} className="text-accent-blue shrink-0" />
-        <span className="text-[10px] font-semibold text-accent-blue">
+        <span className="text-2xs font-semibold text-accent-blue">
           {isRecast
             ? 'Editing Recast Reference'
             : isRepaint
@@ -64,7 +64,7 @@ export function AnchorReturnBanner() {
           <X size={11} />
         </button>
       </div>
-      <p className="text-[9px] text-text-muted leading-snug mb-2">
+      <p className="text-2xs text-text-muted leading-snug mb-2">
         {isRecast
           ? 'Edit the selected trim-start frame in Image Mode. Apply the result to use it as Recast’s replacement reference, or return unchanged.'
           : isRepaint
@@ -75,7 +75,7 @@ export function AnchorReturnBanner() {
         <button
           onClick={() => void apply()}
           disabled={!hasLatestImage}
-          className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-40 disabled:cursor-not-allowed text-[10px] transition-colors"
+          className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-40 disabled:cursor-not-allowed text-2xs transition-colors"
         >
           <Check size={11} />
           Apply &amp; return
@@ -87,14 +87,14 @@ export function AnchorReturnBanner() {
             : isRepaint
               ? 'Return to Repaint without changing its edited frame'
               : `Skip ${anchorLabel} anchor — fall back to source frame`}
-          className="flex items-center justify-center gap-1 px-2 py-1 rounded border border-border text-text-secondary hover:bg-bg-hover text-[10px] transition-colors"
+          className="flex items-center justify-center gap-1 px-2 py-1 rounded border border-border text-text-secondary hover:bg-bg-hover text-2xs transition-colors"
         >
           <SkipForward size={11} />
           {isRecast || isRepaint ? 'Return unchanged' : 'Skip'}
         </button>
       </div>
       {!hasLatestImage && (
-        <p className="text-[9px] text-text-muted mt-1.5 italic">
+        <p className="text-2xs text-text-muted mt-1.5 italic">
           Generate an image first, then click Apply.
         </p>
       )}

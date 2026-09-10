@@ -33,7 +33,7 @@ export function VideoInfoBar() {
   if (metadataLoading) {
     return (
       <div className="shrink-0 px-4 py-2 border-b border-border min-h-[44px] flex items-center">
-        <div className="text-[11px] text-text-muted animate-pulse">Loading info...</div>
+        <div className="text-xs text-text-muted animate-pulse">Loading info...</div>
       </div>
     )
   }
@@ -151,13 +151,13 @@ export function VideoInfoBar() {
               )}
             </div>
             {prompt && (
-              <div className="text-[11px] text-text-muted truncate mt-0.5" title={prompt}>
+              <div className="text-xs text-text-muted truncate mt-0.5" title={prompt}>
                 {prompt}
               </div>
             )}
           </>
         ) : (
-          <div className="text-[11px] text-text-muted">{selected.name}</div>
+          <div className="text-xs text-text-muted">{selected.name}</div>
         )}
       </div>
 
@@ -229,7 +229,7 @@ export function VideoInfoBar() {
           title={confirmDelete ? 'Click again to confirm delete' : 'Delete output'}
         >
           <Trash2 size={14} />
-          {confirmDelete && <span className="text-[11px] font-medium">Delete?</span>}
+          {confirmDelete && <span className="text-xs font-medium">Delete?</span>}
         </button>
       </div>
     </div>

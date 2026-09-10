@@ -7,7 +7,7 @@ export function OutputCount() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-[11px] text-text-muted uppercase tracking-wider">Outputs</label>
+        <label className="text-xs text-text-muted uppercase tracking-wider">Outputs</label>
         <span className="text-xs text-text-secondary">{count}</span>
       </div>
       <input

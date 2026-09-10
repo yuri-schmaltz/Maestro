@@ -390,7 +390,7 @@ export function EditorTimeline({ compact = false }: { compact?: boolean }) {
           style={trackMenuPosition}
         >
           {(['video', 'audio', 'text'] as const).map(type => (
-            <button key={type} type="button" onClick={() => { addTrack(type); setTrackMenuOpen(false) }} className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-[9px] capitalize text-text-secondary hover:bg-bg-hover">
+            <button key={type} type="button" onClick={() => { addTrack(type); setTrackMenuOpen(false) }} className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-2xs capitalize text-text-secondary hover:bg-bg-hover">
               <TrackIcon type={type} /> {type}
             </button>
           ))}
@@ -507,7 +507,7 @@ export function EditorTimeline({ compact = false }: { compact?: boolean }) {
   return (
     <section className={`flex min-h-0 flex-col border-t border-border bg-bg-secondary ${compact ? 'h-full' : 'h-[310px] shrink-0'}`}>
       <div className="flex h-10 shrink-0 items-center gap-1.5 overflow-x-auto border-b border-border px-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <button type="button" onClick={splitSelected} disabled={!selectedItemId} className="flex items-center gap-1 rounded-md px-2 py-1 text-[9px] text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:opacity-25" title="Split at playhead (S)">
+        <button type="button" onClick={splitSelected} disabled={!selectedItemId} className="flex items-center gap-1 rounded-md px-2 py-1 text-2xs text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:opacity-25" title="Split at playhead (S)">
           <Scissors size={11} /> <span className="hidden sm:inline">Split</span>
         </button>
         <button type="button" onClick={duplicateSelected} disabled={!selectedItemId} className="rounded-md p-1.5 text-text-muted hover:bg-bg-hover hover:text-text-primary disabled:opacity-25" title="Duplicate clip">
@@ -532,7 +532,7 @@ export function EditorTimeline({ compact = false }: { compact?: boolean }) {
         <button type="button" onClick={() => setSnapping(!snapping)} className={`rounded-md p-1.5 ${snapping ? 'bg-accent-blue/15 text-accent-blue' : 'text-text-muted hover:bg-bg-hover'}`} title="Snapping">
           <Magnet size={11} />
         </button>
-        <button type="button" onClick={() => setRipple(!ripple)} className={`flex items-center gap-1 rounded-md px-2 py-1 text-[9px] ${ripple ? 'bg-accent-blue/15 text-accent-blue' : 'text-text-muted hover:bg-bg-hover'}`} title="Close gaps when deleting clips">
+        <button type="button" onClick={() => setRipple(!ripple)} className={`flex items-center gap-1 rounded-md px-2 py-1 text-2xs ${ripple ? 'bg-accent-blue/15 text-accent-blue' : 'text-text-muted hover:bg-bg-hover'}`} title="Close gaps when deleting clips">
           <Waves size={11} /> <span className="hidden sm:inline">Ripple</span>
         </button>
         <button type="button" onClick={() => addMarker(playhead)} className="rounded-md p-1.5 text-text-muted hover:bg-bg-hover hover:text-accent-warm" title="Add marker at playhead (M)">
@@ -566,13 +566,13 @@ export function EditorTimeline({ compact = false }: { compact?: boolean }) {
               })
               setTrackMenuOpen(true)
             }}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-[9px] text-text-muted hover:bg-bg-hover hover:text-text-primary"
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-2xs text-text-muted hover:bg-bg-hover hover:text-text-primary"
           >
             <Plus size={11} /> Track
           </button>
         </div>
         <div className="ml-auto flex items-center gap-1">
-          <span className="hidden font-mono text-[9px] text-text-muted sm:block">{formatEditorTime(playhead, true, project.canvas.fps)}</span>
+          <span className="hidden font-mono text-2xs text-text-muted sm:block">{formatEditorTime(playhead, true, project.canvas.fps)}</span>
           <button type="button" onClick={zoomToFit} className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary" title="Fit timeline">
             <ScanLine size={11} />
           </button>
@@ -593,7 +593,7 @@ export function EditorTimeline({ compact = false }: { compact?: boolean }) {
       >
         <div ref={timelineContentRef} className="relative" style={{ width: TRACK_HEADER_WIDTH + contentWidth, minHeight: 28 + project.tracks.length * trackHeight }}>
           <div className="sticky top-0 z-30 flex h-7 border-b border-border bg-bg-secondary/95 backdrop-blur">
-            <div className="sticky left-0 z-40 w-[132px] shrink-0 border-r border-border bg-bg-secondary px-2 py-1 text-[8px] uppercase tracking-wider text-text-muted">Timeline</div>
+            <div className="sticky left-0 z-40 w-[132px] shrink-0 border-r border-border bg-bg-secondary px-2 py-1 text-2xs uppercase tracking-wider text-text-muted">Timeline</div>
             <div
               className="relative h-full"
               style={{ width: contentWidth }}
@@ -601,7 +601,7 @@ export function EditorTimeline({ compact = false }: { compact?: boolean }) {
             >
               {ticks.map(tick => (
                 <div key={tick} className="absolute bottom-0 top-0 border-l border-border/80" style={{ left: tick * pixelsPerSecond }}>
-                  <span className="absolute left-1 top-0.5 font-mono text-[7px] text-text-muted">{formatEditorTime(tick)}</span>
+                  <span className="absolute left-1 top-0.5 font-mono text-2xs text-text-muted">{formatEditorTime(tick)}</span>
                 </div>
               ))}
               {(project.markers || []).map(marker => (
@@ -652,7 +652,7 @@ export function EditorTimeline({ compact = false }: { compact?: boolean }) {
                 onPointerDown={() => selectItem(null, track.id)}
               >
                 <TrackIcon type={track.type} />
-                <span className="min-w-0 flex-1 truncate text-[8px] text-text-secondary" title={track.name}>{track.name}</span>
+                <span className="min-w-0 flex-1 truncate text-2xs text-text-secondary" title={track.name}>{track.name}</span>
                 <button type="button" onPointerDown={event => event.stopPropagation()} onClick={() => toggleTrackMute(track.id)} className={`rounded p-1 ${track.muted ? 'text-red-400' : 'text-text-muted hover:text-text-primary'}`} title={track.muted ? 'Unmute track' : 'Mute track'}>
                   {track.muted ? <VolumeX size={9} /> : <Volume2 size={9} />}
                 </button>
@@ -732,7 +732,7 @@ export function EditorTimeline({ compact = false }: { compact?: boolean }) {
                       <EditorClipMedia asset={asset} item={item} trackType={track.type} width={width} workspace={project.workspace} />
                       <div className="relative z-10 flex h-full items-center gap-1 overflow-hidden bg-gradient-to-r from-black/35 via-transparent to-black/20 px-2">
                         <TrackIcon type={track.type} />
-                        <span className="truncate text-[8px] font-medium">{item.text || item.name}</span>
+                        <span className="truncate text-2xs font-medium">{item.text || item.name}</span>
                         {item.link_group_id && <Link2 size={9} className="ml-auto shrink-0 opacity-75" />}
                       </div>
                       {fadeIn > 0 && <span className="pointer-events-none absolute inset-y-0 left-0 z-10 bg-gradient-to-r from-black/70 to-transparent" style={{ width: Math.min(width, fadeIn * pixelsPerSecond) }} />}

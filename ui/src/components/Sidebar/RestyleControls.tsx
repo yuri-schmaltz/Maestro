@@ -153,7 +153,7 @@ export function RestyleControls() {
     <div className="space-y-3">
       <div className="flex items-center gap-1.5">
         <Paintbrush size={13} className="shrink-0 text-accent-blue" />
-        <span className="text-[10px] font-medium text-text-primary">
+        <span className="text-2xs font-medium text-text-primary">
           Repaint from first frame
         </span>
         <InfoTooltip
@@ -222,13 +222,13 @@ export function RestyleControls() {
             }}
             onEndChange={time => useStore.setState({ editEndTime: time })}
           />
-          <p className="text-[9px] text-text-muted mt-1 truncate">{editVideoFile.name}</p>
+          <p className="text-2xs text-text-muted mt-1 truncate">{editVideoFile.name}</p>
         </div>
       )}
 
       <div className="space-y-2 rounded-lg border border-border bg-bg-secondary/40 p-2.5">
         <div className="flex items-center gap-1">
-          <p className="text-[10px] font-medium text-text-primary">Edited first frame</p>
+          <p className="text-2xs font-medium text-text-primary">Edited first frame</p>
           <InfoTooltip
             label="About the edited first frame"
             text="Change anything you want while keeping the same canvas, viewpoint, and pose. This frame defines the new visual."
@@ -258,13 +258,13 @@ export function RestyleControls() {
         <button
           onClick={() => void sendFrameToImageMode('repaint')}
           disabled={!editVideoPath}
-          className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded border border-accent-blue/40 bg-accent-blue/10 text-[10px] text-accent-blue hover:bg-accent-blue/20 disabled:opacity-40"
+          className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded border border-accent-blue/40 bg-accent-blue/10 text-2xs text-accent-blue hover:bg-accent-blue/20 disabled:opacity-40"
         >
           <Pencil size={11} />
           {targetFramePath ? 'Edit first frame again' : 'Edit first frame'}
         </button>
 
-        <label className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded border border-dashed border-border text-[10px] text-text-secondary hover:text-text-primary hover:border-accent-blue/50 cursor-pointer">
+        <label className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded border border-dashed border-border text-2xs text-text-secondary hover:text-text-primary hover:border-accent-blue/50 cursor-pointer">
           <Upload size={11} />
           {targetFramePath ? 'Replace edited frame' : 'Upload edited frame'}
           <input
@@ -289,8 +289,8 @@ export function RestyleControls() {
             className="flex flex-1 items-center gap-1.5 px-2.5 py-2 text-left hover:bg-bg-hover/40"
           >
             {showRegions ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            <span className="text-[10px] text-text-primary">Track changed regions</span>
-            <span className="ml-auto text-[9px] text-text-muted">Optional</span>
+            <span className="text-2xs text-text-primary">Track changed regions</span>
+            <span className="ml-auto text-2xs text-text-muted">Optional</span>
           </button>
           <div className="pr-2">
             <InfoTooltip
@@ -311,7 +311,7 @@ export function RestyleControls() {
                       className="h-3 w-3 rounded-full border border-white/30"
                       style={{ backgroundColor: REGION_COLORS[index] }}
                     />
-                    <span className="text-[9px] text-text-secondary">Region {index + 1}</span>
+                    <span className="text-2xs text-text-secondary">Region {index + 1}</span>
                     <button
                       onClick={() => removeMapping(index)}
                       className="ml-auto p-0.5 text-text-muted hover:text-status-error"
@@ -325,17 +325,17 @@ export function RestyleControls() {
                     value={mapping.source}
                     onChange={event => updateMapping(index, { source: event.target.value })}
                     placeholder="In source video: electric wrench"
-                    className="w-full bg-bg-tertiary border border-border rounded px-2 py-1.5 text-[10px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
+                    className="w-full bg-bg-tertiary border border-border rounded px-2 py-1.5 text-2xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
                   />
                   <input
                     type="text"
                     value={mapping.target}
                     onChange={event => updateMapping(index, { target: event.target.value })}
                     placeholder="In edited frame: sci-fi gun"
-                    className="w-full bg-bg-tertiary border border-border rounded px-2 py-1.5 text-[10px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
+                    className="w-full bg-bg-tertiary border border-border rounded px-2 py-1.5 text-2xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
                   />
                   {result && (
-                    <p className={`text-[8px] ${result.source_found && result.target_found ? 'text-accent-green' : 'text-status-warning'}`}>
+                    <p className={`text-2xs ${result.source_found && result.target_found ? 'text-accent-green' : 'text-status-warning'}`}>
                       Source {result.source_found ? 'found' : 'not found'} · edited frame {result.target_found ? 'found' : 'not found'}
                     </p>
                   )}
@@ -347,7 +347,7 @@ export function RestyleControls() {
               {mappings.length < 5 && (
                 <button
                   onClick={addMapping}
-                  className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded border border-dashed border-border text-[9px] text-text-secondary hover:text-accent-blue hover:border-accent-blue/50"
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded border border-dashed border-border text-2xs text-text-secondary hover:text-accent-blue hover:border-accent-blue/50"
                 >
                   <Plus size={11} />
                   Add region
@@ -362,7 +362,7 @@ export function RestyleControls() {
                     || !targetFramePath
                     || mappings.some(mapping => !mapping.source.trim() || !mapping.target.trim())
                   }
-                  className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded border border-border bg-bg-tertiary text-[9px] text-text-secondary hover:text-text-primary disabled:opacity-40"
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded border border-border bg-bg-tertiary text-2xs text-text-secondary hover:text-text-primary disabled:opacity-40"
                 >
                   {previewState === 'loading'
                     ? <Loader2 size={11} className="animate-spin" />
@@ -376,16 +376,16 @@ export function RestyleControls() {
               <div className="grid grid-cols-2 gap-1.5">
                 <div>
                   <img src={preview.source_preview} alt="Source region preview" className="w-full rounded border border-border" />
-                  <p className="text-[8px] text-text-muted mt-0.5">source video</p>
+                  <p className="text-2xs text-text-muted mt-0.5">source video</p>
                 </div>
                 <div>
                   <img src={preview.target_preview} alt="Edited-frame region preview" className="w-full rounded border border-border" />
-                  <p className="text-[8px] text-text-muted mt-0.5">edited frame</p>
+                  <p className="text-2xs text-text-muted mt-0.5">edited frame</p>
                 </div>
               </div>
             )}
             {previewState === 'error' && previewError && (
-              <p className="text-[9px] text-status-error">{previewError}</p>
+              <p className="text-2xs text-status-error">{previewError}</p>
             )}
           </div>
         )}

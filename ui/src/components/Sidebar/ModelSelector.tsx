@@ -159,19 +159,19 @@ export function ModelSelector() {
             >
               <Plus size={13} className="shrink-0" />
               <span className="flex-1 text-xs">Enable more models</span>
-              <span className="text-[10px] text-text-muted shrink-0">{disabledCount} available</span>
+              <span className="text-2xs text-text-muted shrink-0">{disabledCount} available</span>
             </button>
           )}
           <div className="max-h-[360px] overflow-y-auto py-1">
             {groups.length === 0 && (
-              <p className="px-3 py-3 text-[10px] leading-relaxed text-text-muted">
+              <p className="px-3 py-3 text-2xs leading-relaxed text-text-muted">
                 {compatibilityDescription}
               </p>
             )}
             {groups.map(({ family, models: famModels }) => (
               <div key={family.id}>
                 {/* Family header */}
-                <div className="px-3 pt-2 pb-1 text-[10px] text-text-muted uppercase tracking-wider font-medium">
+                <div className="px-3 pt-2 pb-1 text-2xs text-text-muted uppercase tracking-wider font-medium">
                   {family.label}
                 </div>
                 {/* Models in family */}
@@ -258,7 +258,7 @@ function ModelBadges({ model }: {
         <span
           key={b.label}
           title={b.title}
-          className="text-[9px] px-1 py-0.5 rounded bg-bg-tertiary text-text-muted leading-none"
+          className="text-2xs px-1 py-0.5 rounded bg-bg-tertiary text-text-muted leading-none"
         >
           {b.label}
         </span>

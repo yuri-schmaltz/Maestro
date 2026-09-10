@@ -84,7 +84,7 @@ export function StorageDashboard() {
     <button
       onClick={() => confirmAndRun(key, onRun)}
       disabled={busyKey === key}
-      className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded border transition-colors shrink-0 ${
+      className={`flex items-center gap-1 px-1.5 py-0.5 text-2xs rounded border transition-colors shrink-0 ${
         confirmKey === key
           ? 'bg-red-500/20 border-red-500/50 text-red-400'
           : 'border-border text-text-muted hover:text-red-400 hover:border-red-500/40'
@@ -101,7 +101,7 @@ export function StorageDashboard() {
         <HardDrive size={16} className="text-accent-blue" />
         <h1 className="text-sm font-semibold text-text-primary">Storage Manager</h1>
         {usage && (
-          <span className="text-[10px] text-text-muted">
+          <span className="text-2xs text-text-muted">
             usage from {usage.scanned_sidecars} generations
           </span>
         )}
@@ -112,7 +112,7 @@ export function StorageDashboard() {
       </div>
 
       {error && (
-        <div className="mx-4 mt-3 px-3 py-2 text-[11px] text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg">{error}</div>
+        <div className="mx-4 mt-3 px-3 py-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg">{error}</div>
       )}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -125,7 +125,7 @@ export function StorageDashboard() {
             { label: 'Reclaimable duplicates', value: dupes ? formatBytes(dupes.total_reclaimable_bytes) : 'scan below', icon: Copy },
           ].map(t => (
             <div key={t.label} className="rounded-lg border border-border bg-bg-secondary px-3 py-2.5">
-              <div className="flex items-center gap-1.5 text-[10px] text-text-muted uppercase tracking-wider"><t.icon size={10} />{t.label}</div>
+              <div className="flex items-center gap-1.5 text-2xs text-text-muted uppercase tracking-wider"><t.icon size={10} />{t.label}</div>
               <div className="text-lg text-text-primary font-semibold mt-0.5">{t.value}</div>
             </div>
           ))}
@@ -138,15 +138,15 @@ export function StorageDashboard() {
             <button
               onClick={scanDupes}
               disabled={dupesLoading}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded border border-border text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-2 py-1 text-2xs rounded border border-border text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
             >
               {dupesLoading ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
               Scan
             </button>
-            <span className="text-[10px] text-text-muted">
+            <span className="text-2xs text-text-muted">
               same file in Maestro AND a linked install — deleting Maestro's copy is free, the linked one keeps working
             </span>
-            <label className="ml-auto flex items-center gap-1.5 text-[10px] text-text-secondary cursor-pointer shrink-0" title="The inverse direction: keep Maestro's copy and remove the duplicate FROM the linked install. Removals go to the Windows Recycle Bin so they can be undone. Off by default because it modifies other installs.">
+            <label className="ml-auto flex items-center gap-1.5 text-2xs text-text-secondary cursor-pointer shrink-0" title="The inverse direction: keep Maestro's copy and remove the duplicate FROM the linked install. Removals go to the Windows Recycle Bin so they can be undone. Off by default because it modifies other installs.">
               <input
                 type="checkbox"
                 checked={allowLinkedRemoval}
@@ -163,7 +163,7 @@ export function StorageDashboard() {
             <div className="rounded-lg border border-border overflow-hidden">
               {dupes.duplicates.map(d => (
                 <div key={d.primary_path} className="flex items-center gap-2 px-3 py-1.5 text-xs border-b border-border last:border-b-0 hover:bg-bg-hover">
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-bg-tertiary text-text-muted uppercase shrink-0">{d.kind}</span>
+                  <span className="text-2xs px-1 py-0.5 rounded bg-bg-tertiary text-text-muted uppercase shrink-0">{d.kind}</span>
                   <span className="truncate text-text-primary flex-1 min-w-0" title={d.primary_path}>{d.rel_path}</span>
                   <span className="text-text-muted shrink-0" title={`Also in ${d.linked_path}`}>in {d.linked_install}</span>
                   <span className="text-text-secondary tabular-nums shrink-0">{formatBytes(d.size_bytes)}</span>
@@ -190,7 +190,7 @@ export function StorageDashboard() {
             </div>
           )}
           {dupes && dupes.conflicts.length > 0 && (
-            <div className="mt-2 text-[10px] text-indicator-warning">
+            <div className="mt-2 text-2xs text-indicator-warning">
               {dupes.conflicts.length} same-name files differ in size between installs (not listed as reclaimable — Maestro's copy is the one in use).
             </div>
           )}
@@ -215,14 +215,14 @@ export function StorageDashboard() {
                     loadUsage()
                   }) : m.alias_of ? (
                     <span
-                      className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary text-text-muted shrink-0"
+                      className="text-2xs px-1.5 py-0.5 rounded bg-bg-tertiary text-text-muted shrink-0"
                       title={`This entry runs on ${m.alias_of}'s weights — delete that row to free the space. Its own extras (like a bundled accelerator LoRA) are tiny.`}
                     >
                       shares weights
                     </span>
                   ) : m.size_bytes > 0 ? (
                     <span
-                      className="text-[9px] px-1.5 py-0.5 rounded bg-bg-tertiary text-text-muted shrink-0"
+                      className="text-2xs px-1.5 py-0.5 rounded bg-bg-tertiary text-text-muted shrink-0"
                       title="Every copy of these weights lives in a linked install (read-only from here). Free the space in that install, or unlink it."
                     >
                       linked only
@@ -244,7 +244,7 @@ export function StorageDashboard() {
                   <span className="truncate text-text-primary flex-1 min-w-0">{l.filename}</span>
                   {l.linked && (
                     <span
-                      className="text-[9px] px-1 py-0.5 rounded bg-accent-blue/20 text-accent-blue shrink-0"
+                      className="text-2xs px-1 py-0.5 rounded bg-accent-blue/20 text-accent-blue shrink-0"
                       title="Lives in a linked install's loras folder (read-only from here) — no delete. Free the space in that install, or unlink it."
                     >
                       Linked

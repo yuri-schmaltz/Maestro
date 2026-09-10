@@ -49,7 +49,7 @@ export function VideoEditControls() {
     <div className="space-y-3">
       {/* Source Video */}
       <div>
-        <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
           Source Video
         </label>
         <div
@@ -90,7 +90,7 @@ export function VideoEditControls() {
           ) : (
             <div className="flex flex-col items-center justify-center gap-1 py-4 text-text-muted">
               <Upload size={18} />
-              <span className="text-[10px]">{uploading ? 'Uploading...' : 'Drop video to edit'}</span>
+              <span className="text-2xs">{uploading ? 'Uploading...' : 'Drop video to edit'}</span>
             </div>
           )}
         </div>
@@ -98,7 +98,7 @@ export function VideoEditControls() {
 
       {/* Reference Image (optional) */}
       <div>
-        <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
           Reference Image <span className="text-text-muted font-normal">(optional)</span>
         </label>
         <div
@@ -139,11 +139,11 @@ export function VideoEditControls() {
           ) : (
             <div className="flex items-center justify-center gap-1 py-2 text-text-muted">
               <ImageIcon size={14} />
-              <span className="text-[10px]">Drop style/object reference</span>
+              <span className="text-2xs">Drop style/object reference</span>
             </div>
           )}
         </div>
-        <p className="text-[9px] text-text-muted mt-1">
+        <p className="text-2xs text-text-muted mt-1">
           For style transfer or object reference. Leave empty for instruction-only edits.
         </p>
       </div>

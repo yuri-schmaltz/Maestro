@@ -56,7 +56,7 @@ export function EditAnythingControls() {
       {/* Header hint */}
       <div className="flex items-start gap-2 bg-accent-blue/10 border border-accent-blue/20 rounded-lg px-2.5 py-2">
         <Sparkles size={12} className="text-accent-blue mt-0.5 shrink-0" />
-        <p className="text-[10px] text-text-secondary leading-snug">
+        <p className="text-2xs text-text-secondary leading-snug">
           Prompt-driven edit — no mask needed. Write one of:
           <br />
           <span className="text-text-muted">• </span><span className="text-text-primary">Add</span> a [thing] [location]
@@ -79,7 +79,7 @@ export function EditAnythingControls() {
         >
           <Upload size={24} className="mx-auto mb-2 text-text-muted" />
           <p className="text-xs text-text-secondary">Drop a video or click to upload</p>
-          <p className="text-[9px] text-text-muted mt-1">Optional: select a time range below to edit only part of the clip</p>
+          <p className="text-2xs text-text-muted mt-1">Optional: select a time range below to edit only part of the clip</p>
           <input ref={fileRef} type="file" accept="video/*" className="hidden"
             onChange={e => { if (e.target.files?.[0]) handleUpload(e.target.files[0]) }} />
         </div>
@@ -97,21 +97,21 @@ export function EditAnythingControls() {
             onStartChange={t => useStore.setState({ editStartTime: t })}
             onEndChange={t => useStore.setState({ editEndTime: t })}
           />
-          <p className="text-[9px] text-text-muted mt-1 truncate">{editVideoFile.name}</p>
+          <p className="text-2xs text-text-muted mt-1 truncate">{editVideoFile.name}</p>
         </div>
       )}
 
       {/* Advanced knobs */}
       <button onClick={() => setShowAdvanced(!showAdvanced)}
-        className="text-[10px] text-text-muted hover:text-text-primary transition-colors">
+        className="text-2xs text-text-muted hover:text-text-primary transition-colors">
         {showAdvanced ? '▾' : '▸'} Advanced
       </button>
       {showAdvanced && (
         <div className="space-y-3 pl-2 border-l border-border/50">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] text-text-muted uppercase tracking-wider">LoRA Strength</label>
-              <span className="text-[10px] text-text-secondary">{loraStrength.toFixed(2)}</span>
+              <label className="text-2xs text-text-muted uppercase tracking-wider">LoRA Strength</label>
+              <span className="text-2xs text-text-secondary">{loraStrength.toFixed(2)}</span>
             </div>
             <input
               type="range" min={0.5} max={1.5} step={0.05}
@@ -119,14 +119,14 @@ export function EditAnythingControls() {
               onChange={e => useStore.setState({ editAnythingLoraStrength: parseFloat(e.target.value) })}
               className="w-full"
             />
-            <p className="text-[9px] text-text-muted mt-0.5">
+            <p className="text-2xs text-text-muted mt-0.5">
               Per the LoRA card: start at 1.0. Bump to 1.2 if the edit is too weak; drop below if it distorts unrelated content.
             </p>
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] text-text-muted uppercase tracking-wider">Source Preservation</label>
-              <span className="text-[10px] text-text-secondary">{retakeStrength.toFixed(2)}</span>
+              <label className="text-2xs text-text-muted uppercase tracking-wider">Source Preservation</label>
+              <span className="text-2xs text-text-secondary">{retakeStrength.toFixed(2)}</span>
             </div>
             <input
               type="range" min={0.3} max={1.0} step={0.05}
@@ -134,7 +134,7 @@ export function EditAnythingControls() {
               onChange={e => useStore.setState({ editRetakeStrength: parseFloat(e.target.value) })}
               className="w-full"
             />
-            <p className="text-[9px] text-text-muted mt-0.5">
+            <p className="text-2xs text-text-muted mt-0.5">
               How much of the source's structure is regenerated. Lower = more source preserved (subtle edit), higher = more aggressive.
             </p>
           </div>

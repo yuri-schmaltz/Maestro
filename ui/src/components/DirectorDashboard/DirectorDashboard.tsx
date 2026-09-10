@@ -65,7 +65,7 @@ function PipelineProgressBar({ pipeline }: { pipeline: SavedPipelineState }) {
           ) : null
         })}
       </div>
-      <div className="flex justify-between text-[9px] text-text-muted">
+      <div className="flex justify-between text-2xs text-text-muted">
         {phases.map((phase, i) => (
           <span key={i} className="flex items-center gap-1">
             <span className={`w-1.5 h-1.5 rounded-full ${['bg-purple-500', 'bg-blue-500', 'bg-green-500'][i]}`} />
@@ -90,15 +90,15 @@ function LlmPassView({ pass: p, index }: { pass: { pass: string; system_prompt: 
 
   return (
     <div className="border border-border rounded p-2 space-y-1.5">
-      <div className="text-[10px] font-medium text-text-primary">Pass {index + 1}: {label}</div>
+      <div className="text-2xs font-medium text-text-primary">Pass {index + 1}: {label}</div>
 
       <button onClick={() => setShowSystem(!showSystem)}
-        className="flex items-center gap-1 text-[9px] text-text-secondary hover:text-text-primary w-full text-left">
+        className="flex items-center gap-1 text-2xs text-text-secondary hover:text-text-primary w-full text-left">
         {showSystem ? <ChevronDown size={9} /> : <ChevronRight size={9} />}
         System Prompt ({p.system_prompt?.length || 0} chars)
       </button>
       {showSystem && (
-        <pre className="text-[8px] text-text-muted bg-bg-tertiary rounded p-2 max-h-48 overflow-auto whitespace-pre-wrap font-mono">
+        <pre className="text-2xs text-text-muted bg-bg-tertiary rounded p-2 max-h-48 overflow-auto whitespace-pre-wrap font-mono">
           {p.system_prompt || '(empty)'}
         </pre>
       )}
@@ -110,12 +110,12 @@ function LlmPassView({ pass: p, index }: { pass: { pass: string; system_prompt: 
       {p.user_prompt !== undefined && p.user_prompt !== null && (
         <>
           <button onClick={() => setShowUser(!showUser)}
-            className="flex items-center gap-1 text-[9px] text-text-secondary hover:text-text-primary w-full text-left">
+            className="flex items-center gap-1 text-2xs text-text-secondary hover:text-text-primary w-full text-left">
             {showUser ? <ChevronDown size={9} /> : <ChevronRight size={9} />}
             User Prompt ({p.user_prompt?.length || 0} chars)
           </button>
           {showUser && (
-            <pre className="text-[8px] text-text-muted bg-bg-tertiary rounded p-2 max-h-48 overflow-auto whitespace-pre-wrap font-mono">
+            <pre className="text-2xs text-text-muted bg-bg-tertiary rounded p-2 max-h-48 overflow-auto whitespace-pre-wrap font-mono">
               {p.user_prompt || '(empty)'}
             </pre>
           )}
@@ -125,12 +125,12 @@ function LlmPassView({ pass: p, index }: { pass: { pass: string; system_prompt: 
       {p.thinking_text && (
         <>
           <button onClick={() => setShowThinking(!showThinking)}
-            className="flex items-center gap-1 text-[9px] text-indicator-warning hover:text-indicator-warning/80 w-full text-left">
+            className="flex items-center gap-1 text-2xs text-indicator-warning hover:text-indicator-warning/80 w-full text-left">
             {showThinking ? <ChevronDown size={9} /> : <ChevronRight size={9} />}
             <Sparkles size={8} /> Thinking ({p.thinking_text.length} chars)
           </button>
           {showThinking && (
-            <pre className="text-[8px] text-text-muted bg-bg-tertiary rounded p-2 max-h-48 overflow-auto whitespace-pre-wrap font-mono">
+            <pre className="text-2xs text-text-muted bg-bg-tertiary rounded p-2 max-h-48 overflow-auto whitespace-pre-wrap font-mono">
               {p.thinking_text}
             </pre>
           )}
@@ -138,12 +138,12 @@ function LlmPassView({ pass: p, index }: { pass: { pass: string; system_prompt: 
       )}
 
       <button onClick={() => setShowResponse(!showResponse)}
-        className="flex items-center gap-1 text-[9px] text-text-secondary hover:text-text-primary w-full text-left">
+        className="flex items-center gap-1 text-2xs text-text-secondary hover:text-text-primary w-full text-left">
         {showResponse ? <ChevronDown size={9} /> : <ChevronRight size={9} />}
         Response ({p.response_text?.length || 0} chars)
       </button>
       {showResponse && (
-        <pre className="text-[8px] text-text-muted bg-bg-tertiary rounded p-2 max-h-48 overflow-auto whitespace-pre-wrap font-mono">
+        <pre className="text-2xs text-text-muted bg-bg-tertiary rounded p-2 max-h-48 overflow-auto whitespace-pre-wrap font-mono">
           {p.response_text || '(empty)'}
         </pre>
       )}
@@ -159,7 +159,7 @@ function LlmLogPanel({ pipeline }: { pipeline: SavedPipelineState }) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 text-[10px] text-text-muted">
+      <div className="flex items-center gap-2 text-2xs text-text-muted">
         <Brain size={12} className="text-chip-purple" />
         <span>{log.provider}/{log.model_id || 'unknown'}</span>
         <span className="ml-1 text-text-muted">({passes?.length || 1} pass{(passes?.length || 1) > 1 ? 'es' : ''})</span>
@@ -228,15 +228,15 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
             <span className="text-text-muted font-normal ml-1">({Math.round((clip.planned_clip as unknown as Record<string, unknown>).duration_sec as number)}s)</span>
           ) : null}
           {clip.window_count > 1 && (
-            <span className="text-chip-purple font-normal ml-1 text-[9px]">{clip.window_count}W</span>
+            <span className="text-chip-purple font-normal ml-1 text-2xs">{clip.window_count}W</span>
           )}
         </span>
         <div className="flex items-center gap-1">
           {clip.image_gen_time_sec && (
-            <span className="text-[9px] text-text-muted"><ImageIcon size={8} className="inline" /> {formatTime(clip.image_gen_time_sec)}</span>
+            <span className="text-2xs text-text-muted"><ImageIcon size={8} className="inline" /> {formatTime(clip.image_gen_time_sec)}</span>
           )}
           {clip.video_gen_time_sec && (
-            <span className="text-[9px] text-text-muted ml-1"><Play size={8} className="inline" /> {formatTime(clip.video_gen_time_sec)}</span>
+            <span className="text-2xs text-text-muted ml-1"><Play size={8} className="inline" /> {formatTime(clip.video_gen_time_sec)}</span>
           )}
           {/* Tag buttons */}
           <button onClick={() => onTag(clip.tag === 'good' ? null : 'good')}
@@ -280,7 +280,7 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
           {/* Image prompt */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-0.5">
-              <span className="text-[9px] text-text-muted uppercase tracking-wider">
+              <span className="text-2xs text-text-muted uppercase tracking-wider">
                 {requiresShotImage ? 'Image Prompt' : 'Planned Visual'}
               </span>
               {requiresShotImage && <div className="flex items-center gap-1">
@@ -301,11 +301,11 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
               <textarea
                 value={editImagePrompt}
                 onChange={e => setEditImagePrompt(e.target.value)}
-                className="w-full bg-bg-tertiary border border-accent-blue rounded px-1.5 py-1 text-[10px] text-text-primary resize-none focus:outline-none"
+                className="w-full bg-bg-tertiary border border-accent-blue rounded px-1.5 py-1 text-2xs text-text-primary resize-none focus:outline-none"
                 rows={3}
               />
             ) : (
-              <p className={`text-[10px] text-text-secondary ${expandImage ? '' : 'line-clamp-3'} cursor-pointer`}
+              <p className={`text-2xs text-text-secondary ${expandImage ? '' : 'line-clamp-3'} cursor-pointer`}
                 onClick={() => setExpandImage(!expandImage)}>
                 {clip.image_prompt || <span className="italic text-text-muted">No image prompt</span>}
               </p>
@@ -316,7 +316,7 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
         {/* Keyframes */}
         {(clip.keyframe_prompts?.length > 0 || clip.keyframe_filenames?.length > 0) && (
           <div>
-            <div className="text-[9px] text-text-muted uppercase tracking-wider mb-0.5">
+            <div className="text-2xs text-text-muted uppercase tracking-wider mb-0.5">
               Keyframes ({clip.keyframe_prompts?.length || clip.keyframe_filenames?.length || 0})
             </div>
             <div className="flex gap-1.5 overflow-x-auto">
@@ -325,7 +325,7 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
                   <img src={getFileUrl(kf)} alt={`KF ${ki + 1}`}
                     className="w-14 h-14 object-cover rounded border border-border" loading="lazy" />
                   {clip.keyframe_prompts?.[ki] && (
-                    <p className="text-[8px] text-text-muted mt-0.5 w-14 truncate" title={safeStr(clip.keyframe_prompts[ki])}>
+                    <p className="text-2xs text-text-muted mt-0.5 w-14 truncate" title={safeStr(clip.keyframe_prompts[ki])}>
                       {safeStr(clip.keyframe_prompts[ki])}
                     </p>
                   )}
@@ -334,7 +334,7 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
               {/* Show prompts without images if more prompts than files */}
               {clip.keyframe_prompts?.slice(clip.keyframe_filenames?.length || 0).map((kp, ki) => (
                 <div key={`p${ki}`} className="shrink-0 w-14 h-14 rounded border border-dashed border-border flex items-center justify-center">
-                  <p className="text-[7px] text-text-muted p-1 line-clamp-3">{safeStr(kp)}</p>
+                  <p className="text-2xs text-text-muted p-1 line-clamp-3">{safeStr(kp)}</p>
                 </div>
               ))}
             </div>
@@ -344,7 +344,7 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
         {/* Video prompt */}
         <div>
           <div className="flex items-center justify-between mb-0.5">
-            <span className="text-[9px] text-text-muted uppercase tracking-wider">
+            <span className="text-2xs text-text-muted uppercase tracking-wider">
               Video Prompt{clip.window_prompts?.length > 1 ? ` (${clip.window_prompts.length} windows)` : ''}
             </span>
             <div className="flex items-center gap-1">
@@ -380,7 +380,7 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
               <div className="space-y-1.5">
                 {editWindowPrompts.map((wp, wi) => (
                   <div key={wi}>
-                    <div className="text-[8px] text-text-muted mb-0.5">Window {wi + 1}</div>
+                    <div className="text-2xs text-text-muted mb-0.5">Window {wi + 1}</div>
                     <textarea
                       value={wp}
                       onChange={e => {
@@ -388,7 +388,7 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
                         updated[wi] = e.target.value
                         setEditWindowPrompts(updated)
                       }}
-                      className="w-full bg-bg-tertiary border border-accent-blue/50 rounded px-1.5 py-1 text-[10px] text-text-primary resize-none focus:outline-none focus:border-accent-blue"
+                      className="w-full bg-bg-tertiary border border-accent-blue/50 rounded px-1.5 py-1 text-2xs text-text-primary resize-none focus:outline-none focus:border-accent-blue"
                       rows={3}
                     />
                   </div>
@@ -398,7 +398,7 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
               <textarea
                 value={editVideoPrompt}
                 onChange={e => setEditVideoPrompt(e.target.value)}
-                className="w-full bg-bg-tertiary border border-accent-blue rounded px-1.5 py-1 text-[10px] text-text-primary resize-none focus:outline-none"
+                className="w-full bg-bg-tertiary border border-accent-blue rounded px-1.5 py-1 text-2xs text-text-primary resize-none focus:outline-none"
                 rows={4}
               />
             )
@@ -406,15 +406,15 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
             clip.window_prompts?.length > 1 ? (
               <div className="space-y-0.5">
                 {clip.window_prompts.map((wp, wi) => (
-                  <p key={wi} className={`text-[10px] text-text-secondary pl-2 border-l-2 ${wi === 0 ? 'border-accent-blue/40' : 'border-border'} ${expandVideo ? '' : 'line-clamp-2'} cursor-pointer`}
+                  <p key={wi} className={`text-2xs text-text-secondary pl-2 border-l-2 ${wi === 0 ? 'border-accent-blue/40' : 'border-border'} ${expandVideo ? '' : 'line-clamp-2'} cursor-pointer`}
                     onClick={() => setExpandVideo(!expandVideo)}>
-                    <span className="text-[8px] text-text-muted mr-1">W{wi + 1}</span>
+                    <span className="text-2xs text-text-muted mr-1">W{wi + 1}</span>
                     {safeStr(wp)}
                   </p>
                 ))}
               </div>
             ) : (
-              <p className={`text-[10px] text-text-secondary ${expandVideo ? '' : 'line-clamp-3'} cursor-pointer`}
+              <p className={`text-2xs text-text-secondary ${expandVideo ? '' : 'line-clamp-3'} cursor-pointer`}
                 onClick={() => setExpandVideo(!expandVideo)}>
                 {clip.video_prompt || <span className="italic text-text-muted">No video prompt</span>}
               </p>
@@ -428,7 +428,7 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
         {hasPolish && (
           <div>
             <button onClick={() => setShowPolish(!showPolish)}
-              className="flex items-center gap-1 text-[9px] text-accent-blue hover:underline">
+              className="flex items-center gap-1 text-2xs text-accent-blue hover:underline">
               <Sparkles size={8} />
               {showPolish ? 'Hide' : 'Show'} prompt polish diff
             </button>
@@ -453,38 +453,38 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
                 <div className="mt-1 space-y-1.5 bg-bg-tertiary rounded p-2">
                   {imageChanged && (
                     <div>
-                      <div className="text-[8px] text-text-muted uppercase">Image — Before Polish</div>
-                      <p className="text-[9px] text-red-400/70 line-through">{clip.image_prompt_pre_polish}</p>
-                      <div className="text-[8px] text-text-muted uppercase mt-0.5">After</div>
-                      <p className="text-[9px] text-indicator-success/80">{clip.image_prompt}</p>
+                      <div className="text-2xs text-text-muted uppercase">Image — Before Polish</div>
+                      <p className="text-2xs text-red-400/70 line-through">{clip.image_prompt_pre_polish}</p>
+                      <div className="text-2xs text-text-muted uppercase mt-0.5">After</div>
+                      <p className="text-2xs text-indicator-success/80">{clip.image_prompt}</p>
                     </div>
                   )}
                   {videoChanged && (
                     <div>
-                      <div className="text-[8px] text-text-muted uppercase">Video — Before Polish</div>
-                      <p className="text-[9px] text-red-400/70 line-through">{clip.video_prompt_pre_polish}</p>
-                      <div className="text-[8px] text-text-muted uppercase mt-0.5">After</div>
-                      <p className="text-[9px] text-indicator-success/80">{clip.video_prompt}</p>
+                      <div className="text-2xs text-text-muted uppercase">Video — Before Polish</div>
+                      <p className="text-2xs text-red-400/70 line-through">{clip.video_prompt_pre_polish}</p>
+                      <div className="text-2xs text-text-muted uppercase mt-0.5">After</div>
+                      <p className="text-2xs text-indicator-success/80">{clip.video_prompt}</p>
                     </div>
                   )}
                   {windowDiffs.map(({ pre, post, i }) => (
                     <div key={`wp${i}`}>
-                      <div className="text-[8px] text-text-muted uppercase">Window {i + 1} — Before Polish</div>
-                      <p className="text-[9px] text-red-400/70 line-through">{pre}</p>
-                      <div className="text-[8px] text-text-muted uppercase mt-0.5">After</div>
-                      <p className="text-[9px] text-indicator-success/80">{post}</p>
+                      <div className="text-2xs text-text-muted uppercase">Window {i + 1} — Before Polish</div>
+                      <p className="text-2xs text-red-400/70 line-through">{pre}</p>
+                      <div className="text-2xs text-text-muted uppercase mt-0.5">After</div>
+                      <p className="text-2xs text-indicator-success/80">{post}</p>
                     </div>
                   ))}
                   {keyframeDiffs.map(({ pre, post, i }) => (
                     <div key={`kf${i}`}>
-                      <div className="text-[8px] text-text-muted uppercase">Keyframe {i + 1} — Before Polish</div>
-                      <p className="text-[9px] text-red-400/70 line-through">{pre}</p>
-                      <div className="text-[8px] text-text-muted uppercase mt-0.5">After</div>
-                      <p className="text-[9px] text-indicator-success/80">{post}</p>
+                      <div className="text-2xs text-text-muted uppercase">Keyframe {i + 1} — Before Polish</div>
+                      <p className="text-2xs text-red-400/70 line-through">{pre}</p>
+                      <div className="text-2xs text-text-muted uppercase mt-0.5">After</div>
+                      <p className="text-2xs text-indicator-success/80">{post}</p>
                     </div>
                   ))}
                   {!anyChange && (
-                    <p className="text-[9px] text-text-muted italic">No changes from polish</p>
+                    <p className="text-2xs text-text-muted italic">No changes from polish</p>
                   )}
                 </div>
               )
@@ -655,7 +655,7 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
 
         {/* Summary badges */}
         {selectedPipeline && (
-          <div className="flex items-center gap-2 text-[10px] shrink-0">
+          <div className="flex items-center gap-2 text-2xs shrink-0">
             <span className="flex items-center gap-0.5 text-indicator-success">
               <Check size={10} /> {goodCount}
             </span>
@@ -679,7 +679,7 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
                   }
                 }}
                 disabled={resuming || loading || repairBusy}
-                className="flex items-center gap-1 px-2 py-1 text-[10px] bg-green-500/10 border border-green-500/30 rounded text-indicator-success hover:bg-green-500/20 disabled:opacity-40 transition-colors"
+                className="flex items-center gap-1 px-2 py-1 text-2xs bg-green-500/10 border border-green-500/30 rounded text-indicator-success hover:bg-green-500/20 disabled:opacity-40 transition-colors"
                 title="Re-run this pipeline from where it crashed — reuses the planning and start images that already completed"
               >
                 <Play size={10} />
@@ -689,7 +689,7 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
             {repairActive ? (
               <>
                 <span
-                  className="flex items-center gap-1 px-2 py-1 text-[10px] bg-orange-500/10 border border-orange-500/30 rounded text-chip-orange"
+                  className="flex items-center gap-1 px-2 py-1 text-2xs bg-orange-500/10 border border-orange-500/30 rounded text-chip-orange"
                   title={repair?.message || 'Repair running'}
                 >
                   <Loader2 size={10} className="animate-spin" />
@@ -710,7 +710,7 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
                     }
                   }}
                   disabled={repairCancelling || repair?.status === 'cancelling'}
-                  className="flex items-center gap-1 px-2 py-1 text-[10px] bg-red-500/10 border border-red-500/30 rounded text-red-400 hover:bg-red-500/20 disabled:opacity-40 transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-2xs bg-red-500/10 border border-red-500/30 rounded text-red-400 hover:bg-red-500/20 disabled:opacity-40 transition-colors"
                   title="Stop after aborting the current model step"
                 >
                   {repairCancelling ? <Loader2 size={10} className="animate-spin" /> : <X size={10} />}
@@ -721,7 +721,7 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
               <button
                 onClick={generateMissing}
                 disabled={loading || repairBusy}
-                className="flex items-center gap-1 px-2 py-1 text-[10px] bg-orange-500/10 border border-orange-500/30 rounded text-chip-orange hover:bg-orange-500/20 disabled:opacity-40 transition-colors"
+                className="flex items-center gap-1 px-2 py-1 text-2xs bg-orange-500/10 border border-orange-500/30 rounded text-chip-orange hover:bg-orange-500/20 disabled:opacity-40 transition-colors"
                 title={hasMissing
                   ? requiresShotImages
                     ? `Repair ${missingImages} missing images + ${missingVideos} missing or stale videos, then join when possible`
@@ -744,13 +744,13 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
                   href={getFileUrl(repair.result_filename)}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1 px-2 py-1 text-[10px] bg-green-500/10 border border-green-500/30 rounded text-indicator-success hover:bg-green-500/20 transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-2xs bg-green-500/10 border border-green-500/30 rounded text-indicator-success hover:bg-green-500/20 transition-colors"
                   title="Open the repaired joined video"
                 >
                   <Check size={10} /> Repaired + joined
                 </a>
               ) : (
-                <span className="flex items-center gap-1 px-2 py-1 text-[10px] text-indicator-success">
+                <span className="flex items-center gap-1 px-2 py-1 text-2xs text-indicator-success">
                   <Check size={10} /> Repair complete
                 </span>
               )
@@ -762,7 +762,7 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
                 }
               }}
               disabled={loading || repairBusy}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] bg-accent-blue/10 border border-accent-blue/30 rounded text-accent-blue hover:bg-accent-blue/20 disabled:opacity-40 transition-colors"
+              className="flex items-center gap-1 px-2 py-1 text-2xs bg-accent-blue/10 border border-accent-blue/30 rounded text-accent-blue hover:bg-accent-blue/20 disabled:opacity-40 transition-colors"
               title="Restore this project’s script, prompts, references, models, LoRAs, and Director controls as an editable new revision"
             >
               <Pencil size={10} />
@@ -778,7 +778,7 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
                   setRegenError(e instanceof Error ? e.message : 'Rejoin failed'))
               }}
               disabled={loading || repairBusy || totalClips < 2}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] bg-accent-blue/10 border border-accent-blue/30 rounded text-accent-blue hover:bg-accent-blue/20 disabled:opacity-40 transition-colors"
+              className="flex items-center gap-1 px-2 py-1 text-2xs bg-accent-blue/10 border border-accent-blue/30 rounded text-accent-blue hover:bg-accent-blue/20 disabled:opacity-40 transition-colors"
               title="Re-join all clips into a new video"
             >
               <Combine size={10} />
@@ -805,7 +805,7 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
                 }
               }}
               disabled={loading || deletingPipeline || repairBusy}
-              className={`flex items-center gap-1 px-2 py-1 text-[10px] border rounded transition-colors disabled:opacity-40 ${
+              className={`flex items-center gap-1 px-2 py-1 text-2xs border rounded transition-colors disabled:opacity-40 ${
                 confirmDeletePid === selectedPipeline.pipeline_id
                   ? 'bg-red-500/20 border-red-500/50 text-red-400'
                   : 'bg-red-500/10 border-red-500/30 text-red-400/80 hover:bg-red-500/20'
@@ -818,7 +818,7 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
               {confirmDeletePid === selectedPipeline.pipeline_id ? 'Confirm?' : 'Delete'}
             </button>
             {(regenError || (repairRetryable ? repair?.error || repair?.message : null)) && (
-              <span className="text-[9px] text-red-400 max-w-[200px] truncate" title={regenError || repair?.error || repair?.message || undefined}>
+              <span className="text-2xs text-red-400 max-w-[200px] truncate" title={regenError || repair?.error || repair?.message || undefined}>
                 {regenError || repair?.error || repair?.message}
               </span>
             )}
@@ -852,7 +852,7 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
             {/* Pipeline info */}
             <div className="bg-bg-secondary rounded-lg border border-border p-3 space-y-2">
               <div className="flex items-center gap-2 text-xs">
-                <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                <span className={`px-2 py-0.5 rounded text-2xs font-medium ${
                   selectedPipeline.status === 'completed' ? 'bg-green-500/20 text-indicator-success' :
                   selectedPipeline.status === 'failed' || selectedPipeline.status === 'crashed' ? 'bg-red-500/20 text-chip-red' :
                   'bg-blue-500/20 text-chip-blue'
@@ -866,20 +866,20 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
                 <span className="text-text-muted">{selectedPipeline.video_model}</span>
               </div>
               {selectedPipeline.scene_description && (
-                <p className="text-[11px] text-text-secondary">{selectedPipeline.scene_description}</p>
+                <p className="text-xs text-text-secondary">{selectedPipeline.scene_description}</p>
               )}
               <PipelineProgressBar pipeline={selectedPipeline} />
             </div>
 
             {/* LLM Log */}
             <div className="bg-bg-secondary rounded-lg border border-border p-3">
-              <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium mb-2">LLM Planning Log</h3>
+              <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium mb-2">LLM Planning Log</h3>
               <LlmLogPanel pipeline={selectedPipeline} />
             </div>
 
             {/* Clip Grid */}
             <div>
-              <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium mb-2">
+              <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium mb-2">
                 Clips ({totalClips})
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

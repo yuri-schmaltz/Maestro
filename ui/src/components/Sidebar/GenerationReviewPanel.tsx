@@ -125,7 +125,7 @@ export function GenerationReviewPanel() {
 
         <div className="px-6 pb-2 space-y-4 flex-1 overflow-y-auto">
           {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
-          {plan.reviewId && <p className="text-[10px] text-text-muted">Saved revision: {plan.reviewId.slice(0, 8)} · edits to Studio apply to your next plan</p>}
+          {plan.reviewId && <p className="text-2xs text-text-muted">Saved revision: {plan.reviewId.slice(0, 8)} · edits to Studio apply to your next plan</p>}
           {plan.originalPrompt && plan.originalPrompt !== plan.prompt && <details className="text-xs text-text-muted"><summary>Original idea — compare with prepared prompt</summary><p className="whitespace-pre-wrap p-2">{plan.originalPrompt}</p></details>}
           {editError && <p role="alert" className="text-xs text-red-400">{editError}</p>}
           {plan.reviewId && !draft && <button className="text-xs text-accent-blue underline" onClick={() => setDraft({ prompt: plan.prompt, windows: [...(plan.windowPrompts || [])] })}>Edit prepared prompts</button>}
@@ -140,20 +140,20 @@ export function GenerationReviewPanel() {
             <div className="flex items-center gap-2 mb-1.5">
               <h3 className="text-xs font-medium text-text-primary">Prompt</h3>
               {plan.enhance.alreadyEnhanced ? (
-                <span className="bg-accent-green/15 text-accent-green rounded-full px-1.5 py-0.5 text-[9px]">
+                <span className="bg-accent-green/15 text-accent-green rounded-full px-1.5 py-0.5 text-2xs">
                   AI-enhanced
                 </span>
               ) : plan.enhance.deferred ? (
-                <span className="bg-indicator-warning/15 text-indicator-warning rounded-full px-1.5 py-0.5 text-[9px]">
+                <span className="bg-indicator-warning/15 text-indicator-warning rounded-full px-1.5 py-0.5 text-2xs">
                   AI planning will run when the job starts
                 </span>
               ) : plan.enhance.automatic ? (
-                <span className="bg-accent-blue/15 text-accent-blue rounded-full px-1.5 py-0.5 text-[9px]">
+                <span className="bg-accent-blue/15 text-accent-blue rounded-full px-1.5 py-0.5 text-2xs">
                   Step 1: plan prompt, then review
                 </span>
               ) : null}
               {plan.promptWordCount > 0 && (
-                <span className="text-[9px] text-text-muted ml-auto">
+                <span className="text-2xs text-text-muted ml-auto">
                   {plan.promptWordCount} words
                 </span>
               )}
@@ -201,14 +201,14 @@ export function GenerationReviewPanel() {
             <Row label="Outputs" value={`${plan.outputCount} ${plan.mode === 'image' ? 'image(s)' : plan.mode === 'audio' ? 'audio output(s)' : 'clip(s)'}`} />
           </div>
 
-          {plan.resolvedParams && <details className="text-xs"><summary>All prepared settings (including negative prompt and finishing)</summary><pre className="mt-2 whitespace-pre-wrap break-all text-[10px] max-h-72 overflow-auto">{JSON.stringify(plan.resolvedParams, null, 2)}</pre></details>}
+          {plan.resolvedParams && <details className="text-xs"><summary>All prepared settings (including negative prompt and finishing)</summary><pre className="mt-2 whitespace-pre-wrap break-all text-2xs max-h-72 overflow-auto">{JSON.stringify(plan.resolvedParams, null, 2)}</pre></details>}
           {/* Warnings */}
           {plan.warnings.length > 0 && (
             <div className="space-y-1.5">
               {plan.warnings.map((warning, index) => (
                 <div
                   key={index}
-                  className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 text-[11px] text-indicator-warning leading-relaxed"
+                  className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 text-xs text-indicator-warning leading-relaxed"
                 >
                   <AlertTriangle size={13} className="shrink-0 mt-0.5" />
                   <span>{warning}</span>
@@ -220,7 +220,7 @@ export function GenerationReviewPanel() {
 
         {/* Footer */}
         <div className="px-6 py-4 shrink-0 flex flex-wrap items-center gap-3 border-t border-border/60">
-          <label className="flex items-center gap-2 text-[11px] text-text-muted cursor-pointer select-none">
+          <label className="flex items-center gap-2 text-xs text-text-muted cursor-pointer select-none">
             <input
               type="checkbox"
               checked={reviewBeforeGenerate}
@@ -296,7 +296,7 @@ function References({ params }: { params: Record<string, unknown> }) {
   }
   if (!references.length) return null
   return <div className="space-y-2"><h3 className="text-xs font-medium">Source media and roles</h3><div className="grid grid-cols-2 gap-2">
-    {references.map((ref, index) => <div key={index} className="text-[10px] rounded border border-border p-2 break-all">
+    {references.map((ref, index) => <div key={index} className="text-2xs rounded border border-border p-2 break-all">
       {/\.(png|jpe?g|webp)$/i.test(ref.path) && <img className="w-full h-24 object-contain mb-1" src={getFileUrl(ref.path)} alt={ref.role} />}
       <strong>{ref.role}</strong><p>{ref.path.split(/[\\/]/).at(-1)}</p>
     </div>)}

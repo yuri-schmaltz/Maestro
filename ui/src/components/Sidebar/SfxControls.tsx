@@ -54,7 +54,7 @@ export function SfxControls() {
     <div className="space-y-3">
       {/* Video clip upload (optional) */}
       <div>
-        <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
           Video Clip <span className="normal-case text-text-muted">(optional)</span>
         </label>
         <FileUploadZone
@@ -67,7 +67,7 @@ export function SfxControls() {
             setVideoFilename(null)
           }}
         />
-        <p className="text-[9px] text-text-muted mt-1">
+        <p className="text-2xs text-text-muted mt-1">
           With video: generates matching sound effects. Without: generates from text prompt.
         </p>
       </div>
@@ -76,7 +76,7 @@ export function SfxControls() {
       {!restoredVideoFilename && (
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[11px] text-text-muted uppercase tracking-wider">Duration</label>
+            <label className="text-xs text-text-muted uppercase tracking-wider">Duration</label>
             <span className="text-xs text-text-secondary">{Math.min(durationSeconds, 20)}s</span>
           </div>
           <input
@@ -92,7 +92,7 @@ export function SfxControls() {
 
       {/* SFX Prompt */}
       <div>
-        <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
           Sound Description
         </label>
         <textarea
@@ -107,7 +107,7 @@ export function SfxControls() {
 
       {/* Negative prompt */}
       <div>
-        <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
           Negative Prompt
         </label>
         <input
@@ -122,7 +122,7 @@ export function SfxControls() {
       {/* Text prompt weight */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="text-[11px] text-text-muted uppercase tracking-wider">
+          <label className="text-xs text-text-muted uppercase tracking-wider">
             Prompt Strength
           </label>
           <span className="text-xs text-text-secondary">{textWeight.toFixed(1)}x</span>
@@ -135,7 +135,7 @@ export function SfxControls() {
           value={textWeight}
           onChange={e => setParam('sfx_text_weight' as keyof typeof params, parseFloat(e.target.value))}
         />
-        <p className="text-[9px] text-text-muted mt-0.5">
+        <p className="text-2xs text-text-muted mt-0.5">
           How strongly the text prompt influences the output vs the video content.
         </p>
       </div>

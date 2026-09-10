@@ -68,7 +68,7 @@ function H3WindowPromptTextarea({
       onChange={event => onChange(event.target.value)}
       readOnly={readOnly}
       title={title}
-      className={`w-full min-h-[92px] resize-none overflow-hidden bg-bg-secondary border rounded px-2 py-1.5 text-[10px] leading-relaxed text-text-secondary focus:outline-none focus:border-accent-blue ${
+      className={`w-full min-h-[92px] resize-none overflow-hidden bg-bg-secondary border rounded px-2 py-1.5 text-2xs leading-relaxed text-text-secondary focus:outline-none focus:border-accent-blue ${
         active ? 'border-accent-blue/70 bg-accent-blue/5' : 'border-border'
       }`}
     />
@@ -350,7 +350,7 @@ export function PromptInput() {
     <div className="relative grow shrink-0 flex flex-col">
       {/* Enhance status indicator */}
       {isEnhancing && enhanceStatus.phase !== 'idle' && (
-        <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-text-muted bg-bg-tertiary/80 rounded-t-lg border border-b-0 border-border">
+        <div className="flex items-center gap-1.5 px-2 py-1 text-2xs text-text-muted bg-bg-tertiary/80 rounded-t-lg border border-b-0 border-border">
           {enhanceStatus.phase === 'loading' ? (
             <>
               <Loader2 size={10} className="text-text-muted animate-spin" />
@@ -372,7 +372,7 @@ export function PromptInput() {
       {!isEnhancing && promptEnhanceError && (
         <div
           role="alert"
-          className="mb-1.5 rounded-lg border border-indicator-error/40 bg-indicator-error/10 px-2.5 py-1.5 text-[10px] text-indicator-error"
+          className="mb-1.5 rounded-lg border border-indicator-error/40 bg-indicator-error/10 px-2.5 py-1.5 text-2xs text-indicator-error"
         >
           {promptEnhanceError}
         </div>
@@ -389,22 +389,22 @@ export function PromptInput() {
               title="Review the complete Context-IR prompt assigned to each H3 continuation window."
             >
               {windowPlanOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-              <span className="text-[10px] font-medium text-text-secondary truncate">
+              <span className="text-2xs font-medium text-text-secondary truncate">
                 Exact H3 prompts · {h3WindowPlan.window_count} {usesH3SequencePlanner && !h3NativeSequence ? 'clips' : 'windows'}
               </span>
               {h3PlanIsStale && (
-                <span className="text-[9px] text-amber-400">Needs update</span>
+                <span className="text-2xs text-amber-400">Needs update</span>
               )}
               {h3WindowPlan.order_edited && (
                 <span
                   title="Prompts were moved into the existing time slots. Continuity summaries were cleared. Review actions, dialogue timing and transitions before approving this order."
-                  className="text-[9px] text-accent-blue"
+                  className="text-2xs text-accent-blue"
                 >
                   Order edited
                 </span>
               )}
               {(h3WindowPlan.planned_by === 'deterministic_fallback' || h3WindowPlan.planned_by === 'hybrid_repair') && (
-                <span className="text-[9px] text-amber-400">
+                <span className="text-2xs text-amber-400">
                   {h3WindowPlan.planned_by === 'hybrid_repair' ? 'Repaired' : 'Fallback'}
                 </span>
               )}
@@ -422,7 +422,7 @@ export function PromptInput() {
           {!!h3WindowPlan.planning_warnings?.length && (
             <div
               role="alert"
-              className="mt-1.5 rounded-lg border border-amber-400/35 bg-amber-400/10 px-2.5 py-2 text-[10px] leading-relaxed text-amber-300"
+              className="mt-1.5 rounded-lg border border-amber-400/35 bg-amber-400/10 px-2.5 py-2 text-2xs leading-relaxed text-amber-300"
             >
               <div className="font-medium">Maestro repaired this H3 plan</div>
               {h3WindowPlan.planning_warnings.map((warning, index) => (
@@ -448,7 +448,7 @@ export function PromptInput() {
           {!!h3WindowPlan.planning_notes?.length && (
             <div
               role="status"
-              className="mt-1.5 rounded-lg border border-border bg-bg-tertiary/70 px-2.5 py-2 text-[10px] leading-relaxed text-text-muted"
+              className="mt-1.5 rounded-lg border border-border bg-bg-tertiary/70 px-2.5 py-2 text-2xs leading-relaxed text-text-muted"
             >
               <div className="font-medium text-text-secondary">H3 timing note</div>
               {h3WindowPlan.planning_notes.map((note, index) => (
@@ -484,7 +484,7 @@ export function PromptInput() {
                     )
                   })}
                 </div>
-                <span className="shrink-0 text-[8px] text-text-muted">
+                <span className="shrink-0 text-2xs text-text-muted">
                   {h3WindowPlan.total_frames} frames
                 </span>
               </div>
@@ -493,7 +493,7 @@ export function PromptInput() {
                   key={`${window.index}-${window.start_frame}`}
                   className="space-y-1"
                 >
-                  <div className={`flex items-center justify-between gap-2 text-[9px] ${
+                  <div className={`flex items-center justify-between gap-2 text-2xs ${
                     activeH3Window === window.index ? 'text-accent-blue' : 'text-text-muted'
                   }`}>
                     <span className="flex items-center gap-1 min-w-0 truncate">
@@ -502,7 +502,7 @@ export function PromptInput() {
                       {!h3WindowPlan.order_edited && window.closing_state && (
                         <span
                           title={`Continuity carried into the next window: ${window.closing_state}`}
-                          className="shrink-0 rounded-full border border-border bg-bg-secondary px-1.5 py-px text-[8px] text-text-muted"
+                          className="shrink-0 rounded-full border border-border bg-bg-secondary px-1.5 py-px text-2xs text-text-muted"
                         >
                           {window.closing_state}
                         </span>
@@ -555,7 +555,7 @@ export function PromptInput() {
         </div>
       )}
       {usesManualWindowPrompts && (
-        <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] text-text-muted">
+        <div className="mb-1.5 flex items-center justify-between gap-2 text-2xs text-text-muted">
           <span>One non-empty line per {manualPromptUnit}</span>
           <span className={manualPromptLineCount === manualPromptCount ? 'text-text-secondary' : 'text-amber-400'}>
             {manualPromptLineCount}/{manualPromptCount} prompts
@@ -613,33 +613,33 @@ export function PromptInput() {
               <div className="absolute bottom-full right-0 mb-1 bg-bg-secondary border border-border rounded-lg shadow-lg overflow-hidden min-w-[220px] z-50">
                 <button
                   onClick={() => { setTtsMenuOpen(false); enhancePrompt('monologue') }}
-                  className="w-full text-left px-3 py-2 text-[11px] text-text-secondary hover:bg-bg-hover transition-colors"
+                  className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover transition-colors"
                 >
                   Write Speech
-                  <span className="block text-[9px] text-text-muted">Single speaker, with thinking</span>
+                  <span className="block text-2xs text-text-muted">Single speaker, with thinking</span>
                 </button>
                 <button
                   onClick={() => { setTtsMenuOpen(false); enhancePrompt('monologue_fast') }}
-                  className="w-full text-left px-3 py-2 text-[11px] text-text-secondary hover:bg-bg-hover transition-colors border-t border-border"
+                  className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover transition-colors border-t border-border"
                 >
                   Write Speech
-                  <span className="block text-[9px] text-text-muted">Single speaker, faster</span>
+                  <span className="block text-2xs text-text-muted">Single speaker, faster</span>
                 </button>
                 {supportsDialogue && (
                   <>
                     <button
                       onClick={() => { setTtsMenuOpen(false); enhancePrompt('dialogue') }}
-                      className="w-full text-left px-3 py-2 text-[11px] text-text-secondary hover:bg-bg-hover transition-colors border-t border-border"
+                      className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover transition-colors border-t border-border"
                     >
                       {voiceCount >= 2 ? `Write ${voiceCount}-Person Dialogue` : 'Write Dialogue (2 speakers)'}
-                      <span className="block text-[9px] text-text-muted">With thinking — more creative</span>
+                      <span className="block text-2xs text-text-muted">With thinking — more creative</span>
                     </button>
                     <button
                       onClick={() => { setTtsMenuOpen(false); enhancePrompt('dialogue_fast') }}
-                      className="w-full text-left px-3 py-2 text-[11px] text-text-secondary hover:bg-bg-hover transition-colors border-t border-border"
+                      className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover transition-colors border-t border-border"
                     >
                       {voiceCount >= 2 ? `Write ${voiceCount}-Person Dialogue` : 'Write Dialogue (2 speakers)'}
-                      <span className="block text-[9px] text-text-muted">No thinking — faster</span>
+                      <span className="block text-2xs text-text-muted">No thinking — faster</span>
                     </button>
                   </>
                 )}

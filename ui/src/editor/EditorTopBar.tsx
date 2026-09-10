@@ -40,20 +40,30 @@ function ProjectNameField({
   }
 
   return (
-    <input
-      value={draft}
-      onChange={event => setDraft(event.target.value)}
-      onBlur={commit}
-      onKeyDown={event => {
-        if (event.key === 'Enter') event.currentTarget.blur()
-        if (event.key === 'Escape') {
-          setDraft(projectName)
-          event.currentTarget.blur()
-        }
-      }}
-      className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-xs text-text-primary outline-none"
-      aria-label="Project name"
-    />
+    <>
+      <input
+        value={draft}
+        onChange={event => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={event => {
+          if (event.key === 'Enter') event.currentTarget.blur()
+          if (event.key === 'Escape') {
+            setDraft(projectName)
+            event.currentTarget.blur()
+          }
+        }}
+        className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-xs text-text-primary outline-none"
+        aria-label="Project name"
+      />
+      {dirty && (
+        <span
+          data-testid="project-dirty-indicator"
+          className="mr-1 inline-flex h-2 w-2 shrink-0 rounded-full bg-amber-400 shadow-[0_0_4px_rgba(251,191,36,0.6)]"
+          title="Unsaved changes"
+          aria-label="Unsaved changes"
+        />
+      )}
+    </>
   )
 }
 
@@ -82,6 +92,23 @@ export function EditorTopBar() {
   const redo = useEditorStore(state => state.redo)
   const toggleSidebar = useStore(state => state.toggleSidebar)
 
+  // Transient "Saved" indicator that pulses for ~1.5s after a successful
+  // save. Lets the user see autosave feedback without the indicator
+  // lingering. Tracked separately from `dirty`/`saving` because the
+  // store doesn't expose a "lastSavedAt" timestamp.
+  const [savedFlash, setSavedFlash] = useState(false)
+  const lastSavingRef = useRef(saving)
+  useEffect(() => {
+    // We only want to flash when saving transitions FROM true → false,
+    // which is the signal that the autosave finished cleanly.
+    if (lastSavingRef.current && !saving && !dirty) {
+      setSavedFlash(true)
+      const timer = window.setTimeout(() => setSavedFlash(false), 1500)
+      return () => window.clearTimeout(timer)
+    }
+    lastSavingRef.current = saving
+  }, [saving, dirty])
+
   useEffect(() => {
     if (!projectMenuOpen) return
     const close = (event: MouseEvent) => {
@@ -106,8 +133,16 @@ export function EditorTopBar() {
           <Menu size={20} />
         </button>
       )}
-      <div ref={rootRef} className={`relative min-w-0 md:ml-2 md:max-w-[440px] flex-1`}>
+      <div ref={rootRef} className={`relative min-w-0 md:ml-2 w-[220px] shrink-0`}>
         <div className="flex min-w-0 items-center rounded-lg border border-border bg-bg-tertiary focus-within:border-accent-blue/60">
+          {savedFlash && !dirty && (
+            <span
+              data-testid="project-saved-flash"
+              className="ml-2 mr-1 inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-2xs font-medium text-emerald-400 animate-[fadeOut_1.5s_ease-out_forwards]"
+            >
+              <Check size={10} /> Saved
+            </span>
+          )}
           <ProjectNameField
             key={project?.id || 'no-project'}
             projectName={project?.name || ''}
@@ -139,7 +174,7 @@ export function EditorTopBar() {
                 type="button"
                 onClick={() => setExportDialogOpen(true)}
                 disabled={!project}
-                className="relative flex h-8 shrink-0 items-center gap-1 overflow-hidden border-l border-border bg-cta px-2.5 text-[10px] font-semibold text-white disabled:opacity-50"
+                className="relative flex h-8 shrink-0 items-center gap-1 overflow-hidden border-l border-border bg-cta px-2.5 text-2xs font-semibold text-white disabled:opacity-50"
                 title={exportJobId ? 'View export progress' : 'Export finished video'}
               >
                 {exportJobId ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
@@ -151,13 +186,13 @@ export function EditorTopBar() {
         {projectMenuOpen && (
           <div className="absolute left-0 top-full z-[90] mt-1.5 w-[min(330px,calc(100vw-1rem))] overflow-hidden rounded-xl border border-border bg-bg-secondary shadow-2xl">
             <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
-              <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted">Editor projects</span>
+              <span className="text-2xs font-medium uppercase tracking-wider text-text-muted">Editor projects</span>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => { void duplicateProject(); setProjectMenuOpen(false); setDeleteConfirmId(null) }}
                   disabled={!project}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:opacity-35"
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-2xs text-text-secondary hover:bg-bg-hover hover:text-text-primary disabled:opacity-35"
                   title="Save the current edit as a new version"
                 >
                   <CopyPlus size={11} /> Version
@@ -165,7 +200,7 @@ export function EditorTopBar() {
                 <button
                   type="button"
                   onClick={() => { void createProject(); setProjectMenuOpen(false); setDeleteConfirmId(null) }}
-                  className="flex items-center gap-1 rounded-md bg-accent-blue/10 px-2 py-1 text-[10px] text-accent-blue hover:bg-accent-blue/20"
+                  className="flex items-center gap-1 rounded-md bg-accent-blue/10 px-2 py-1 text-2xs text-accent-blue hover:bg-accent-blue/20"
                 >
                   <FilePlus2 size={11} /> New
                 </button>
@@ -183,7 +218,7 @@ export function EditorTopBar() {
                       {summary.id === project?.id && <Check size={11} className="shrink-0 text-accent-blue" />}
                       <span className="truncate">{summary.name}</span>
                     </div>
-                    <div className="mt-0.5 text-[9px] text-text-muted">
+                    <div className="mt-0.5 text-2xs text-text-muted">
                       {summary.asset_count} assets · {Math.max(0, summary.duration).toFixed(1)}s
                     </div>
                   </button>
@@ -216,7 +251,7 @@ export function EditorTopBar() {
             const selected = CANVAS_PRESETS.find(preset => `${preset.width}x${preset.height}` === event.target.value)
             if (selected) setCanvas({ width: selected.width, height: selected.height })
           }}
-          className="hidden rounded-lg border border-border bg-bg-tertiary px-2 py-1.5 text-[10px] text-text-secondary outline-none lg:block"
+          className="hidden w-[140px] shrink-0 rounded-lg border border-border bg-bg-tertiary px-2 py-1.5 text-2xs text-text-secondary outline-none lg:block"
           title="Canvas size"
         >
           {CANVAS_PRESETS.map(preset => (

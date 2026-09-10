@@ -81,7 +81,7 @@ export function PostProcessing() {
     <div>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-[11px] text-text-muted uppercase tracking-wider w-full hover:text-text-primary transition-colors"
+        className="flex items-center gap-1.5 text-xs text-text-muted uppercase tracking-wider w-full hover:text-text-primary transition-colors"
       >
         {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <span className="flex-1 text-left">Post Processing</span>
@@ -92,7 +92,7 @@ export function PostProcessing() {
         <div className="mt-3 space-y-4">
           {/* Spatial Upsampling */}
           <div>
-            <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+            <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
               Spatial Upsampling
             </label>
             <select
@@ -109,7 +109,7 @@ export function PostProcessing() {
           {/* Film Grain Intensity */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] text-text-muted uppercase tracking-wider">Film Grain Intensity</label>
+              <label className="text-xs text-text-muted uppercase tracking-wider">Film Grain Intensity</label>
               <span className="text-xs text-text-secondary">{filmGrainIntensity.toFixed(2)}</span>
             </div>
             <input
@@ -126,7 +126,7 @@ export function PostProcessing() {
           {filmGrainIntensity > 0 && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] text-text-muted uppercase tracking-wider">Film Grain Saturation</label>
+                <label className="text-xs text-text-muted uppercase tracking-wider">Film Grain Saturation</label>
                 <span className="text-xs text-text-secondary">{filmGrainSaturation.toFixed(2)}</span>
               </div>
               <input
@@ -147,7 +147,7 @@ export function PostProcessing() {
           {showVoiceClone && (
             <div className="border-t border-border pt-3 space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                <label className="text-xs text-text-muted uppercase tracking-wider flex items-center gap-1.5">
                   <Mic size={11} /> Voice Clone (SeedVC)
                 </label>
                 <button
@@ -186,7 +186,7 @@ export function PostProcessing() {
                       Two Voices
                     </button>
                   </div>
-                  <p className="text-[10px] text-text-muted leading-snug">
+                  <p className="text-2xs text-text-muted leading-snug">
                     {voiceCloneMode === 'single'
                       ? 'Replaces every voice in the audio with the reference voice. Affects the whole audio track.'
                       : 'Auto-detects 2 speakers; preserves background music & silence. First detected speaker → Voice A, second → Voice B.'}
@@ -198,7 +198,7 @@ export function PostProcessing() {
                     const label = voiceCloneMode === 'two' ? (idx === 0 ? 'Voice A' : 'Voice B') : 'Reference Voice'
                     return (
                       <div key={idx}>
-                        <label className="text-[10px] text-text-muted uppercase tracking-wider mb-1 block">{label}</label>
+                        <label className="text-2xs text-text-muted uppercase tracking-wider mb-1 block">{label}</label>
                         {!ref || !ref.path ? (
                           <div
                             onClick={() => vcFileRefs[idx].current?.click()}
@@ -206,7 +206,7 @@ export function PostProcessing() {
                               vcUploading === idx ? 'opacity-50 pointer-events-none' : ''
                             }`}
                           >
-                            <p className="text-[11px] text-text-secondary">
+                            <p className="text-xs text-text-secondary">
                               {vcUploading === idx ? 'Uploading...' : `Upload ${label.toLowerCase()} sample`}
                             </p>
                             <input
@@ -220,7 +220,7 @@ export function PostProcessing() {
                         ) : (
                           <div className="flex items-center gap-2 bg-bg-tertiary border border-border rounded-lg px-2 py-1.5">
                             <Mic size={12} className="text-accent-blue shrink-0" />
-                            <span className="flex-1 min-w-0 truncate text-[11px] text-text-primary">{ref.filename}</span>
+                            <span className="flex-1 min-w-0 truncate text-xs text-text-primary">{ref.filename}</span>
                             <button
                               onClick={() => setVoiceCloneRef(idx, null)}
                               className="p-0.5 text-text-muted hover:text-red-400 transition-colors"

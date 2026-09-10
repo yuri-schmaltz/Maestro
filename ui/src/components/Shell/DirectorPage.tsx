@@ -38,7 +38,7 @@ export function DirectorPage() {
       <div className="section-toolbar">
         <div className="min-w-0">
           <h1 className="text-sm font-semibold">Director</h1>
-          <p className="max-w-48 truncate text-[11px] text-text-muted">{workspace}</p>
+          <p className="max-w-48 truncate text-xs text-text-muted">{workspace}</p>
         </div>
         <div className="flex items-center gap-3">
           {stage === 'director' && (

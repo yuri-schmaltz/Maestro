@@ -55,8 +55,8 @@ export function ImageUpload() {
       {strengthLabel && startImage && (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <label className="text-[11px] text-text-secondary">Image Strength</label>
-            <span className="text-[11px] text-text-muted tabular-nums">{inputVideoStrength.toFixed(2)}</span>
+            <label className="text-xs text-text-secondary">Image Strength</label>
+            <span className="text-xs text-text-muted tabular-nums">{inputVideoStrength.toFixed(2)}</span>
           </div>
           <input
             type="range"
@@ -67,7 +67,7 @@ export function ImageUpload() {
             onChange={e => setParam('input_video_strength', parseFloat(e.target.value))}
             className="w-full h-1 accent-accent-blue"
           />
-          <p className="text-[9px] text-text-muted">Lower values can increase motion</p>
+          <p className="text-2xs text-text-muted">Lower values can increase motion</p>
         </div>
       )}
     </div>
@@ -112,8 +112,8 @@ function DropZone({ label, sublabel, file, onDrop, onSelect, onClear }: {
       ) : (
         <>
           <Upload size={16} className="text-text-muted" />
-          <span className="text-[11px] text-text-muted text-center">{label}</span>
-          {sublabel && <span className="text-[9px] text-text-muted">{sublabel}</span>}
+          <span className="text-xs text-text-muted text-center">{label}</span>
+          {sublabel && <span className="text-2xs text-text-muted">{sublabel}</span>}
         </>
       )}
     </div>

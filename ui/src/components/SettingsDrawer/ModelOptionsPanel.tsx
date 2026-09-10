@@ -36,7 +36,7 @@ export function ModelOptionsPanel() {
       {/* Guidance Phases */}
       {guidance_max_phases > 1 && !lock_guidance_phases && (
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
             Guidance Phases
           </label>
           <select
@@ -57,7 +57,7 @@ export function ModelOptionsPanel() {
       {flow_shift && (
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[11px] text-text-muted uppercase tracking-wider">Flow Shift</label>
+            <label className="text-xs text-text-muted uppercase tracking-wider">Flow Shift</label>
             <input
               type="number"
               value={params.flow_shift ?? 3.0}
@@ -80,7 +80,7 @@ export function ModelOptionsPanel() {
       {/* Self Refiner */}
       {self_refiner && (
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
             Self Refiner
           </label>
           <select

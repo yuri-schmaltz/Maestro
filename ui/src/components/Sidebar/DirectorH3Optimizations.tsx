@@ -195,15 +195,15 @@ export function DirectorH3Optimizations() {
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
+          <div className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
             H3 Optimizations
           </div>
-          <p className="mt-0.5 text-[9px] text-text-muted">
+          <p className="mt-0.5 text-2xs text-text-muted">
             Applied to every new Director shot, repair, and regeneration.
           </p>
         </div>
         {activeCount > 0 && (
-          <span className="rounded-full bg-accent-blue/15 px-2 py-0.5 text-[9px] font-medium text-accent-blue">
+          <span className="rounded-full bg-accent-blue/15 px-2 py-0.5 text-2xs font-medium text-accent-blue">
             {activeCount} active
           </span>
         )}
@@ -214,10 +214,10 @@ export function DirectorH3Optimizations() {
           <div className="flex items-start gap-2.5">
             <Zap size={13} className="mt-0.5 shrink-0 text-indicator-warning" />
             <span className="min-w-0">
-              <span className="block text-[11px] font-medium text-text-primary">
+              <span className="block text-xs font-medium text-text-primary">
                 Fused Turbo Recipe
               </span>
-              <span className="mt-0.5 block text-[9px] leading-relaxed text-text-muted">
+              <span className="mt-0.5 block text-2xs leading-relaxed text-text-muted">
                 Every Director shot uses the checkpoint's RES sampler, baked Turbo and Mystic adapters, and INT8 ConvRot weights. Four steps is the default; Total Steps can be adjusted from 4-8 in Director Advanced. Additional LoRAs and cache recipes are disabled.
               </span>
             </span>
@@ -240,12 +240,12 @@ export function DirectorH3Optimizations() {
             />
             <Zap size={13} className={turboSelected ? 'text-accent-blue' : 'text-text-muted'} />
             <span className="min-w-0 flex-1">
-              <span className="block text-[11px] font-medium text-text-primary">Turbo</span>
-              <span className="block text-[9px] text-text-muted">
+              <span className="block text-xs font-medium text-text-primary">Turbo</span>
+              <span className="block text-2xs text-text-muted">
                 {selectedTurboPreset?.steps ?? turboOption.steps}-step managed LoRA
               </span>
             </span>
-            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-wider text-indicator-warning">
+            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wider text-indicator-warning">
               Experimental
             </span>
             <InfoTooltip
@@ -257,7 +257,7 @@ export function DirectorH3Optimizations() {
             <select
               value={selectedTurboPreset?.id || ''}
               onChange={event => changeDirectorTurboPreset(event.target.value)}
-              className="mt-2 w-full rounded border border-border bg-bg-secondary px-2 py-1.5 text-[10px] text-text-primary focus:border-accent-blue focus:outline-none"
+              className="mt-2 w-full rounded border border-border bg-bg-secondary px-2 py-1.5 text-2xs text-text-primary focus:border-accent-blue focus:outline-none"
               aria-label="Director H3 Turbo preset"
             >
               {turboPresets.map(preset => (
@@ -266,7 +266,7 @@ export function DirectorH3Optimizations() {
             </select>
           )}
           {turboSelected && selectedTurboPreset && (
-            <p className="mt-1.5 text-[9px] text-text-muted">
+            <p className="mt-1.5 text-2xs text-text-muted">
               Starts at {selectedTurboPreset.weight.toFixed(2)} strength. Adjust it under Director Video LoRAs.
             </p>
           )}
@@ -291,12 +291,12 @@ export function DirectorH3Optimizations() {
             />
             <Gauge size={13} className={solSelected ? 'text-accent-blue' : 'text-text-muted'} />
             <span className="min-w-0 flex-1">
-              <span className="block text-[11px] font-medium text-text-primary">Sol Engine</span>
-              <span className="block text-[9px] text-text-muted">
+              <span className="block text-xs font-medium text-text-primary">Sol Engine</span>
+              <span className="block text-2xs text-text-muted">
                 {solStatus?.supported ? 'H3 sparse attention' : 'Unavailable in this runtime'}
               </span>
             </span>
-            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-wider text-indicator-warning">
+            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wider text-indicator-warning">
               Experimental
             </span>
             <InfoTooltip
@@ -324,14 +324,14 @@ export function DirectorH3Optimizations() {
             />
             <Gauge size={13} className={slaSelected ? 'text-accent-blue' : 'text-text-muted'} />
             <span className="min-w-0 flex-1">
-              <span className="block text-[11px] font-medium text-text-primary">SLA Sparse Attention</span>
-              <span className="block text-[9px] text-text-muted">
+              <span className="block text-xs font-medium text-text-primary">SLA Sparse Attention</span>
+              <span className="block text-2xs text-text-muted">
                 {slaStatus?.supported
                   ? 'Published FastH3 sparse recipe'
                   : 'Safe dense fallback when unavailable'}
               </span>
             </span>
-            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-wider text-indicator-warning">
+            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wider text-indicator-warning">
               Experimental
             </span>
             <InfoTooltip
@@ -359,8 +359,8 @@ export function DirectorH3Optimizations() {
             />
             <Layers size={13} className={cacheSelected ? 'text-accent-blue' : 'text-text-muted'} />
             <span className="min-w-0 flex-1">
-              <span className="block text-[11px] font-medium text-text-primary">First Block Cache</span>
-              <span className="block text-[9px] text-text-muted">Reuse stable denoising work</span>
+              <span className="block text-xs font-medium text-text-primary">First Block Cache</span>
+              <span className="block text-2xs text-text-muted">Reuse stable denoising work</span>
             </span>
             <InfoTooltip
               label="About Director First Block Cache"
@@ -371,13 +371,13 @@ export function DirectorH3Optimizations() {
             <div className="mt-2.5 space-y-2.5 border-t border-border/70 pt-2.5">
               {cacheMultiplierChoices.length > 0 && (
                 <div className="flex items-center justify-between gap-2">
-                  <label className="text-[10px] text-text-muted">
+                  <label className="text-2xs text-text-muted">
                     {modelOptions.skip_steps_multiplier_label || 'Change threshold'}
                   </label>
                   <select
                     value={cacheMultiplier}
                     onChange={event => setCacheMultiplier(videoModel, Number(event.target.value))}
-                    className="rounded border border-border bg-bg-secondary px-2 py-1 text-[10px] text-text-primary focus:border-accent-blue focus:outline-none"
+                    className="rounded border border-border bg-bg-secondary px-2 py-1 text-2xs text-text-primary focus:border-accent-blue focus:outline-none"
                   >
                     {cacheMultiplierChoices.map(([label, value]) => (
                       <option key={value} value={value}>{label}</option>
@@ -387,8 +387,8 @@ export function DirectorH3Optimizations() {
               )}
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <label className="text-[10px] text-text-muted">Warmup</label>
-                  <span className="text-[10px] tabular-nums text-text-muted">{cacheWarmup}%</span>
+                  <label className="text-2xs text-text-muted">Warmup</label>
+                  <span className="text-2xs tabular-nums text-text-muted">{cacheWarmup}%</span>
                 </div>
                 <input
                   type="range"
@@ -400,7 +400,7 @@ export function DirectorH3Optimizations() {
                   className="w-full"
                 />
               </div>
-              <p className="text-[9px] text-text-muted">
+              <p className="text-2xs text-text-muted">
                 Higher thresholds reuse more work but can change motion or fine detail.
               </p>
             </div>

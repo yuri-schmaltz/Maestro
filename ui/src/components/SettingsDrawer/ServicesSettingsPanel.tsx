@@ -13,7 +13,7 @@ function ApiKeyField({ label, maskedValue, isSet, onSave }: {
 
   return (
     <div>
-      <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+      <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
         {label}
       </label>
       {editing ? (
@@ -105,7 +105,7 @@ function NsfwDisclaimerModal({
           <ShieldAlert size={20} className="text-red-400 shrink-0" />
           <div>
             <h2 className="text-sm font-semibold text-text-primary">Enable Adult Content Mode</h2>
-            <p className="text-[10px] text-text-muted mt-0.5">Please read and accept before continuing</p>
+            <p className="text-2xs text-text-muted mt-0.5">Please read and accept before continuing</p>
           </div>
         </div>
 
@@ -205,7 +205,7 @@ function NsfwToggleSection() {
   return (
     <>
       <div className="space-y-3">
-        <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium">Content Settings</h3>
+        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Content Settings</h3>
         <div
           className={`flex items-center justify-between ${isPublicProvider ? '' : 'cursor-pointer'} group`}
           onClick={handleToggle}
@@ -222,7 +222,7 @@ function NsfwToggleSection() {
               NSFW Mode
               {isPublicProvider && <Lock size={11} className="text-text-muted" />}
             </div>
-            <div className="text-[10px] text-text-muted mt-0.5">
+            <div className="text-2xs text-text-muted mt-0.5">
               {isPublicProvider ? (
                 <>NSFW is unavailable with public LLM providers ({provider}). Switch to a local or self-hosted model to enable.</>
               ) : nsfwEnabled ? (
@@ -300,14 +300,14 @@ export function ServicesSettingsPanel() {
 
       {/* LLM Provider */}
       <div className="space-y-4">
-        <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium">LLM Configuration</h3>
+        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">LLM Configuration</h3>
 
         <div className="flex items-center justify-between">
           <div className="min-w-0 flex-1 mr-3">
             <div className="text-sm text-text-primary truncate">
               {llmStatus?.loaded ? llmStatus.model_id : 'Standby'}
             </div>
-            <div className="text-[10px] text-text-muted">
+            <div className="text-2xs text-text-muted">
               {llmStatus?.loaded
                 ? `Active on ${llmStatus.device} (${llmStatus.provider || 'local'})`
                 : 'Auto-loads when needed'}
@@ -318,7 +318,7 @@ export function ServicesSettingsPanel() {
 
         {/* Provider selector */}
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
             LLM Provider
           </label>
           <select
@@ -348,7 +348,7 @@ export function ServicesSettingsPanel() {
         {(isRemote || isOpenAI || isMiniMax) && (
           <div className="space-y-3">
             <div>
-              <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+              <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
                 {isRemote ? 'Server URL' : 'API Base URL'}
               </label>
               <input
@@ -362,7 +362,7 @@ export function ServicesSettingsPanel() {
                     : 'https://api.openai.com'}
                 className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
               />
-              <p className="text-[10px] text-text-muted mt-1">
+              <p className="text-2xs text-text-muted mt-1">
                 {isRemote
                   ? 'URL of your LM Studio, Ollama, or other OpenAI-compatible server'
                   : isMiniMax
@@ -381,7 +381,7 @@ export function ServicesSettingsPanel() {
                     void updateConfig({ llm_remote_api_key: value }).then(() => loadLlmModels())
                   }}
                 />
-                <p className="text-[10px] text-text-muted mt-1">
+                <p className="text-2xs text-text-muted mt-1">
                   Optional. Sent only to this self-hosted OpenAI-compatible server.
                 </p>
               </div>
@@ -392,14 +392,14 @@ export function ServicesSettingsPanel() {
         {/* Model selector with refresh button */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[11px] text-text-muted uppercase tracking-wider">
+            <label className="text-xs text-text-muted uppercase tracking-wider">
               LLM Model
             </label>
             {!isLocal && (
               <button
                 onClick={handleRefreshModels}
                 disabled={refreshing}
-                className="text-[10px] text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5 disabled:opacity-50"
+                className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5 disabled:opacity-50"
               >
                 <RefreshCw size={10} className={refreshing ? 'animate-spin' : ''} />
                 Refresh
@@ -418,7 +418,7 @@ export function ServicesSettingsPanel() {
             ))}
           </select>
           {isLocal && (
-            <p className="text-[10px] text-text-muted mt-1">
+            <p className="text-2xs text-text-muted mt-1">
               Larger models produce more creative scene descriptions but use more RAM
             </p>
           )}
@@ -427,7 +427,7 @@ export function ServicesSettingsPanel() {
         {/* Device selector (local only) */}
         {isLocal && (
           <div>
-            <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+            <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
               LLM Device
             </label>
             <select
@@ -438,7 +438,7 @@ export function ServicesSettingsPanel() {
               <option value="cpu">CPU (recommended)</option>
               <option value="cuda">CUDA (uses VRAM)</option>
             </select>
-            <p className="text-[10px] text-text-muted mt-1">
+            <p className="text-2xs text-text-muted mt-1">
               CPU recommended to avoid conflicts with video generation
             </p>
           </div>
@@ -454,14 +454,14 @@ export function ServicesSettingsPanel() {
 
       {/* Prompt Enhancer */}
       <div className="space-y-4">
-        <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium">Studio Prompt Enhancer</h3>
-        <p className="text-[10px] text-text-muted">
+        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Studio Prompt Enhancer</h3>
+        <p className="text-2xs text-text-muted">
           The sparkle button in Studio mode. Uses model-specific prompt guides for best results.
           Set a separate LLM here or leave empty to use the Director LLM above.
         </p>
 
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
             Enhance LLM Model
           </label>
           <select
@@ -476,7 +476,7 @@ export function ServicesSettingsPanel() {
               </option>
             ))}
           </select>
-          <p className="text-[10px] text-text-muted mt-1">
+          <p className="text-2xs text-text-muted mt-1">
             {servicesConfig.enhance_llm_model_id
               ? 'Separate LLM for Studio enhancement — lighter/faster than Director.'
               : 'Using the Director LLM for enhancement (may be slower but more capable).'
@@ -486,7 +486,7 @@ export function ServicesSettingsPanel() {
 
         {servicesConfig.enhance_llm_model_id && (
           <div>
-            <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+            <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
               Enhance LLM Device
             </label>
             <select
@@ -503,7 +503,7 @@ export function ServicesSettingsPanel() {
         <hr className="border-border/50" />
 
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
             Wan2GP Enhancer (Alternative)
           </label>
           <select
@@ -517,7 +517,7 @@ export function ServicesSettingsPanel() {
             <option value={1}>Llama 3.2 + Florence2</option>
             <option value={2}>LlamaJoy + Florence2</option>
           </select>
-          <p className="text-[10px] text-text-muted mt-1">
+          <p className="text-2xs text-text-muted mt-1">
             When enabled, overrides the LLM enhancer above. Uses Wan2GP's built-in pipeline
             (does NOT use our model-specific prompt guides).
           </p>
@@ -534,7 +534,7 @@ export function ServicesSettingsPanel() {
 
       {/* Director Architecture */}
       <div className="space-y-3">
-        <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium">Director Architecture</h3>
+        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Director Architecture</h3>
         {/* Director v2 Engine toggle. v2 became the default 2026-05-03
             after weeks of real-world validation showed it's more
             reliable than v1 (v1 had a polish-pass failure mode where
@@ -545,9 +545,9 @@ export function ServicesSettingsPanel() {
         <label className="flex items-center justify-between cursor-pointer group">
           <div className="flex-1 mr-3">
             <div className="text-sm text-text-primary group-hover:text-accent-blue transition-colors">
-              Director v2 Engine <span className="text-[10px] text-text-muted font-normal">(default)</span>
+              Director v2 Engine <span className="text-2xs text-text-muted font-normal">(default)</span>
             </div>
-            <div className="text-[10px] text-text-muted mt-0.5">
+            <div className="text-2xs text-text-muted mt-0.5">
               Layered architecture with structured shot planning, mode-specific renderers, and prompt validation.
               Supports Podcast and Viral Video skills. Turn off to use the legacy v1 engine.
             </div>
@@ -566,7 +566,7 @@ export function ServicesSettingsPanel() {
 
         {/* Prompt Polish Mode */}
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
             Director Prompt Polish
           </label>
           <select
@@ -579,7 +579,7 @@ export function ServicesSettingsPanel() {
             <option value="full_guide">Full Guide Inject (legacy)</option>
             <option value="off">Off</option>
           </select>
-          <p className="text-[10px] text-text-muted mt-1">
+          <p className="text-2xs text-text-muted mt-1">
             {servicesConfig.director_prompt_polish === 'full_guide'
               ? 'Legacy: injects the complete model-specific prompt guide into the Director planner\'s system prompt.'
               : servicesConfig.director_prompt_polish === 'light_guide'
@@ -599,13 +599,13 @@ export function ServicesSettingsPanel() {
           ("FlashVSR 2x", "FlashVSR Two Pass 2x", ...). These control the
           model variant, sparse-attention density, and backend. */}
       <div className="space-y-3">
-        <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium">FlashVSR Upscaling</h3>
-        <p className="text-[10px] text-text-muted -mt-1">
+        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">FlashVSR Upscaling</h3>
+        <p className="text-2xs text-text-muted -mt-1">
           DiT super-resolution. Pick it per generation in Post Processing → Spatial Upsampling. First use downloads ~4 GB of weights.
         </p>
 
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">Model Variant</label>
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Model Variant</label>
           <select
             value={servicesConfig.flashvsr_mode ?? 1}
             onChange={e => updateConfig({ flashvsr_mode: Number(e.target.value) })}
@@ -615,7 +615,7 @@ export function ServicesSettingsPanel() {
             <option value={2}>Full — best quality, more VRAM</option>
             <option value={3}>Tiny-Long — for long videos</option>
           </select>
-          <p className="text-[10px] text-text-muted mt-1">
+          <p className="text-2xs text-text-muted mt-1">
             {servicesConfig.flashvsr_mode === 2
               ? 'Full uses the complete Wan2.1 VAE — sharpest detail and best temporal fidelity, highest VRAM.'
               : servicesConfig.flashvsr_mode === 3
@@ -626,7 +626,7 @@ export function ServicesSettingsPanel() {
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[11px] text-text-muted uppercase tracking-wider">Sparse Attention Top-K</label>
+            <label className="text-xs text-text-muted uppercase tracking-wider">Sparse Attention Top-K</label>
             <span className="text-xs text-text-secondary">{(servicesConfig.flashvsr_topk_ratio ?? 0).toFixed(2)}</span>
           </div>
           <input
@@ -637,13 +637,13 @@ export function ServicesSettingsPanel() {
             value={servicesConfig.flashvsr_topk_ratio ?? 0}
             onChange={e => updateConfig({ flashvsr_topk_ratio: parseFloat(e.target.value) })}
           />
-          <p className="text-[10px] text-text-muted mt-1">
+          <p className="text-2xs text-text-muted mt-1">
             Higher computes more attention → better motion fidelity, slower. 0 = sparsest (fastest).
           </p>
         </div>
 
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">Sparse Attention Backend</label>
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Sparse Attention Backend</label>
           <select
             value={servicesConfig.flashvsr_backend || 'auto'}
             onChange={e => updateConfig({ flashvsr_backend: e.target.value })}
@@ -653,7 +653,7 @@ export function ServicesSettingsPanel() {
             <option value="triton_sparse">Triton Sparse (bundled)</option>
             <option value="sparge">SpargeAttn (best with motion — requires install)</option>
           </select>
-          <p className="text-[10px] text-text-muted mt-1">
+          <p className="text-2xs text-text-muted mt-1">
             SpargeAttn gives the best quality when there's motion but needs a separate install. Auto uses the bundled Triton kernels otherwise.
           </p>
         </div>
@@ -670,11 +670,11 @@ export function ServicesSettingsPanel() {
           The CivitAI key stays visible always since LoRA download
           rate-limit relief is broadly useful, not a power-user feature. */}
       <div className="space-y-4">
-        <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium">API Keys</h3>
+        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">API Keys</h3>
 
         {servicesConfig.show_experimental && (
           <>
-            <p className="text-[10px] text-text-muted">
+            <p className="text-2xs text-text-muted">
               Required for their respective providers. Also used for external AI services in Director mode.
             </p>
 
@@ -714,7 +714,7 @@ export function ServicesSettingsPanel() {
           isSet={servicesConfig.civitai_api_key_set}
           onSave={val => updateConfig({ civitai_api_key: val })}
         />
-        <p className="text-[10px] text-text-muted -mt-2">
+        <p className="text-2xs text-text-muted -mt-2">
           Optional. Increases rate limits and enables access to restricted models.
         </p>
       </div>
@@ -731,7 +731,7 @@ export function ServicesSettingsPanel() {
           who want it can find it; new users don't get nudged toward it. */}
       <hr className="border-border" />
       <div>
-        <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium mb-3">
+        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium mb-3">
           Beta Features
         </h3>
         <label className="flex items-center justify-between cursor-pointer group">
@@ -739,12 +739,12 @@ export function ServicesSettingsPanel() {
             <div className="text-sm text-text-primary">
               Show in-development features
             </div>
-            <div className="text-[10px] text-text-muted mt-0.5 leading-relaxed">
+            <div className="text-2xs text-text-muted mt-0.5 leading-relaxed">
               Reveals features still under development. Some are incomplete,
               unstable, or require additional setup. Default off keeps the UI
               focused on features known to work well.
             </div>
-            <div className="text-[10px] text-text-muted mt-1 leading-relaxed">
+            <div className="text-2xs text-text-muted mt-1 leading-relaxed">
               Currently gates: external LLM APIs (Google / OpenAI / Anthropic),
               Studio Prompt Enhancer config, and the Inpaint edit mode.
             </div>

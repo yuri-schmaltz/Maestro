@@ -91,7 +91,7 @@ export function RetakeDialog() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div>
             <h2 className="text-sm font-semibold text-text-primary">Retake</h2>
-            <p className="text-[10px] text-text-muted">Select the part you want to fix, then describe the change</p>
+            <p className="text-2xs text-text-muted">Select the part you want to fix, then describe the change</p>
           </div>
           <button onClick={closeRetake} className="p-1 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary transition-colors">
             <X size={16} />
@@ -111,7 +111,7 @@ export function RetakeDialog() {
 
           {/* Prompt */}
           <div>
-            <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+            <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
               What should happen in this section?
             </label>
             <textarea value={prompt}
@@ -128,20 +128,20 @@ export function RetakeDialog() {
               onChange={e => setRegenerateAudio(e.target.checked)}
               className="w-3.5 h-3.5 rounded border-border accent-accent-blue" />
             <span className="text-xs text-text-secondary">Regenerate Audio</span>
-            <span className="text-[9px] text-text-muted ml-auto">
+            <span className="text-2xs text-text-muted ml-auto">
               {regenerateAudio ? 'New audio from prompt' : 'Keep source audio'}
             </span>
           </label>
 
           {/* Advanced toggle */}
           <button onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-[10px] text-text-muted hover:text-text-primary transition-colors">
+            className="text-2xs text-text-muted hover:text-text-primary transition-colors">
             {showAdvanced ? '▾' : '▸'} Advanced
           </button>
           {showAdvanced && (
             <div className="space-y-2 pl-2 border-l border-border/50">
               <div>
-                <label className="text-[10px] text-text-muted uppercase tracking-wider mb-1 block">Negative Prompt</label>
+                <label className="text-2xs text-text-muted uppercase tracking-wider mb-1 block">Negative Prompt</label>
                 <input type="text" value={negPrompt}
                   onChange={e => setNegPrompt(e.target.value)}
                   placeholder="What to avoid..."
@@ -149,34 +149,34 @@ export function RetakeDialog() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="text-[9px] text-text-muted block mb-0.5">Seed</label>
+                  <label className="text-2xs text-text-muted block mb-0.5">Seed</label>
                   <input type="number" value={seed} onChange={e => setSeed(parseInt(e.target.value) || -1)}
-                    className="w-full bg-bg-tertiary border border-border rounded px-1.5 py-1 text-[10px] text-text-primary focus:outline-none focus:border-accent-blue" />
+                    className="w-full bg-bg-tertiary border border-border rounded px-1.5 py-1 text-2xs text-text-primary focus:outline-none focus:border-accent-blue" />
                 </div>
                 <div>
-                  <label className="text-[9px] text-text-muted block mb-0.5">Steps</label>
+                  <label className="text-2xs text-text-muted block mb-0.5">Steps</label>
                   <input type="number" min={1} max={50} value={steps} onChange={e => setSteps(parseInt(e.target.value) || 8)}
-                    className="w-full bg-bg-tertiary border border-border rounded px-1.5 py-1 text-[10px] text-text-primary focus:outline-none focus:border-accent-blue" />
+                    className="w-full bg-bg-tertiary border border-border rounded px-1.5 py-1 text-2xs text-text-primary focus:outline-none focus:border-accent-blue" />
                 </div>
                 <div>
-                  <label className="text-[9px] text-text-muted block mb-0.5">Guidance</label>
+                  <label className="text-2xs text-text-muted block mb-0.5">Guidance</label>
                   <input type="number" min={0} max={20} step={0.1} value={guidance}
                     onChange={e => setGuidance(parseFloat(e.target.value) || 1.0)}
-                    className="w-full bg-bg-tertiary border border-border rounded px-1.5 py-1 text-[10px] text-text-primary focus:outline-none focus:border-accent-blue" />
+                    className="w-full bg-bg-tertiary border border-border rounded px-1.5 py-1 text-2xs text-text-primary focus:outline-none focus:border-accent-blue" />
                 </div>
               </div>
             </div>
           )}
 
           {/* Model + LoRA info */}
-          <p className="text-[9px] text-text-muted">
+          <p className="text-2xs text-text-muted">
             <span title={modelType}>Model: {modelLabel}</span> | Engine: Native
             {activatedLoras.length > 0 && ` | LoRAs: ${activatedLoras.length}`}
           </p>
 
           {/* Error/Success */}
-          {error && <div className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1.5">{error}</div>}
-          {success && <div className="text-[10px] text-indicator-success bg-green-500/10 border border-green-500/20 rounded px-2 py-1.5">{success}</div>}
+          {error && <div className="text-2xs text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1.5">{error}</div>}
+          {success && <div className="text-2xs text-indicator-success bg-green-500/10 border border-green-500/20 rounded px-2 py-1.5">{success}</div>}
 
           {/* Submit */}
           <button onClick={handleSubmit} disabled={submitting || !prompt}

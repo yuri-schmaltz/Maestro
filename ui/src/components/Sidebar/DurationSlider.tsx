@@ -386,7 +386,7 @@ export function DurationSlider() {
         autoManualWindowCount={manualWindowPrompts ? Math.max(1, promptLineCount) : null}
       />
       {showSlidingWindow && !isMultiClip && (
-        <div className="text-[10px] text-text-muted mt-1">
+        <div className="text-2xs text-text-muted mt-1">
           {windowCount} windows of {formatSeconds(windowSize)} &middot;{' '}
           {automaticPromptPacing
             ? (isLtx ? 'AI-planned window prompts' : 'full prompt auto-paced')
@@ -396,7 +396,7 @@ export function DurationSlider() {
         </div>
       )}
       {showOmniSequence && (
-        <div className="text-[10px] text-text-muted mt-1">
+        <div className="text-2xs text-text-muted mt-1">
           {omniSequenceClipCount} {nativeOmniContinuation ? 'native Omni windows' : 'independent Omni clips'} &middot;{' '}
           {locked ? 'manual' : 'Auto'} max {formatSeconds(omniSequenceClipFrames / fps)} &middot;{' '}
           {nativeOmniContinuation ? 'motion + audio carried' : 'hard cuts joined'} &middot;{' '}
@@ -408,7 +408,7 @@ export function DurationSlider() {
         </div>
       )}
       {unsupportedAutoResolution && (
-        <div className="text-[10px] text-amber-400 mt-1">
+        <div className="text-2xs text-amber-400 mt-1">
           {directOmni
             ? `For ${totalVramGb.toFixed(0)} GB, H3 Omni Auto recommends ${windowRecommendation?.fallbackResolution ?? 'a lower resolution'} instead of ${resolution}. Multi-window sequence can divide longer output into VRAM-aware windows.`
             : locked
@@ -417,7 +417,7 @@ export function DurationSlider() {
         </div>
       )}
       {directOmni && !unsupportedAutoResolution && safeWindowFrames != null && nativeMaxSeconds != null && safeWindowFrames / fps < nativeMaxSeconds && (
-        <div className="text-[10px] text-text-muted mt-1">
+        <div className="text-2xs text-text-muted mt-1">
           VRAM-aware default: {formatSeconds(safeWindowFrames / fps)}. You can manually raise the native pass to {formatSeconds(nativeMaxSeconds)}; longer timelines use Multi-window sequence.
         </div>
       )}
@@ -558,11 +558,11 @@ export function WindowSettings() {
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-1.5">
-            <label className="text-[11px] text-text-muted uppercase tracking-wider">
+            <label className="text-xs text-text-muted uppercase tracking-wider">
               {isH3 || isLtx ? 'Window Length' : 'Window Size'}
             </label>
             {isH3 && safeWindowSeconds != null && (
-              <span className="text-[9px] text-text-muted normal-case">
+              <span className="text-2xs text-text-muted normal-case">
                 Recommended {formatSeconds(safeWindowSeconds)}
               </span>
             )}
@@ -611,8 +611,8 @@ export function WindowSettings() {
           <span className="text-xs text-text-secondary">
             {formatSeconds(windowSize)}
             {savedOverrideFrames === currentWindowFrames
-              ? <span className="text-emerald-400/70 ml-1 text-[9px]">saved</span>
-              : locked && <span className="text-accent-blue/60 ml-1 text-[9px]">manual</span>}
+              ? <span className="text-emerald-400/70 ml-1 text-2xs">saved</span>
+              : locked && <span className="text-accent-blue/60 ml-1 text-2xs">manual</span>}
           </span>
         </div>
         <input
@@ -629,12 +629,12 @@ export function WindowSettings() {
           }}
         />
         {showSlidingWindow && (
-          <div className="text-[10px] text-text-muted mt-1">
+          <div className="text-2xs text-text-muted mt-1">
             {windowCount} {omniReferenceSequence && !nativeOmniContinuation ? 'independent clip' : 'window'}{windowCount > 1 ? 's' : ''} of up to {formatSeconds(windowSize)}
           </div>
         )}
         {windowRecommendation != null && (
-          <div className={`text-[10px] mt-1 ${unsupportedAutoResolution || exceedsSafeRecommendation ? 'text-amber-400' : 'text-text-muted'}`}>
+          <div className={`text-2xs mt-1 ${unsupportedAutoResolution || exceedsSafeRecommendation ? 'text-amber-400' : 'text-text-muted'}`}>
             {unsupportedAutoResolution
               ? (locked
                 ? `Manual override enabled: ${resolution} is above the automatic profile for ${totalVramGb.toFixed(0)} GB and may run out of VRAM.`
@@ -649,7 +649,7 @@ export function WindowSettings() {
       {supportsSlidingWindows && showSlidingWindow && overlapStep > 0 && (!omniReferenceSequence || nativeOmniContinuation) && (
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[11px] text-text-muted uppercase tracking-wider">Window Overlap</label>
+            <label className="text-xs text-text-muted uppercase tracking-wider">Window Overlap</label>
             <span className="text-xs text-text-secondary">{overlap}f ({formatSeconds(overlapSeconds)})</span>
           </div>
           <input
@@ -661,7 +661,7 @@ export function WindowSettings() {
             onChange={e => setOverlap(Number(e.target.value))}
           />
           {modelOptions?.sliding_window_audio_history === true && (
-            <div className="text-[10px] text-text-muted mt-1">
+            <div className="text-2xs text-text-muted mt-1">
               Carries recent motion and matching stereo audio into each new window. 18 frames is recommended.
             </div>
           )}

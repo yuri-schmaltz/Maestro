@@ -32,7 +32,7 @@ function ClipDropZone({ label, file, url, duration, onUpload, onClear }: {
         >
           <X size={10} />
         </button>
-        <div className="absolute bottom-0.5 left-0.5 text-[8px] bg-black/60 text-white px-1 py-0.5 rounded">
+        <div className="absolute bottom-0.5 left-0.5 text-2xs bg-black/60 text-white px-1 py-0.5 rounded">
           {label}{duration > 0 ? ` ${duration.toFixed(1)}s` : ''}
         </div>
       </div>
@@ -47,7 +47,7 @@ function ClipDropZone({ label, file, url, duration, onUpload, onClear }: {
       className="flex-1 border-2 border-dashed border-border rounded-lg p-3 text-center cursor-pointer hover:border-accent-blue transition-colors"
     >
       <Film size={14} className="mx-auto mb-1 text-text-muted" />
-      <p className="text-[10px] text-text-secondary">{label}</p>
+      <p className="text-2xs text-text-secondary">{label}</p>
       <input
         ref={fileRef}
         type="file"
@@ -124,7 +124,7 @@ export function BlendControls() {
         <div className="flex bg-bg-tertiary rounded-lg p-0.5 border border-border">
           <button
             onClick={() => setBlendMode('overlap')}
-            className={`flex-1 text-[10px] py-1.5 rounded-md transition-all ${
+            className={`flex-1 text-2xs py-1.5 rounded-md transition-all ${
               blendMode === 'overlap' ? 'bg-bg-active text-text-primary' : 'text-text-secondary hover:text-text-primary'
             }`}
           >
@@ -132,14 +132,14 @@ export function BlendControls() {
           </button>
           <button
             onClick={() => setBlendMode('insert')}
-            className={`flex-1 text-[10px] py-1.5 rounded-md transition-all ${
+            className={`flex-1 text-2xs py-1.5 rounded-md transition-all ${
               blendMode === 'insert' ? 'bg-bg-active text-text-primary' : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             Insert
           </button>
         </div>
-        <p className="text-[9px] text-text-muted mt-1">
+        <p className="text-2xs text-text-muted mt-1">
           {blendMode === 'insert'
             ? 'Adds new footage between clips. Total duration increases.'
             : 'Replaces the end of A and start of B with a generated transition. Total duration stays the same.'}
@@ -167,14 +167,14 @@ export function BlendControls() {
         />
       </div>
 
-      {error && <p className="text-[10px] text-red-400">{error}</p>}
+      {error && <p className="text-2xs text-red-400">{error}</p>}
 
       {/* Transition duration (Insert mode) */}
       {blendMode === 'insert' && (
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-[10px] text-text-muted">Transition Duration</label>
-            <span className="text-[10px] text-text-secondary">{transitionSec}s</span>
+            <label className="text-2xs text-text-muted">Transition Duration</label>
+            <span className="text-2xs text-text-secondary">{transitionSec}s</span>
           </div>
           <input
             type="range"
@@ -190,8 +190,8 @@ export function BlendControls() {
       {blendMode === 'overlap' && (
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-[10px] text-text-muted">Overlap Duration</label>
-            <span className="text-[10px] text-text-secondary">{overlapSec}s</span>
+            <label className="text-2xs text-text-muted">Overlap Duration</label>
+            <span className="text-2xs text-text-secondary">{overlapSec}s</span>
           </div>
           <input
             type="range"
@@ -201,7 +201,7 @@ export function BlendControls() {
             onChange={e => setOverlapSec(parseInt(e.target.value))}
             className="w-full"
           />
-          <p className="text-[9px] text-text-muted mt-0.5">
+          <p className="text-2xs text-text-muted mt-0.5">
             Trims {overlapSec}s from the end of A and start of B, generates a {overlapSec}s replacement.
           </p>
         </div>
@@ -212,8 +212,8 @@ export function BlendControls() {
         <div className="space-y-2">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] text-text-muted">Motion Prefix</label>
-              <span className="text-[10px] text-text-secondary">{motionPrefixSec.toFixed(1)}s</span>
+              <label className="text-2xs text-text-muted">Motion Prefix</label>
+              <span className="text-2xs text-text-secondary">{motionPrefixSec.toFixed(1)}s</span>
             </div>
             <input
               type="range"
@@ -222,7 +222,7 @@ export function BlendControls() {
               onChange={e => setMotionPrefixSec(parseFloat(e.target.value))}
               className="w-full"
             />
-            <p className="text-[9px] text-text-muted mt-0.5">
+            <p className="text-2xs text-text-muted mt-0.5">
               {motionPrefixSec === 0
                 ? 'Pure start+end mode — no motion carried from Clip A'
                 : `First ${motionPrefixSec.toFixed(1)}s of blend replays Clip A's tail so rotation/pan carries through`}
@@ -230,8 +230,8 @@ export function BlendControls() {
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] text-text-muted">Motion Suffix</label>
-              <span className="text-[10px] text-text-secondary">{motionSuffixSec.toFixed(1)}s</span>
+              <label className="text-2xs text-text-muted">Motion Suffix</label>
+              <span className="text-2xs text-text-secondary">{motionSuffixSec.toFixed(1)}s</span>
             </div>
             <input
               type="range"
@@ -240,7 +240,7 @@ export function BlendControls() {
               onChange={e => setMotionSuffixSec(parseFloat(e.target.value))}
               className="w-full"
             />
-            <p className="text-[9px] text-text-muted mt-0.5">
+            <p className="text-2xs text-text-muted mt-0.5">
               {motionSuffixSec === 0
                 ? 'Single end-frame anchor — model may slow-mo into the landing'
                 : `Last ${motionSuffixSec.toFixed(1)}s of blend previews Clip B's head so motion lands at real speed`}
@@ -248,8 +248,8 @@ export function BlendControls() {
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] text-text-muted">Anchor Strength</label>
-              <span className="text-[10px] text-text-secondary">{anchorStrength.toFixed(2)}</span>
+              <label className="text-2xs text-text-muted">Anchor Strength</label>
+              <span className="text-2xs text-text-secondary">{anchorStrength.toFixed(2)}</span>
             </div>
             <input
               type="range"
@@ -258,7 +258,7 @@ export function BlendControls() {
               onChange={e => setAnchorStrength(parseFloat(e.target.value))}
               className="w-full"
             />
-            <p className="text-[9px] text-text-muted mt-0.5">
+            <p className="text-2xs text-text-muted mt-0.5">
               Higher = tighter lock to Clip A/B endpoints (may crossfade).
               Lower = AI invents more motion between them (may drift).
               Start at 0.7.
@@ -268,7 +268,7 @@ export function BlendControls() {
       )}
 
       {bothLoaded && (
-        <div className="text-[10px] text-text-muted text-center bg-bg-tertiary rounded-lg px-2 py-1.5 border border-border/50">
+        <div className="text-2xs text-text-muted text-center bg-bg-tertiary rounded-lg px-2 py-1.5 border border-border/50">
           {blendMode === 'insert'
             ? `Output: Clip A + ${transitionSec}s transition + Clip B`
             : `Output: Clip A (−${overlapSec}s) + ${overlapSec}s transition + Clip B (−${overlapSec}s)`
@@ -277,7 +277,7 @@ export function BlendControls() {
       )}
 
       {!bothLoaded && (blendClipA || blendClipB) && (
-        <p className="text-[10px] text-indicator-warning text-center">Add both clips to enable blending</p>
+        <p className="text-2xs text-indicator-warning text-center">Add both clips to enable blending</p>
       )}
     </div>
   )

@@ -164,17 +164,17 @@ export function MiniMaxH3Optimizations() {
           <div className="flex items-start gap-2">
             <AlertTriangle size={13} className="mt-0.5 shrink-0 text-indicator-warning" />
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-medium text-text-primary">
+              <div className="text-xs font-medium text-text-primary">
                 {advisory.title}
               </div>
-              <p className="mt-1 text-[10px] leading-relaxed text-text-secondary">
+              <p className="mt-1 text-2xs leading-relaxed text-text-secondary">
                 {advisory.message}
               </p>
               {advisory.recommended_model_type && option && (
                 <button
                   type="button"
                   onClick={useRecommendedPrunedTurbo}
-                  className="mt-2 rounded-md bg-amber-500/20 px-2 py-1 text-[10px] font-medium text-indicator-warning transition-colors hover:bg-amber-500/30"
+                  className="mt-2 rounded-md bg-amber-500/20 px-2 py-1 text-2xs font-medium text-indicator-warning transition-colors hover:bg-amber-500/30"
                 >
                   Use Pruned Turbo
                 </button>
@@ -195,15 +195,15 @@ export function MiniMaxH3Optimizations() {
             }`}
           >
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
+              <span className="text-2xs font-semibold uppercase tracking-wider text-text-secondary">
                 H3 Optimizations
               </span>
-              <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-wider text-indicator-warning">
+              <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wider text-indicator-warning">
                 Experimental
               </span>
             </div>
             <span className="flex items-center gap-1.5">
-              <span className={`text-[9px] ${activeCount ? 'text-accent-blue' : 'text-text-muted'}`}>
+              <span className={`text-2xs ${activeCount ? 'text-accent-blue' : 'text-text-muted'}`}>
                 {activeCount ? `${activeCount} active` : 'Optional'}
               </span>
               <ChevronDown
@@ -220,10 +220,10 @@ export function MiniMaxH3Optimizations() {
                 <div className="flex items-start gap-2">
                   <Zap size={13} className="mt-0.5 shrink-0 text-indicator-warning" />
                   <span className="min-w-0">
-                    <span className="block text-[11px] font-medium text-text-primary">
+                    <span className="block text-xs font-medium text-text-primary">
                       Fused Turbo Recipe
                     </span>
-                    <span className="mt-0.5 block text-[9px] leading-relaxed text-text-muted">
+                    <span className="mt-0.5 block text-2xs leading-relaxed text-text-muted">
                       Turbo, Mystic, INT8 ConvRot, and RES sampling are baked in. Four steps is the default; Total Steps can be adjusted from 4-8 in Advanced. Extra LoRAs, Sol Engine, and First Block Cache are intentionally disabled.
                     </span>
                   </span>
@@ -243,8 +243,8 @@ export function MiniMaxH3Optimizations() {
                   />
                   <Zap size={13} className={turboEnabled ? 'text-accent-blue' : 'text-text-muted'} />
                   <span className="min-w-0">
-                    <span className="block text-[11px] font-medium text-text-primary">Turbo</span>
-                    <span className="block text-[9px] text-text-muted">
+                    <span className="block text-xs font-medium text-text-primary">Turbo</span>
+                    <span className="block text-2xs text-text-muted">
                       {selectedTurboPreset?.steps ?? option.steps}-step / {selectedTurboPreset?.label ?? option.version_label}
                     </span>
                   </span>
@@ -261,11 +261,11 @@ export function MiniMaxH3Optimizations() {
                 <div className="flex items-center justify-between gap-2">
                   <label
                     htmlFor="h3-turbo-checkpoint"
-                    className="text-[9px] font-medium uppercase tracking-wider text-text-muted"
+                    className="text-2xs font-medium uppercase tracking-wider text-text-muted"
                   >
                     Turbo checkpoint
                   </label>
-                  <span className={`rounded px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-wider ${
+                  <span className={`rounded px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wider ${
                     selectedTurboPreset.status === 'candidate'
                       ? 'bg-amber-500/15 text-indicator-warning'
                       : 'bg-accent-blue/10 text-accent-blue'
@@ -277,7 +277,7 @@ export function MiniMaxH3Optimizations() {
                   id="h3-turbo-checkpoint"
                   value={selectedTurboPreset.id}
                   onChange={event => handleTurboPresetChange(event.target.value)}
-                  className="w-full rounded-md border border-border bg-bg-secondary px-2 py-1.5 text-[10px] text-text-primary outline-none focus:border-accent-blue"
+                  className="w-full rounded-md border border-border bg-bg-secondary px-2 py-1.5 text-2xs text-text-primary outline-none focus:border-accent-blue"
                 >
                   {turboPresets.map(preset => (
                     <option key={preset.id} value={preset.id}>
@@ -285,7 +285,7 @@ export function MiniMaxH3Optimizations() {
                     </option>
                   ))}
                 </select>
-                <p className="text-[9px] leading-relaxed text-text-muted">
+                <p className="text-2xs leading-relaxed text-text-muted">
                   Starts at {selectedTurboPreset.weight.toFixed(2)} strength; tune it in Advanced.
                 </p>
               </div>
@@ -310,8 +310,8 @@ export function MiniMaxH3Optimizations() {
                   />
                   <Gauge size={13} className={solEnabled ? 'text-accent-blue' : 'text-text-muted'} />
                   <span className="min-w-0">
-                    <span className="block text-[11px] font-medium text-text-primary">Sol Engine</span>
-                    <span className="block text-[9px] text-text-muted">
+                    <span className="block text-xs font-medium text-text-primary">Sol Engine</span>
+                    <span className="block text-2xs text-text-muted">
                       {solSupported ? 'H3 sparse attention' : 'Unavailable in this runtime'}
                     </span>
                   </span>
@@ -336,8 +336,8 @@ export function MiniMaxH3Optimizations() {
                   />
                   <Gauge size={13} className={slaEnabled ? 'text-accent-blue' : 'text-text-muted'} />
                   <span className="min-w-0">
-                    <span className="block text-[11px] font-medium text-text-primary">SLA Sparse Attention</span>
-                    <span className="block text-[9px] text-text-muted">
+                    <span className="block text-xs font-medium text-text-primary">SLA Sparse Attention</span>
+                    <span className="block text-2xs text-text-muted">
                       {slaSupported ? 'Published FastH3 sparse recipe' : 'Safe dense fallback when unavailable'}
                     </span>
                   </span>
@@ -364,8 +364,8 @@ export function MiniMaxH3Optimizations() {
                   />
                   <Layers size={13} className={cacheEnabled ? 'text-accent-blue' : 'text-text-muted'} />
                   <span className="min-w-0">
-                    <span className="block text-[11px] font-medium text-text-primary">First Block Cache</span>
-                    <span className="block text-[9px] text-text-muted">Reuse stable denoising work</span>
+                    <span className="block text-xs font-medium text-text-primary">First Block Cache</span>
+                    <span className="block text-2xs text-text-muted">Reuse stable denoising work</span>
                   </span>
                 </label>
                 <InfoTooltip

@@ -67,7 +67,7 @@ export function WorkspaceSelector() {
       {open && (
         <div className="absolute left-0 bottom-full mb-2 w-64 bg-bg-secondary border border-border rounded-lg shadow-lg z-50 overflow-hidden">
           <div className="px-2 py-1.5 border-b border-border">
-            <span className="text-[10px] text-text-muted uppercase tracking-wider">Projects</span>
+            <span className="text-2xs text-text-muted uppercase tracking-wider">Projects</span>
           </div>
           <div className="max-h-[200px] overflow-y-auto">
             {/* Filter "default" — it's the backend's implicit root
@@ -107,7 +107,7 @@ export function WorkspaceSelector() {
             ))}
           </div>
           {deleteError && (
-            <div className="px-3 py-1.5 text-[10px] text-red-400 border-t border-border leading-snug">{deleteError}</div>
+            <div className="px-3 py-1.5 text-2xs text-red-400 border-t border-border leading-snug">{deleteError}</div>
           )}
           {/* Project management happens on the Projects page — that's
               where projects (= workspaces) are created and deleted.
@@ -208,12 +208,12 @@ function JobPlaceholder({ job, onStop, onDismiss }: { job: GenerationJob; onStop
               <p className="text-xs mt-1 truncate">{phase}</p>
             )}
             {hasSteps && !isFailed && (
-              <p className="text-[10px] text-text-muted mt-0.5">
+              <p className="text-2xs text-text-muted mt-0.5">
                 Step {job.step}/{job.totalSteps}
               </p>
             )}
             {!isFailed && job.status === 'running' && (
-              <div className="mt-1 space-y-0.5 text-[10px] text-text-muted">
+              <div className="mt-1 space-y-0.5 text-2xs text-text-muted">
                 {isMultiClip && (
                   <p>
                     Clip {job.currentClip ?? 1}/{job.totalClips}
@@ -242,7 +242,7 @@ function JobPlaceholder({ job, onStop, onDismiss }: { job: GenerationJob; onStop
               </div>
             )}
             {isFailed && (
-              <p className="text-[11px] text-text-secondary mt-2 max-h-24 overflow-y-auto px-2 leading-relaxed whitespace-pre-wrap break-words">
+              <p className="text-xs text-text-secondary mt-2 max-h-24 overflow-y-auto px-2 leading-relaxed whitespace-pre-wrap break-words">
                 {errorText}
               </p>
             )}
@@ -266,7 +266,7 @@ function JobPlaceholder({ job, onStop, onDismiss }: { job: GenerationJob; onStop
 
       {job.h3WindowPlan && activeH3PlanWindow && (
         <div className="border-t border-border bg-bg-secondary/60 px-3 py-2">
-          <div className="flex items-center justify-between gap-2 text-[10px] text-text-muted">
+          <div className="flex items-center justify-between gap-2 text-2xs text-text-muted">
             <span className="font-medium text-text-secondary">
               Exact H3 prompt · Window {activeH3PlanWindow.index}/{job.h3WindowPlan.window_count}
             </span>
@@ -282,7 +282,7 @@ function JobPlaceholder({ job, onStop, onDismiss }: { job: GenerationJob; onStop
               {showH3Prompts ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
             </button>
           </div>
-          <p className="mt-1 text-[10px] leading-relaxed text-text-muted line-clamp-3 whitespace-pre-wrap break-words">
+          <p className="mt-1 text-2xs leading-relaxed text-text-muted line-clamp-3 whitespace-pre-wrap break-words">
             {activeH3PlanWindow.prompt}
           </p>
           {showH3Prompts && (
@@ -296,14 +296,14 @@ function JobPlaceholder({ job, onStop, onDismiss }: { job: GenerationJob; onStop
                       : 'border-border bg-bg-tertiary/60'
                   }`}
                 >
-                  <div className="mb-1 flex items-center justify-between text-[9px] text-text-muted">
+                  <div className="mb-1 flex items-center justify-between text-2xs text-text-muted">
                     <span>
                       Window {window.index}: {window.title || `Beat ${window.index}`}
                       {window.index === activeH3Window ? ' · Generating now' : ''}
                     </span>
                     <span>{window.start_seconds.toFixed(1)}–{window.end_seconds.toFixed(1)}s</span>
                   </div>
-                  <pre className="whitespace-pre-wrap break-words font-sans text-[10px] leading-relaxed text-text-secondary">
+                  <pre className="whitespace-pre-wrap break-words font-sans text-2xs leading-relaxed text-text-secondary">
                     {window.prompt}
                   </pre>
                 </div>
@@ -315,7 +315,7 @@ function JobPlaceholder({ job, onStop, onDismiss }: { job: GenerationJob; onStop
 
       {/* Bottom bar */}
       <div className="px-3 py-2 min-h-[40px] flex items-center justify-between">
-        <div className="text-[11px] text-text-muted truncate flex-1">
+        <div className="text-xs text-text-muted truncate flex-1">
           {isFailed ? 'Click × to dismiss — the tile stays so you can see what failed' : phase || 'Preparing...'}
         </div>
         {!isFailed && onStop && (
@@ -388,12 +388,12 @@ export function PipelinePlaceholder() {
             </p>
             {!isFailed && <p className="text-xs mt-1 truncate">{phaseLabel}</p>}
             {hasSteps && !isFailed && (
-              <p className="text-[10px] text-text-muted mt-0.5">
+              <p className="text-2xs text-text-muted mt-0.5">
                 Step {progress!.step}/{progress!.total_steps}
               </p>
             )}
             {!isFailed && currentClip ? (
-              <div className="mt-1 space-y-0.5 text-[10px] text-text-muted">
+              <div className="mt-1 space-y-0.5 text-2xs text-text-muted">
                 <p>
                   Clip {currentClip}/{totalClips || '?'}
                   {clipEta
@@ -416,11 +416,11 @@ export function PipelinePlaceholder() {
             {isFailed && (
               <>
                 {progress && progress.total > 0 && (
-                  <p className="mt-1 text-[10px] text-text-muted">
+                  <p className="mt-1 text-2xs text-text-muted">
                     Saved progress: {progress.current}/{progress.total}
                   </p>
                 )}
-                <p className="text-[11px] text-text-secondary mt-2 max-h-24 overflow-y-auto px-2 leading-relaxed whitespace-pre-wrap break-words">
+                <p className="text-xs text-text-secondary mt-2 max-h-24 overflow-y-auto px-2 leading-relaxed whitespace-pre-wrap break-words">
                   {errorText}
                 </p>
               </>
@@ -445,7 +445,7 @@ export function PipelinePlaceholder() {
 
       {/* Bottom bar with stop button */}
       <div className="px-3 py-2 min-h-[40px] flex items-center justify-between">
-        <div className="text-[11px] text-text-muted truncate flex-1">
+        <div className="text-xs text-text-muted truncate flex-1">
           {isFailed ? 'The saved Director checkpoint can be resumed' : phaseLabel || 'Preparing...'}
         </div>
         {isFailed ? (
@@ -922,7 +922,7 @@ export function MainContent() {
                     <li><span className="text-accent-blue font-medium">2.</span> Type a prompt — e.g. <span className="text-text-secondary italic">“{example}”</span></li>
                     <li><span className="text-accent-blue font-medium">3.</span> Hit Generate.</li>
                   </ol>
-                  <p className="text-[11px] text-text-muted leading-snug">
+                  <p className="text-xs text-text-muted leading-snug">
                     Heads up: the first time you use a model, its weights download
                     once (often tens of GB) before generation starts — later runs
                     are fast. Progress shows at the bottom-right.

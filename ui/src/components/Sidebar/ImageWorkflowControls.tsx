@@ -81,7 +81,7 @@ export function ImageWorkflowControls() {
     const clear = () => isMask ? setMask(null) : setSource(null)
     return (
       <div>
-        <label className="mb-1.5 block text-[11px] uppercase tracking-wider text-text-muted">
+        <label className="mb-1.5 block text-xs uppercase tracking-wider text-text-muted">
           {isMask ? 'Edit Mask' : 'Source Image'}
         </label>
         {path ? (
@@ -110,7 +110,7 @@ export function ImageWorkflowControls() {
               className="w-full rounded-lg border-2 border-dashed border-border p-4 text-center transition-colors hover:border-accent-blue/60 hover:bg-bg-hover/30"
             >
               <Upload size={18} className="mx-auto mb-1.5 text-text-muted" />
-              <span className="text-[11px] text-text-secondary">
+              <span className="text-xs text-text-secondary">
                 {uploading === kind ? 'Uploading…' : `Upload ${isMask ? 'a black-and-white mask' : 'an image'}`}
               </span>
             </button>
@@ -130,7 +130,7 @@ export function ImageWorkflowControls() {
                 type="button"
                 disabled={!currentIsImage}
                 onClick={() => void applySelectedImage()}
-                className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-bg-tertiary py-1.5 text-[11px] text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-bg-tertiary py-1.5 text-xs text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ImageIcon size={12} />
                 {currentIsImage ? 'Use selected gallery image' : 'Select an image in the gallery first'}
@@ -149,14 +149,14 @@ export function ImageWorkflowControls() {
       {workflow === 'inpaint' ? (
         <>
           {renderInput('mask', maskPath, maskUrl, maskInput)}
-          <p className="text-[10px] leading-snug text-text-muted">
+          <p className="text-2xs leading-snug text-text-muted">
             White areas are regenerated from your prompt. Black areas stay unchanged.
           </p>
         </>
       ) : (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-[11px] uppercase tracking-wider text-text-muted">Expand Canvas</label>
+            <label className="text-xs uppercase tracking-wider text-text-muted">Expand Canvas</label>
             <div className="flex gap-1">
               <button
                 type="button"
@@ -164,7 +164,7 @@ export function ImageWorkflowControls() {
                   setPadding('top', 0); setPadding('bottom', 0)
                   setPadding('left', 35); setPadding('right', 35)
                 }}
-                className="rounded border border-border px-1.5 py-1 text-[9px] text-text-secondary hover:text-text-primary"
+                className="rounded border border-border px-1.5 py-1 text-2xs text-text-secondary hover:text-text-primary"
               >
                 Wide
               </button>
@@ -174,14 +174,14 @@ export function ImageWorkflowControls() {
                   setPadding('top', 35); setPadding('bottom', 35)
                   setPadding('left', 0); setPadding('right', 0)
                 }}
-                className="rounded border border-border px-1.5 py-1 text-[9px] text-text-secondary hover:text-text-primary"
+                className="rounded border border-border px-1.5 py-1 text-2xs text-text-secondary hover:text-text-primary"
               >
                 Tall
               </button>
               <button
                 type="button"
                 onClick={() => OUTPAINT_SIDES.forEach(([side]) => setPadding(side, 25))}
-                className="rounded border border-border px-1.5 py-1 text-[9px] text-text-secondary hover:text-text-primary"
+                className="rounded border border-border px-1.5 py-1 text-2xs text-text-secondary hover:text-text-primary"
               >
                 All
               </button>
@@ -190,7 +190,7 @@ export function ImageWorkflowControls() {
           <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg border border-border bg-bg-tertiary p-2.5">
             {OUTPAINT_SIDES.map(([side, label]) => (
               <label key={side} className="space-y-1">
-                <span className="flex justify-between text-[10px] text-text-secondary">
+                <span className="flex justify-between text-2xs text-text-secondary">
                   <span>{label}</span><span>{padding[side]}%</span>
                 </span>
                 <input
@@ -205,14 +205,14 @@ export function ImageWorkflowControls() {
               </label>
             ))}
           </div>
-          <p className="text-[10px] leading-snug text-text-muted">
+          <p className="text-2xs leading-snug text-text-muted">
             The source stays protected while the model creates the new surrounding area.
           </p>
         </div>
       )}
 
       {error && (
-        <div className="rounded border border-red-500/20 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-400">
+        <div className="rounded border border-red-500/20 bg-red-500/10 px-2 py-1.5 text-2xs text-red-400">
           {error}
         </div>
       )}

@@ -18,7 +18,7 @@ export function ChoiceControl({ config, value, onChange, label }: {
 
   return (
     <div>
-      <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+      <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
         {config.label || label}
       </label>
       <select

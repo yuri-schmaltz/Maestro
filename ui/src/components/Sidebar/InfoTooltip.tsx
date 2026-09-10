@@ -96,7 +96,7 @@ export function InfoTooltip({
         <div
           id={tooltipId}
           role="tooltip"
-          className="pointer-events-none fixed z-[120] w-64 max-w-[calc(100vw-1rem)] rounded-lg border border-border bg-bg-secondary px-2.5 py-2 text-[10px] leading-relaxed text-text-secondary shadow-xl whitespace-pre-line"
+          className="pointer-events-none fixed z-[120] w-64 max-w-[calc(100vw-1rem)] rounded-lg border border-border bg-bg-secondary px-2.5 py-2 text-2xs leading-relaxed text-text-secondary shadow-xl whitespace-pre-line"
           style={{
             top: position.top,
             left: position.left,

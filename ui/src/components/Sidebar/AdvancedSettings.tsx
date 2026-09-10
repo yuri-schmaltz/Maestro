@@ -86,10 +86,10 @@ function PresetManager() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-[11px] text-text-muted uppercase tracking-wider">Presets</label>
+        <label className="text-xs text-text-muted uppercase tracking-wider">Presets</label>
         <button
           onClick={() => setShowSave(!showSave)}
-          className="text-[10px] text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
+          className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
         >
           <Save size={10} /> Save Current
         </button>
@@ -142,7 +142,7 @@ function PresetManager() {
           ))}
         </div>
       ) : (
-        <p className="text-[10px] text-text-muted">No {modeLabel} presets for this model</p>
+        <p className="text-2xs text-text-muted">No {modeLabel} presets for this model</p>
       )}
     </div>
   )
@@ -164,15 +164,15 @@ function LtxExperimentalToggle({
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <div className="text-[11px] text-text-secondary">
+        <div className="text-xs text-text-secondary">
           {label}
           {badge ? (
-            <span className="ml-1.5 rounded border border-accent-blue/30 px-1 py-0.5 text-[8px] text-accent-blue">
+            <span className="ml-1.5 rounded border border-accent-blue/30 px-1 py-0.5 text-2xs text-accent-blue">
               {badge}
             </span>
           ) : null}
         </div>
-        <p className="mt-0.5 text-[9px] leading-relaxed text-text-muted">
+        <p className="mt-0.5 text-2xs leading-relaxed text-text-muted">
           {description}
         </p>
       </div>
@@ -212,10 +212,10 @@ function LtxFramesExperimentalControls() {
   return (
     <div className="space-y-3 rounded-lg border border-border bg-bg-tertiary/25 p-3">
       <div>
-        <label className="text-[11px] uppercase tracking-wider text-text-muted">
+        <label className="text-xs uppercase tracking-wider text-text-muted">
           LTX optional conditioning
         </label>
-        <p className="mt-0.5 text-[9px] text-text-muted">Off by default. Applies only to Video Frames with an LTX model.</p>
+        <p className="mt-0.5 text-2xs text-text-muted">Off by default. Applies only to Video Frames with an LTX model.</p>
       </div>
       <LtxExperimentalToggle
         checked={servicesConfig.voice_reference_enabled === true}
@@ -493,7 +493,7 @@ export function AdvancedSettings() {
         {advancedCount > 0 && (
           <span
             title={advancedItems.join('\n')}
-            className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent-blue px-0.5 text-[8px] font-bold leading-none text-white shadow-sm"
+            className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent-blue px-0.5 text-2xs font-bold leading-none text-white shadow-sm"
           >
             {advancedCount}
           </span>
@@ -523,7 +523,7 @@ export function AdvancedSettings() {
               {isDirector ? (
                 <>
                   <DirectorH3Optimizations />
-                  <p className="rounded-lg border border-border/60 bg-bg-tertiary/35 px-3 py-2 text-[9px] leading-relaxed text-text-muted">
+                  <p className="rounded-lg border border-border/60 bg-bg-tertiary/35 px-3 py-2 text-2xs leading-relaxed text-text-muted">
                     Director inference steps, maximum shot length, image guidance, and post-processing remain in the workflow&apos;s Advanced section. Settings here are saved with the Director project and reused by repair and regeneration.
                   </p>
                 </>
@@ -548,7 +548,7 @@ export function AdvancedSettings() {
                   Official Outpaint owns its stage-one-only IC-LoRA schedule. */}
               {!isOutpaint && !modelOptions?.loras_disabled && <LoraSelector />}
               {!isOutpaint && modelOptions?.loras_disabled && (
-                <p className="rounded-lg border border-amber-500/25 bg-amber-500/8 px-3 py-2 text-[9px] leading-relaxed text-text-muted">
+                <p className="rounded-lg border border-amber-500/25 bg-amber-500/8 px-3 py-2 text-2xs leading-relaxed text-text-muted">
                   This fused four-step checkpoint already contains its acceleration and style adapters, so additional LoRAs are disabled.
                 </p>
               )}
@@ -559,7 +559,7 @@ export function AdvancedSettings() {
                   Expose it once here instead of multiplying model entries. */}
               {modelOptions?.minimax_h3_text_encoder_choices?.length ? (
                 <div>
-                  <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+                  <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
                     H3 Text Encoder
                   </label>
                   <select
@@ -576,7 +576,7 @@ export function AdvancedSettings() {
                       </option>
                     ))}
                   </select>
-                  <p className="text-[9px] text-text-muted mt-1">
+                  <p className="text-2xs text-text-muted mt-1">
                     {modelOptions.minimax_h3_text_encoder_choices.find(
                       choice => choice.value === (params.minimax_h3_text_encoder || modelOptions.minimax_h3_text_encoder_default)
                     )?.size_hint || 'Changing this reloads the H3 model.'}
@@ -586,7 +586,7 @@ export function AdvancedSettings() {
 
               {modelOptions?.ltx25_video_vae_choices?.length ? (
                 <div>
-                  <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+                  <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
                     LTX-2.5 Video Decoder
                   </label>
                   <select
@@ -600,7 +600,7 @@ export function AdvancedSettings() {
                       </option>
                     ))}
                   </select>
-                  <p className="text-[9px] text-text-muted mt-1">
+                  <p className="text-2xs text-text-muted mt-1">
                     {modelOptions.ltx25_video_vae_choices.find(
                       choice => choice.value === (params.ltx25_video_vae || modelOptions.ltx25_video_vae_default)
                     )?.description || 'Changing this reloads the LTX-2.5 model.'}
@@ -611,14 +611,14 @@ export function AdvancedSettings() {
               {modelOptions?.first_block_cache && params.skip_steps_cache_type === 'first_block' && (
                 <div className="space-y-2 p-2.5 bg-bg-tertiary/40 rounded-lg border border-border/60">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-text-muted uppercase tracking-wider">
+                    <span className="text-xs text-text-muted uppercase tracking-wider">
                       First Block Cache Tuning
                     </span>
-                    <span className="text-[9px] text-accent-blue">Enabled in Studio</span>
+                    <span className="text-2xs text-accent-blue">Enabled in Studio</span>
                   </div>
                   <div className="space-y-2 pl-1 border-l border-border ml-1">
                     <div>
-                      <label className="text-[10px] text-text-muted block mb-1">
+                      <label className="text-2xs text-text-muted block mb-1">
                         {modelOptions.skip_steps_multiplier_label || 'Cache Threshold'}
                       </label>
                       <select
@@ -633,8 +633,8 @@ export function AdvancedSettings() {
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-[10px] text-text-muted">Warmup</label>
-                        <span className="text-[10px] text-text-secondary">
+                        <label className="text-2xs text-text-muted">Warmup</label>
+                        <span className="text-2xs text-text-secondary">
                           {params.skip_steps_start_step_perc ?? modelOptions.default_skip_steps_start_step_perc ?? 25}%
                         </span>
                       </div>
@@ -649,7 +649,7 @@ export function AdvancedSettings() {
                       />
                     </div>
                   </div>
-                  <p className="text-[9px] text-text-muted">
+                  <p className="text-2xs text-text-muted">
                     Higher thresholds reuse more work but can change motion or fine detail.
                   </p>
                 </div>
@@ -678,7 +678,7 @@ export function AdvancedSettings() {
                 && (
                 <div className="space-y-2">
                   <div>
-                    <label className="text-[10px] text-text-muted block mb-1">
+                    <label className="text-2xs text-text-muted block mb-1">
                       Camera Coverage
                     </label>
                     <select
@@ -703,7 +703,7 @@ export function AdvancedSettings() {
                 && params.minimax_h3_reference_sequence === true
                 && (
                   <div>
-                    <label className="text-[10px] text-text-muted block mb-1">
+                    <label className="text-2xs text-text-muted block mb-1">
                       Sequence Camera Coverage
                     </label>
                     <select
@@ -729,7 +729,7 @@ export function AdvancedSettings() {
                   {modelOptions?.pause_between_sentences && (
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[11px] text-text-muted uppercase tracking-wider">Speaker Pause</label>
+                        <label className="text-xs text-text-muted uppercase tracking-wider">Speaker Pause</label>
                         <span className="text-xs text-text-secondary">{(params.pause_seconds ?? 0.5).toFixed(2)}s</span>
                       </div>
                       <input
@@ -745,7 +745,7 @@ export function AdvancedSettings() {
                   {modelOptions?.temperature_enabled && (
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[11px] text-text-muted uppercase tracking-wider">Temperature</label>
+                        <label className="text-xs text-text-muted uppercase tracking-wider">Temperature</label>
                         <span className="text-xs text-text-secondary">{(params.temperature ?? 1.0).toFixed(2)}</span>
                       </div>
                       <input
@@ -760,7 +760,7 @@ export function AdvancedSettings() {
                   {/* Guidance Scale */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[11px] text-text-muted uppercase tracking-wider">Guidance (CFG)</label>
+                      <label className="text-xs text-text-muted uppercase tracking-wider">Guidance (CFG)</label>
                       <span className="text-xs text-text-secondary">{(params.guidance_scale ?? 3.0).toFixed(1)}</span>
                     </div>
                     <input
@@ -774,7 +774,7 @@ export function AdvancedSettings() {
                   {/* Auto-Split */}
                   {modelOptions?.custom_settings_def?.map(setting => (
                     <div key={setting.id}>
-                      <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">{setting.name}</label>
+                      <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">{setting.name}</label>
                       <input
                         type="number"
                         placeholder="Empty = disabled"
@@ -791,57 +791,57 @@ export function AdvancedSettings() {
                         }}
                         className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
                       />
-                      <p className="text-[10px] text-text-muted mt-1">{setting.label}</p>
+                      <p className="text-2xs text-text-muted mt-1">{setting.label}</p>
                     </div>
                   ))}
 
                   {/* Compressor Settings — shown when Smooth Speaker Volumes is enabled */}
                   {params.tts_dynaudnorm && (
                     <div className="space-y-3 p-2.5 bg-bg-tertiary/50 rounded-lg border border-border/50">
-                      <label className="text-[10px] text-text-muted uppercase tracking-wider block">Speaker Transition Compressor</label>
+                      <label className="text-2xs text-text-muted uppercase tracking-wider block">Speaker Transition Compressor</label>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] text-text-muted">Threshold</label>
-                          <span className="text-[10px] text-text-secondary">{params.tts_comp_threshold || -25}dB</span>
+                          <label className="text-2xs text-text-muted">Threshold</label>
+                          <span className="text-2xs text-text-secondary">{params.tts_comp_threshold || -25}dB</span>
                         </div>
                         <input type="range" min={-50} max={-10} step={1}
                           value={params.tts_comp_threshold || -25}
                           onChange={e => setParam('tts_comp_threshold', parseInt(e.target.value))}
                           className="w-full" />
-                        <p className="text-[9px] text-text-muted">Volume level where boosting kicks in. Lower = catches quieter parts.</p>
+                        <p className="text-2xs text-text-muted">Volume level where boosting kicks in. Lower = catches quieter parts.</p>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] text-text-muted">Attack</label>
-                          <span className="text-[10px] text-text-secondary">{params.tts_comp_attack || 5}ms</span>
+                          <label className="text-2xs text-text-muted">Attack</label>
+                          <span className="text-2xs text-text-secondary">{params.tts_comp_attack || 5}ms</span>
                         </div>
                         <input type="range" min={1} max={50} step={1}
                           value={params.tts_comp_attack || 5}
                           onChange={e => setParam('tts_comp_attack', parseInt(e.target.value))}
                           className="w-full" />
-                        <p className="text-[9px] text-text-muted">How fast the compressor reacts. Low = catches brief dips at speaker transitions.</p>
+                        <p className="text-2xs text-text-muted">How fast the compressor reacts. Low = catches brief dips at speaker transitions.</p>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] text-text-muted">Release</label>
-                          <span className="text-[10px] text-text-secondary">{params.tts_comp_release || 100}ms</span>
+                          <label className="text-2xs text-text-muted">Release</label>
+                          <span className="text-2xs text-text-secondary">{params.tts_comp_release || 100}ms</span>
                         </div>
                         <input type="range" min={20} max={500} step={10}
                           value={params.tts_comp_release || 100}
                           onChange={e => setParam('tts_comp_release', parseInt(e.target.value))}
                           className="w-full" />
-                        <p className="text-[9px] text-text-muted">How fast it returns to normal after boosting. Higher = smoother.</p>
+                        <p className="text-2xs text-text-muted">How fast it returns to normal after boosting. Higher = smoother.</p>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] text-text-muted">Makeup Gain</label>
-                          <span className="text-[10px] text-text-secondary">{params.tts_comp_makeup || 4}dB</span>
+                          <label className="text-2xs text-text-muted">Makeup Gain</label>
+                          <span className="text-2xs text-text-secondary">{params.tts_comp_makeup || 4}dB</span>
                         </div>
                         <input type="range" min={0} max={12} step={1}
                           value={params.tts_comp_makeup || 4}
                           onChange={e => setParam('tts_comp_makeup', parseInt(e.target.value))}
                           className="w-full" />
-                        <p className="text-[9px] text-text-muted">How much to boost the quiet parts. Higher = louder transitions.</p>
+                        <p className="text-2xs text-text-muted">How much to boost the quiet parts. Higher = louder transitions.</p>
                       </div>
                     </div>
                   )}
@@ -855,8 +855,8 @@ export function AdvancedSettings() {
               {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[11px] text-text-muted uppercase tracking-wider">Seed</label>
-                    <button onClick={() => setParam('seed', -1)} className="text-[10px] text-accent-blue hover:text-accent-blue-hover">
+                    <label className="text-xs text-text-muted uppercase tracking-wider">Seed</label>
+                    <button onClick={() => setParam('seed', -1)} className="text-2xs text-accent-blue hover:text-accent-blue-hover">
                       Random
                     </button>
                   </div>
@@ -873,7 +873,7 @@ export function AdvancedSettings() {
               {/* Self Refiner */}
               {!isScailEdit && modelOptions?.self_refiner && (
                 <div>
-                  <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">Self Refiner</label>
+                  <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Self Refiner</label>
                   <select
                     value={params.self_refiner_setting ?? 0}
                     onChange={e => setParam('self_refiner_setting', Number(e.target.value))}
@@ -895,11 +895,11 @@ export function AdvancedSettings() {
                 <div className="space-y-3">
                   {/* Single / 2-Stage / 3-Stage segmented control — mutually exclusive */}
                   <div>
-                    <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">Pipeline Mode</label>
+                    <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Pipeline Mode</label>
                     <div className="flex bg-bg-tertiary rounded-lg p-0.5 border border-border">
                       <button
                         onClick={() => { setParam('progressive_pipeline', false); setParam('single_stage_pipeline', true) }}
-                        className={`flex-1 text-[10px] py-1.5 rounded-md transition-all ${
+                        className={`flex-1 text-2xs py-1.5 rounded-md transition-all ${
                           !!params.single_stage_pipeline && !params.progressive_pipeline
                             ? 'bg-bg-active text-text-primary'
                             : 'text-text-secondary hover:text-text-primary'
@@ -910,7 +910,7 @@ export function AdvancedSettings() {
                       </button>
                       <button
                         onClick={() => { setParam('progressive_pipeline', false); setParam('single_stage_pipeline', false) }}
-                        className={`flex-1 text-[10px] py-1.5 rounded-md transition-all ${
+                        className={`flex-1 text-2xs py-1.5 rounded-md transition-all ${
                           !params.progressive_pipeline && !params.single_stage_pipeline
                             ? 'bg-bg-active text-text-primary'
                             : 'text-text-secondary hover:text-text-primary'
@@ -921,7 +921,7 @@ export function AdvancedSettings() {
                       </button>
                       <button
                         onClick={() => { setParam('progressive_pipeline', true); setParam('single_stage_pipeline', false) }}
-                        className={`flex-1 text-[10px] py-1.5 rounded-md transition-all ${
+                        className={`flex-1 text-2xs py-1.5 rounded-md transition-all ${
                           params.progressive_pipeline
                             ? 'bg-bg-active text-text-primary'
                             : 'text-text-secondary hover:text-text-primary'
@@ -935,7 +935,7 @@ export function AdvancedSettings() {
 
                   {/* Single-Stage: no extra controls — stage 1 runs at full res */}
                   {!!params.single_stage_pipeline && !params.progressive_pipeline && (
-                    <div className="text-[10px] text-text-muted px-1">
+                    <div className="text-2xs text-text-muted px-1">
                       Runs the distilled denoise at full target resolution in one pass. No stage-2 upscale or refine.
                       Uses ~4× the stage-1 VRAM of 2-Stage mode; drop to a smaller resolution preset if you OOM.
                     </div>
@@ -945,7 +945,7 @@ export function AdvancedSettings() {
                   {!params.progressive_pipeline && !params.single_stage_pipeline && (
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[11px] text-text-muted uppercase tracking-wider">Stage 2 Steps</label>
+                        <label className="text-xs text-text-muted uppercase tracking-wider">Stage 2 Steps</label>
                         <span className="text-xs text-text-secondary">{params.stage2_steps || 3}</span>
                       </div>
                       <input
@@ -954,7 +954,7 @@ export function AdvancedSettings() {
                         onChange={e => setParam('stage2_steps', Number(e.target.value))}
                         className="w-full accent-accent-blue"
                       />
-                      <div className="flex justify-between text-[10px] text-text-muted mt-0.5">
+                      <div className="flex justify-between text-2xs text-text-muted mt-0.5">
                         <span>2 (faster)</span><span>7 (more detail)</span>
                       </div>
                     </div>
@@ -965,21 +965,21 @@ export function AdvancedSettings() {
                     <div className="space-y-3 pt-1 border-t border-border/30">
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] text-text-muted">Stage 1 Image Weight</label>
-                          <span className="text-[10px] text-text-secondary">{(params.progressive_stage1_image_weight ?? 0.7).toFixed(2)}</span>
+                          <label className="text-2xs text-text-muted">Stage 1 Image Weight</label>
+                          <span className="text-2xs text-text-secondary">{(params.progressive_stage1_image_weight ?? 0.7).toFixed(2)}</span>
                         </div>
                         <input type="range" min={0.3} max={1.0} step={0.05}
                           value={params.progressive_stage1_image_weight ?? 0.7}
                           onChange={e => setParam('progressive_stage1_image_weight', parseFloat(e.target.value))}
                           className="w-full accent-accent-blue" />
-                        <div className="flex justify-between text-[9px] text-text-muted mt-0.5">
+                        <div className="flex justify-between text-2xs text-text-muted mt-0.5">
                           <span>0.30 (more motion)</span><span>1.00 (match start image)</span>
                         </div>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] text-text-muted">Stage 2 Steps (half res)</label>
-                          <span className="text-[10px] text-text-secondary">{params.progressive_stage2_steps ?? 5}</span>
+                          <label className="text-2xs text-text-muted">Stage 2 Steps (half res)</label>
+                          <span className="text-2xs text-text-secondary">{params.progressive_stage2_steps ?? 5}</span>
                         </div>
                         <input type="range" min={1} max={8} step={1}
                           value={params.progressive_stage2_steps ?? 5}
@@ -988,8 +988,8 @@ export function AdvancedSettings() {
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] text-text-muted">Stage 3 Steps (full res)</label>
-                          <span className="text-[10px] text-text-secondary">{params.progressive_stage3_steps ?? 3}</span>
+                          <label className="text-2xs text-text-muted">Stage 3 Steps (full res)</label>
+                          <span className="text-2xs text-text-secondary">{params.progressive_stage3_steps ?? 3}</span>
                         </div>
                         <input type="range" min={1} max={8} step={1}
                           value={params.progressive_stage3_steps ?? 3}
@@ -998,40 +998,40 @@ export function AdvancedSettings() {
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] text-text-muted">Stage 2 Sigma</label>
-                          <span className="text-[10px] text-text-secondary">{(params.progressive_stage2_sigma ?? 0.85).toFixed(2)}</span>
+                          <label className="text-2xs text-text-muted">Stage 2 Sigma</label>
+                          <span className="text-2xs text-text-secondary">{(params.progressive_stage2_sigma ?? 0.85).toFixed(2)}</span>
                         </div>
                         <input type="range" min={0.5} max={1.0} step={0.05}
                           value={params.progressive_stage2_sigma ?? 0.85}
                           onChange={e => setParam('progressive_stage2_sigma', parseFloat(e.target.value))}
                           className="w-full accent-accent-blue" />
-                        <div className="flex justify-between text-[9px] text-text-muted mt-0.5">
+                        <div className="flex justify-between text-2xs text-text-muted mt-0.5">
                           <span>0.50 (preserve)</span><span>1.00 (regenerate)</span>
                         </div>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] text-text-muted">Stage 3 Sigma</label>
-                          <span className="text-[10px] text-text-secondary">{(params.progressive_stage3_sigma ?? 0.85).toFixed(2)}</span>
+                          <label className="text-2xs text-text-muted">Stage 3 Sigma</label>
+                          <span className="text-2xs text-text-secondary">{(params.progressive_stage3_sigma ?? 0.85).toFixed(2)}</span>
                         </div>
                         <input type="range" min={0.5} max={1.0} step={0.05}
                           value={params.progressive_stage3_sigma ?? 0.85}
                           onChange={e => setParam('progressive_stage3_sigma', parseFloat(e.target.value))}
                           className="w-full accent-accent-blue" />
-                        <div className="flex justify-between text-[9px] text-text-muted mt-0.5">
+                        <div className="flex justify-between text-2xs text-text-muted mt-0.5">
                           <span>0.50 (preserve)</span><span>1.00 (regenerate)</span>
                         </div>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] text-text-muted">Stage 3 Image Weight (full res)</label>
-                          <span className="text-[10px] text-text-secondary">{(params.progressive_stage3_image_weight ?? 0.7).toFixed(2)}</span>
+                          <label className="text-2xs text-text-muted">Stage 3 Image Weight (full res)</label>
+                          <span className="text-2xs text-text-secondary">{(params.progressive_stage3_image_weight ?? 0.7).toFixed(2)}</span>
                         </div>
                         <input type="range" min={0.3} max={1.0} step={0.05}
                           value={params.progressive_stage3_image_weight ?? 0.7}
                           onChange={e => setParam('progressive_stage3_image_weight', parseFloat(e.target.value))}
                           className="w-full accent-accent-blue" />
-                        <div className="flex justify-between text-[9px] text-text-muted mt-0.5">
+                        <div className="flex justify-between text-2xs text-text-muted mt-0.5">
                           <span>0.30 (more detail freedom)</span><span>1.00 (match start image)</span>
                         </div>
                       </div>
@@ -1052,11 +1052,11 @@ export function AdvancedSettings() {
                       checked={!!params.reference_pipeline}
                       onChange={e => setParam('reference_pipeline', e.target.checked ? true : undefined)}
                       className="accent-accent-blue" />
-                    <span className="text-[11px] text-text-muted uppercase tracking-wider group-hover:text-text-secondary transition-colors">
+                    <span className="text-xs text-text-muted uppercase tracking-wider group-hover:text-text-secondary transition-colors">
                       Reference Pipeline (10Eros)
                     </span>
                   </label>
-                  <p className="text-[9px] text-text-muted">
+                  <p className="text-2xs text-text-muted">
                     Runs the model author&apos;s ComfyUI workflow config: 9+3 steps on hand-tuned sigmas,
                     CFG only on the first 2 steps, STG on the first 4, ancestral sampling.
                     Steps / CFG / STG sliders below are ignored while this is on.
@@ -1069,7 +1069,7 @@ export function AdvancedSettings() {
               {showInferenceSteps && (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[11px] text-text-muted uppercase tracking-wider">
+                    <label className="text-xs text-text-muted uppercase tracking-wider">
                       {modelOptions?.inference_steps_label || 'Inference Steps'}
                     </label>
                     <input
@@ -1091,17 +1091,17 @@ export function AdvancedSettings() {
                     className="w-full disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   {h3TurboMode && (
-                    <p className="text-[9px] text-text-muted mt-0.5">
+                    <p className="text-2xs text-text-muted mt-0.5">
                       Turbo mode locks this preset to {modelOptions?.minimax_h3_turbo?.steps} steps.
                     </p>
                   )}
                   {!h3TurboMode && modelOptions?.inference_steps_help && (
-                    <p className="text-[9px] text-text-muted mt-0.5">
+                    <p className="text-2xs text-text-muted mt-0.5">
                       {modelOptions.inference_steps_help}
                     </p>
                   )}
                   {isScailFast && (
-                    <p className="text-[9px] text-text-muted mt-0.5">
+                    <p className="text-2xs text-text-muted mt-0.5">
                       Fast keeps its distilled CFG 1 recipe; guidance and
                       negative-prompt controls do not apply.
                     </p>
@@ -1113,7 +1113,7 @@ export function AdvancedSettings() {
               {showGuidanceScale && (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[11px] text-text-muted uppercase tracking-wider">Guidance Scale</label>
+                    <label className="text-xs text-text-muted uppercase tracking-wider">Guidance Scale</label>
                     <input
                       type="number"
                       value={params.guidance_scale}
@@ -1137,27 +1137,27 @@ export function AdvancedSettings() {
                   {/* STG Scale */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[11px] text-text-muted uppercase tracking-wider">STG Scale</label>
+                      <label className="text-xs text-text-muted uppercase tracking-wider">STG Scale</label>
                       <span className="text-xs text-text-secondary">{(params.stg_scale ?? 0) > 0 ? (params.stg_scale as number).toFixed(1) : 'Off'}</span>
                     </div>
                     <input type="range" min={0} max={3} step={0.1}
                       value={params.stg_scale ?? 0}
                       onChange={e => setParam('stg_scale', parseFloat(e.target.value))}
                       className="w-full" />
-                    <p className="text-[9px] text-text-muted mt-0.5">Spatio-temporal guidance. 0 = off. Sharpens structure &amp; motion via a third denoising pass (~50% slower). Try 1.0.</p>
+                    <p className="text-2xs text-text-muted mt-0.5">Spatio-temporal guidance. 0 = off. Sharpens structure &amp; motion via a third denoising pass (~50% slower). Try 1.0.</p>
                   </div>
 
                   {/* CFG Rescale */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[11px] text-text-muted uppercase tracking-wider">CFG Rescale</label>
+                      <label className="text-xs text-text-muted uppercase tracking-wider">CFG Rescale</label>
                       <span className="text-xs text-text-secondary">{(params.cfg_rescale ?? 0).toFixed(2)}</span>
                     </div>
                     <input type="range" min={0} max={1} step={0.05}
                       value={params.cfg_rescale ?? 0}
                       onChange={e => setParam('cfg_rescale', parseFloat(e.target.value))}
                       className="w-full" />
-                    <p className="text-[9px] text-text-muted mt-0.5">Reduces over-saturation. 0.7 recommended.</p>
+                    <p className="text-2xs text-text-muted mt-0.5">Reduces over-saturation. 0.7 recommended.</p>
                   </div>
 
                   {/* Gradient Estimation */}
@@ -1167,17 +1167,17 @@ export function AdvancedSettings() {
                         checked={!!params.use_gradient_estimation}
                         onChange={e => setParam('use_gradient_estimation', e.target.checked ? true : undefined)}
                         className="accent-accent-blue" />
-                      <span className="text-[11px] text-text-muted uppercase tracking-wider group-hover:text-text-secondary transition-colors">
+                      <span className="text-xs text-text-muted uppercase tracking-wider group-hover:text-text-secondary transition-colors">
                         Gradient Estimation
                       </span>
                     </label>
                     {params.use_gradient_estimation && (
                       <div className="pl-1 border-l border-border ml-1 space-y-1.5">
-                        <p className="text-[9px] text-accent-blue/80">Use 20-25 steps instead of 30-40 for comparable quality.</p>
+                        <p className="text-2xs text-accent-blue/80">Use 20-25 steps instead of 30-40 for comparable quality.</p>
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] text-text-muted">Gamma</span>
-                            <span className="text-[9px] text-text-muted">{(params.ge_gamma ?? 2.0).toFixed(1)}</span>
+                            <span className="text-2xs text-text-muted">Gamma</span>
+                            <span className="text-2xs text-text-muted">{(params.ge_gamma ?? 2.0).toFixed(1)}</span>
                           </div>
                           <input type="range" min={1} max={4} step={0.1}
                             value={params.ge_gamma ?? 2.0}
@@ -1193,7 +1193,7 @@ export function AdvancedSettings() {
               {/* Keyframe Conditioning Mode — Start/End frames */}
               {!isScailEdit && (isVideo || isAvatar) && (hasStartImage || hasEndImage) && (
                 <div>
-                  <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">Start/End Frame Mode</label>
+                  <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Start/End Frame Mode</label>
                   <select
                     value={params.keyframe_conditioning_mode || 'replace'}
                     onChange={e => setParam('keyframe_conditioning_mode', e.target.value)}
@@ -1202,14 +1202,14 @@ export function AdvancedSettings() {
                     <option value="replace">Replace (Default)</option>
                     <option value="additive">Additive (Smooth)</option>
                   </select>
-                  <p className="text-[9px] text-text-muted mt-0.5">Replace: exact adherence to source image. Additive: smoother blending.</p>
+                  <p className="text-2xs text-text-muted mt-0.5">Replace: exact adherence to source image. Additive: smoother blending.</p>
                 </div>
               )}
 
               {/* Keyframe Conditioning Mode — Injected keyframes */}
               {!isScailEdit && (isVideo || isAvatar) && hasImageRefs && (
                 <div>
-                  <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">Injected Keyframe Mode</label>
+                  <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Injected Keyframe Mode</label>
                   <select
                     value={params.keyframe_inject_mode || 'additive'}
                     onChange={e => setParam('keyframe_inject_mode', e.target.value)}
@@ -1218,14 +1218,14 @@ export function AdvancedSettings() {
                     <option value="additive">Additive (Default)</option>
                     <option value="replace">Replace (Strict)</option>
                   </select>
-                  <p className="text-[9px] text-text-muted mt-0.5">Additive: smooth transitions at injected frames. Replace: strict adherence.</p>
+                  <p className="text-2xs text-text-muted mt-0.5">Additive: smooth transitions at injected frames. Replace: strict adherence.</p>
                 </div>
               )}
 
               {/* Negative Prompt */}
               {showNegativePrompt && (
                 <div>
-                  <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">Negative Prompt</label>
+                  <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Negative Prompt</label>
                   <textarea
                     value={params.negative_prompt || ''}
                     onChange={e => setParam('negative_prompt', e.target.value)}
@@ -1247,14 +1247,14 @@ export function AdvancedSettings() {
                       onChange={e => setParam('MMAudio_setting', e.target.checked ? 1 : 0)}
                       className="accent-accent-blue"
                     />
-                    <span className="text-[11px] text-text-muted uppercase tracking-wider group-hover:text-text-secondary transition-colors">
+                    <span className="text-xs text-text-muted uppercase tracking-wider group-hover:text-text-secondary transition-colors">
                       MMAudio (Soundtrack)
                     </span>
                   </label>
                   {params.MMAudio_setting === 1 && (
                     <div className="space-y-2 pl-1 border-l border-border ml-1">
                       <div>
-                        <label className="text-[10px] text-text-muted block mb-1">Prompt (1-2 keywords)</label>
+                        <label className="text-2xs text-text-muted block mb-1">Prompt (1-2 keywords)</label>
                         <input
                           type="text"
                           value={(params.MMAudio_prompt) || ''}
@@ -1264,7 +1264,7 @@ export function AdvancedSettings() {
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-text-muted block mb-1">Negative Prompt (1-2 keywords)</label>
+                        <label className="text-2xs text-text-muted block mb-1">Negative Prompt (1-2 keywords)</label>
                         <input
                           type="text"
                           value={(params.MMAudio_neg_prompt) || ''}
@@ -1288,7 +1288,7 @@ export function AdvancedSettings() {
               {/* Dedicated Recast/Repaint submissions create one edit job. */}
               {!isScailEdit && <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[11px] text-text-muted uppercase tracking-wider">Output Count</label>
+                  <label className="text-xs text-text-muted uppercase tracking-wider">Output Count</label>
                   <span className="text-xs text-text-secondary">{params.repeat_generation || 1}</span>
                 </div>
                 <input
@@ -1302,14 +1302,14 @@ export function AdvancedSettings() {
               {showH3LongSequenceExperiments && (
                 <div className="space-y-2.5 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <label className="text-[11px] uppercase tracking-wider text-amber-300">
+                    <label className="text-xs uppercase tracking-wider text-amber-300">
                       Long-sequence tests
                     </label>
-                    <span className="rounded border border-amber-400/30 px-1 py-0.5 text-[8px] text-amber-300/90">
+                    <span className="rounded border border-amber-400/30 px-1 py-0.5 text-2xs text-amber-300/90">
                       Experimental
                     </span>
                   </div>
-                  <p className="text-[10px] leading-relaxed text-text-muted">
+                  <p className="text-2xs leading-relaxed text-text-muted">
                     A/B controls for diagnosing repetition and cumulative over-processing in long H3 First / Last sequences. Defaults remain off.
                   </p>
                   <div className="space-y-2.5">
@@ -1344,10 +1344,10 @@ export function AdvancedSettings() {
                             className="mt-0.5 accent-accent-blue"
                           />
                           <span className="min-w-0">
-                            <span className="block text-[11px] text-text-secondary transition-colors group-hover:text-text-primary">
+                            <span className="block text-xs text-text-secondary transition-colors group-hover:text-text-primary">
                               {experiment.label}
                             </span>
-                            <span className="mt-0.5 block text-[9px] leading-relaxed text-text-muted">
+                            <span className="mt-0.5 block text-2xs leading-relaxed text-text-muted">
                               {experiment.description}
                             </span>
                           </span>

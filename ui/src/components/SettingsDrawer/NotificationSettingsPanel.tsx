@@ -40,7 +40,7 @@ function Toggle({ checked, onChange, label, description, disabled = false }: Tog
       <div className="min-w-0 flex-1">
         <div className="text-xs text-text-primary">{label}</div>
         {description && (
-          <div className="mt-0.5 text-[10px] leading-relaxed text-text-muted">{description}</div>
+          <div className="mt-0.5 text-2xs leading-relaxed text-text-muted">{description}</div>
         )}
       </div>
       <button
@@ -215,8 +215,8 @@ export function NotificationSettingsPanel() {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">Notifications</h3>
-        <p className="mt-1 text-[10px] leading-relaxed text-text-muted">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-text-secondary">Notifications</h3>
+        <p className="mt-1 text-2xs leading-relaxed text-text-muted">
           Maestro always shows a small in-app alert. The options below add system notifications or sound.
         </p>
       </div>
@@ -226,7 +226,7 @@ export function NotificationSettingsPanel() {
           <Bell size={15} className="text-accent-blue" />
           <div>
             <div className="text-xs font-medium text-text-primary">This browser or device</div>
-            <div className="text-[10px] text-text-muted">Saved separately in each browser.</div>
+            <div className="text-2xs text-text-muted">Saved separately in each browser.</div>
           </div>
         </div>
 
@@ -239,7 +239,7 @@ export function NotificationSettingsPanel() {
         />
 
         {preferences.browserNotifications && (
-          <div className={`rounded-md border px-2.5 py-2 text-[9px] leading-relaxed ${
+          <div className={`rounded-md border px-2.5 py-2 text-2xs leading-relaxed ${
             pushState?.subscribed
               ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-200'
               : 'border-amber-500/30 bg-amber-500/5 text-amber-100'
@@ -271,7 +271,7 @@ export function NotificationSettingsPanel() {
             ['notifyFailed', 'Failed'],
             ['notifyQueue', 'Queue'],
           ] as const).map(([key, label]) => (
-            <label key={key} className="flex cursor-pointer items-center gap-1.5 text-[10px] text-text-secondary">
+            <label key={key} className="flex cursor-pointer items-center gap-1.5 text-2xs text-text-secondary">
               <input
                 type="checkbox"
                 checked={preferences[key]}
@@ -291,7 +291,7 @@ export function NotificationSettingsPanel() {
         />
 
         <div className="space-y-1">
-          <div className="flex items-center justify-between text-[10px] text-text-muted">
+          <div className="flex items-center justify-between text-2xs text-text-muted">
             <span className="flex items-center gap-1"><Volume2 size={11} /> Device volume</span>
             <span>{preferences.deviceSoundVolume}%</span>
           </div>
@@ -311,14 +311,14 @@ export function NotificationSettingsPanel() {
             type="button"
             onClick={handleBrowserTest}
             disabled={!availability.supported || !availability.secure || availability.permission === 'denied'}
-            className="flex-1 rounded-md border border-border px-2 py-1.5 text-[10px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex-1 rounded-md border border-border px-2 py-1.5 text-2xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
           >
             Test while open
           </button>
           <button
             type="button"
             onClick={() => void playDeviceNotificationChime('completion')}
-            className="flex-1 rounded-md border border-border px-2 py-1.5 text-[10px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+            className="flex-1 rounded-md border border-border px-2 py-1.5 text-2xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
           >
             Test chime
           </button>
@@ -328,17 +328,17 @@ export function NotificationSettingsPanel() {
           type="button"
           onClick={handleBackgroundTest}
           disabled={testingPush || !pushState?.subscribed}
-          className="w-full rounded-md border border-border px-2 py-1.5 text-[10px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-md border border-border px-2 py-1.5 text-2xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
         >
           {testingPush ? 'Sending background push…' : 'Test closed-app notification'}
         </button>
 
-        <p className="text-[9px] leading-relaxed text-text-muted">
+        <p className="text-2xs leading-relaxed text-text-muted">
           iPhone/iPad: use Maestro through HTTPS, remove any older Maestro Home Screen shortcut, then add it to the Home Screen again and open that installed app. Safari and Chrome tabs cannot request notification permission on iOS.
         </p>
 
         {availability.ios && (
-          <div className={`rounded-md border px-2.5 py-2 text-[9px] leading-relaxed ${
+          <div className={`rounded-md border px-2.5 py-2 text-2xs leading-relaxed ${
             availability.secure && availability.standalone
               ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-200'
               : 'border-amber-500/30 bg-amber-500/5 text-amber-100'
@@ -357,7 +357,7 @@ export function NotificationSettingsPanel() {
           </div>
         )}
 
-        <p className="text-[9px] leading-relaxed text-text-muted">
+        <p className="text-2xs leading-relaxed text-text-muted">
           Closed-app delivery uses the browser vendor&apos;s standard encrypted Web Push service. Maestro&apos;s signing key and your device subscription remain on your Maestro computer; there is no Maestro cloud account or relay.
         </p>
       </section>
@@ -367,7 +367,7 @@ export function NotificationSettingsPanel() {
           <MonitorSpeaker size={15} className="text-accent-blue" />
           <div>
             <div className="text-xs font-medium text-text-primary">Maestro host computer</div>
-            <div className="text-[10px] text-text-muted">Useful when you leave the generation machine running.</div>
+            <div className="text-2xs text-text-muted">Useful when you leave the generation machine running.</div>
           </div>
         </div>
 
@@ -380,7 +380,7 @@ export function NotificationSettingsPanel() {
         />
 
         <div className="space-y-1">
-          <div className="flex items-center justify-between text-[10px] text-text-muted">
+          <div className="flex items-center justify-between text-2xs text-text-muted">
             <span className="flex items-center gap-1"><BellRing size={11} /> Host volume</span>
             <span>{hostVolume}%</span>
           </div>
@@ -402,14 +402,14 @@ export function NotificationSettingsPanel() {
           type="button"
           onClick={handleHostTest}
           disabled={testingHost || !systemConfig}
-          className="w-full rounded-md border border-border px-2 py-1.5 text-[10px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-md border border-border px-2 py-1.5 text-2xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
         >
           {testingHost ? 'Playing…' : 'Test host sound'}
         </button>
       </section>
 
       {message && (
-        <div className="rounded-md border border-border bg-bg-primary px-2.5 py-2 text-[10px] leading-relaxed text-text-secondary">
+        <div className="rounded-md border border-border bg-bg-primary px-2.5 py-2 text-2xs leading-relaxed text-text-secondary">
           {message}
         </div>
       )}

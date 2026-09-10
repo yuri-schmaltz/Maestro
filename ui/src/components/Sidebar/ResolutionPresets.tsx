@@ -20,7 +20,7 @@ export function ResolutionPresets() {
 
   return (
     <div>
-      <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">Resolution</label>
+      <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Resolution</label>
       <div className="flex bg-bg-tertiary rounded-lg p-0.5 border border-border">
         {presets.map(p => (
           <button
@@ -39,12 +39,12 @@ export function ResolutionPresets() {
         ))}
       </div>
       {resolutionPreset === 'auto' && (
-        <p className="text-[9px] text-text-muted mt-0.5">
+        <p className="text-2xs text-text-muted mt-0.5">
           {isEdit ? 'Uses source clip resolution' : isImage ? 'Matches reference image aspect ratio' : 'Auto resolution'}
         </p>
       )}
       {selectedModelPreset?.hint && (
-        <p className={`mt-1 text-[9px] leading-relaxed ${
+        <p className={`mt-1 text-2xs leading-relaxed ${
           selectedModelPreset.experimental ? 'text-indicator-warning' : 'text-text-muted'
         }`}>
           {selectedModelPreset.hint}

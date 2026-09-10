@@ -294,7 +294,7 @@ export function OutpaintCanvas({ videoUrl, srcW, srcH }: Props) {
 
         {/* Padding readout overlay */}
         {pads && (pads.top > 0 || pads.bottom > 0 || pads.left > 0 || pads.right > 0) && (
-          <div className="absolute bottom-1 left-1 right-1 flex justify-between text-[9px] text-white/70 pointer-events-none font-mono">
+          <div className="absolute bottom-1 left-1 right-1 flex justify-between text-2xs text-white/70 pointer-events-none font-mono">
             <span>{pads.left > 0 ? `← ${pads.left}px` : ''}</span>
             <span className="flex flex-col items-center">
               {pads.top > 0 && <span>↑ {pads.top}px</span>}
@@ -311,7 +311,7 @@ export function OutpaintCanvas({ videoUrl, srcW, srcH }: Props) {
           <button
             key={a.v}
             onClick={() => setAspect(a.v)}
-            className={`px-1 py-1 rounded text-[10px] border transition-colors ${
+            className={`px-1 py-1 rounded text-2xs border transition-colors ${
               aspect === a.v
                 ? 'border-accent-blue bg-accent-blue/15 text-accent-blue'
                 : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
@@ -324,7 +324,7 @@ export function OutpaintCanvas({ videoUrl, srcW, srcH }: Props) {
 
       {/* Output dimensions readout */}
       {resolvedCanvasPx.w > 0 && (
-        <p className="text-[9px] text-text-muted text-center font-mono">
+        <p className="text-2xs text-text-muted text-center font-mono">
           Canvas: {resolvedCanvasPx.w}×{resolvedCanvasPx.h}px
         </p>
       )}

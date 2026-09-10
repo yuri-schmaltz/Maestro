@@ -197,7 +197,7 @@ export function EditorClipMedia({
 
   if (asset?.missing) {
     return (
-      <span className="pointer-events-none absolute inset-0 grid place-items-center bg-red-950/55 text-[8px] font-semibold uppercase tracking-wide text-red-200">
+      <span className="pointer-events-none absolute inset-0 grid place-items-center bg-red-950/55 text-2xs font-semibold uppercase tracking-wide text-red-200">
         Media offline
       </span>
     )

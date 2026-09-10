@@ -58,8 +58,8 @@ export function StudioWorkflowSelect<T extends string>({
   return (
     <div ref={rootRef}>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[10px] text-text-muted uppercase tracking-wider">Workflow</span>
-        <span className="text-[10px] text-text-muted">{hint}</span>
+        <span className="text-2xs text-text-muted uppercase tracking-wider">Workflow</span>
+        <span className="text-2xs text-text-muted">{hint}</span>
       </div>
       <button
         type="button"
@@ -76,7 +76,7 @@ export function StudioWorkflowSelect<T extends string>({
           <span className="block text-xs font-medium text-text-primary truncate">
             {activeOption.label}
           </span>
-          <span className="block mt-0.5 text-[10px] text-text-muted truncate">
+          <span className="block mt-0.5 text-2xs text-text-muted truncate">
             {activeOption.description}
           </span>
         </span>
@@ -93,7 +93,7 @@ export function StudioWorkflowSelect<T extends string>({
               key={group.label}
               className={groupIndex > 0 ? 'mt-1 pt-1.5 border-t border-border' : ''}
             >
-              <div className="px-2 py-1 text-[10px] text-text-muted uppercase tracking-wider font-medium">
+              <div className="px-2 py-1 text-2xs text-text-muted uppercase tracking-wider font-medium">
                 {group.label}
               </div>
               {group.options.map(option => {
@@ -118,7 +118,7 @@ export function StudioWorkflowSelect<T extends string>({
                     </span>
                     <span className="min-w-0">
                       <span className="block text-xs font-medium truncate">{option.label}</span>
-                      <span className="block text-[10px] text-text-muted truncate">{option.description}</span>
+                      <span className="block text-2xs text-text-muted truncate">{option.description}</span>
                     </span>
                     {selected ? <Check size={13} className="text-accent-blue" /> : <span />}
                   </button>

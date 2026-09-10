@@ -165,7 +165,7 @@ export function GlobalQueuePopover({
       >
         <ListVideo size={iconSize} />
         {totalCount > 0 && (
-          <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-blue px-1 text-[9px] font-semibold leading-none text-white shadow-sm">
+          <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-blue px-1 text-2xs font-semibold leading-none text-white shadow-sm">
             {totalCount > 99 ? '99+' : totalCount}
           </span>
         )}
@@ -182,11 +182,11 @@ export function GlobalQueuePopover({
               <div className="flex items-center gap-2">
                 <ListVideo size={14} className="text-accent-blue" />
                 <h2 className="text-xs font-semibold text-text-primary">Generation Queue</h2>
-                <span className="rounded-full bg-accent-blue/15 px-1.5 py-0.5 text-[9px] text-accent-blue">
+                <span className="rounded-full bg-accent-blue/15 px-1.5 py-0.5 text-2xs text-accent-blue">
                   {totalCount} {totalCount === 1 ? 'item' : 'items'}
                 </span>
               </div>
-              <p className="mt-0.5 text-[9px] text-text-muted">Studio, Director, and Editor in one place</p>
+              <p className="mt-0.5 text-2xs text-text-muted">Studio, Director, and Editor in one place</p>
             </div>
             <button
               type="button"
@@ -202,17 +202,17 @@ export function GlobalQueuePopover({
             {activePipeline && !activePipelineIsQueued && pipelineStatus && (
               <section className="space-y-1.5">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted">Director now</span>
-                  <span className="text-[9px] text-accent-blue">1 active</span>
+                  <span className="text-2xs font-medium uppercase tracking-wider text-text-muted">Director now</span>
+                  <span className="text-2xs text-accent-blue">1 active</span>
                 </div>
                 <div className="rounded-lg border border-accent-blue/25 bg-bg-tertiary p-2">
                   <div className="flex items-center gap-2">
                     <Loader2 size={11} className="shrink-0 animate-spin text-accent-blue" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[10px] text-text-secondary">
+                      <div className="truncate text-2xs text-text-secondary">
                         {pipelineStatus.progress?.message || compactStatus(pipelineStatus.phase)}
                       </div>
-                      <div className="text-[9px] text-text-muted">
+                      <div className="text-2xs text-text-muted">
                         Director · {compactStatus(pipelineStatus.status)}
                         {pipelineStatus.progress?.project_eta_seconds != null
                           ? ` · ${formatEtaDuration(pipelineStatus.progress.project_eta_seconds)} remaining`
@@ -245,13 +245,13 @@ export function GlobalQueuePopover({
             {studioJobs.length > 0 && (
               <section className="space-y-1.5">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted">Studio &amp; Editor</span>
+                  <span className="text-2xs font-medium uppercase tracking-wider text-text-muted">Studio &amp; Editor</span>
                   {studioHeldCount > 0 ? (
                     <button
                       type="button"
                       onClick={() => void startAllQueues()}
                       disabled={startingAll}
-                      className="flex items-center gap-1 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[9px] text-indicator-success disabled:opacity-40"
+                      className="flex items-center gap-1 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-2xs text-indicator-success disabled:opacity-40"
                       title="Start all held Studio jobs, then any held Director projects"
                     >
                       {startingAll
@@ -260,7 +260,7 @@ export function GlobalQueuePopover({
                       Start queue
                     </button>
                   ) : (
-                    <span className="text-[9px] text-text-muted">{studioJobs.length} active</span>
+                    <span className="text-2xs text-text-muted">{studioJobs.length} active</span>
                   )}
                 </div>
                 <div className="space-y-1">
@@ -281,8 +281,8 @@ export function GlobalQueuePopover({
                             ? <Loader2 size={11} className="shrink-0 animate-spin text-accent-blue" />
                             : <Clock size={11} className="shrink-0 text-text-muted" />}
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-[10px] text-text-secondary">{label}</div>
-                            <div className="text-[9px] text-text-muted">
+                            <div className="truncate text-2xs text-text-secondary">{label}</div>
+                            <div className="text-2xs text-text-muted">
                               {job.kind === 'editor_export'
                                 ? `Editor export · ${compactStatus(job.status)}`
                                 : isPromptPlanning
@@ -333,15 +333,15 @@ export function GlobalQueuePopover({
               <section className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2 px-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted">Director</span>
-                    <span className="text-[9px] text-text-muted">{pendingDirectorCount} waiting</span>
+                    <span className="text-2xs font-medium uppercase tracking-wider text-text-muted">Director</span>
+                    <span className="text-2xs text-text-muted">{pendingDirectorCount} waiting</span>
                   </div>
                   {directorQueue?.running && !directorQueue.paused ? (
                     <button
                       type="button"
                       onClick={() => void pauseDirectorQueue()}
                       disabled={directorQueueLoading}
-                      className="flex items-center gap-1 rounded border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-[9px] text-chip-orange disabled:opacity-40"
+                      className="flex items-center gap-1 rounded border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-2xs text-chip-orange disabled:opacity-40"
                       title="Finish the active Director project, then stop dispatching"
                     >
                       <Pause size={9} /> Pause after current
@@ -351,7 +351,7 @@ export function GlobalQueuePopover({
                       type="button"
                       onClick={() => void startAllQueues()}
                       disabled={(startableDirectorCount === 0 && studioHeldCount === 0) || directorQueueLoading || startingAll}
-                      className="flex items-center gap-1 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[9px] text-indicator-success disabled:opacity-40"
+                      className="flex items-center gap-1 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-2xs text-indicator-success disabled:opacity-40"
                     >
                       {startingAll
                         ? <Loader2 size={9} className="animate-spin" />
@@ -380,10 +380,10 @@ export function GlobalQueuePopover({
                         className="min-w-0 flex-1 text-left"
                         title={entry.error || entry.message || entry.scene_description}
                       >
-                        <div className="truncate text-[10px] text-text-secondary">
+                        <div className="truncate text-2xs text-text-secondary">
                           {entry.scene_description || `${entry.pipeline_type.replace(/_/g, ' ')} project`}
                         </div>
-                        <div className={`truncate text-[8px] ${entry.status === 'failed' ? 'text-red-400' : 'text-text-muted'}`}>
+                        <div className={`truncate text-2xs ${entry.status === 'failed' ? 'text-red-400' : 'text-text-muted'}`}>
                           {compactStatus(entry.status)} · {entry.error || entry.message || entry.video_model}
                         </div>
                       </button>
@@ -442,7 +442,7 @@ export function GlobalQueuePopover({
               <div className="flex min-h-36 flex-col items-center justify-center gap-2 px-6 text-center">
                 <ListVideo size={28} className="text-text-muted/60" />
                 <div className="text-xs font-medium text-text-secondary">Queue is empty</div>
-                <p className="text-[10px] leading-relaxed text-text-muted">
+                <p className="text-2xs leading-relaxed text-text-muted">
                   Queued Studio generations, Editor exports, and held Director projects will appear here.
                 </p>
               </div>

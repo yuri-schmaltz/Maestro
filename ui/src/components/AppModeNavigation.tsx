@@ -21,7 +21,7 @@ export function MaestroBrand({
           <span className="text-sm font-semibold tracking-tight text-text-primary">Maestro</span>
         )}
         {appVersion && (
-          <span className={`${compact ? 'text-[9px]' : 'mt-0.5 text-[10px]'} whitespace-nowrap font-normal text-text-muted`}>v{appVersion}</span>
+          <span className={`${compact ? 'text-2xs' : 'mt-0.5 text-2xs'} whitespace-nowrap font-normal text-text-muted`}>v{appVersion}</span>
         )}
       </>
     </div>

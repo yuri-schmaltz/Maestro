@@ -221,11 +221,11 @@ function ModelVisibilitySection() {
     <div ref={sectionRef} className="scroll-mt-2">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-[11px] text-text-secondary uppercase tracking-wider font-medium hover:text-text-primary transition-colors w-full"
+        className="flex items-center gap-1.5 text-xs text-text-secondary uppercase tracking-wider font-medium hover:text-text-primary transition-colors w-full"
       >
         {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <span className="flex-1 text-left">Enabled Models</span>
-        <span className="text-[10px] text-text-muted font-normal normal-case flex items-center gap-1.5">
+        <span className="text-2xs text-text-muted font-normal normal-case flex items-center gap-1.5">
           {enabledCount}/{totalCount}
           <span className="text-text-muted">|</span>
           <span className="flex items-center gap-0.5">
@@ -240,20 +240,20 @@ function ModelVisibilitySection() {
       <div className="flex gap-2">
         <button
           onClick={resetEnabledModels}
-          className="flex items-center gap-1 px-2 py-1 text-[10px] border border-border rounded text-text-secondary hover:text-text-primary hover:border-border-light transition-colors"
+          className="flex items-center gap-1 px-2 py-1 text-2xs border border-border rounded text-text-secondary hover:text-text-primary hover:border-border-light transition-colors"
         >
           <RotateCcw size={10} />
           Reset
         </button>
         <button
           onClick={() => setAllModelsEnabled(true)}
-          className="px-2 py-1 text-[10px] border border-border rounded text-text-secondary hover:text-text-primary hover:border-border-light transition-colors"
+          className="px-2 py-1 text-2xs border border-border rounded text-text-secondary hover:text-text-primary hover:border-border-light transition-colors"
         >
           All
         </button>
         <button
           onClick={() => setAllModelsEnabled(false)}
-          className="px-2 py-1 text-[10px] border border-border rounded text-text-secondary hover:text-text-primary hover:border-border-light transition-colors"
+          className="px-2 py-1 text-2xs border border-border rounded text-text-secondary hover:text-text-primary hover:border-border-light transition-colors"
         >
           None
         </button>
@@ -274,7 +274,7 @@ function ModelVisibilitySection() {
             >
               {isExpanded ? <ChevronDown size={11} className="text-text-muted shrink-0" /> : <ChevronRight size={11} className="text-text-muted shrink-0" />}
               <span className="text-xs text-text-primary font-medium">{label}</span>
-              <span className="text-[10px] text-text-muted ml-auto">
+              <span className="text-2xs text-text-muted ml-auto">
                 {modeEnabled}/{modeModels.length}
                 {modeDownloaded > 0 && (
                   <span className="ml-1 text-indicator-success">
@@ -315,8 +315,8 @@ function ModelVisibilitySection() {
                           {famCollapsed
                             ? <ChevronRight size={10} className="text-text-muted shrink-0" />
                             : <ChevronDown size={10} className="text-text-muted shrink-0" />}
-                          <span className="text-[10px] text-text-muted uppercase tracking-wider truncate">{group.familyLabel}</span>
-                          <span className="text-[9px] text-text-muted ml-auto shrink-0 tabular-nums">{famEnabled}/{group.models.length}</span>
+                          <span className="text-2xs text-text-muted uppercase tracking-wider truncate">{group.familyLabel}</span>
+                          <span className="text-2xs text-text-muted ml-auto shrink-0 tabular-nums">{famEnabled}/{group.models.length}</span>
                         </button>
                       </div>
                     )}
@@ -461,16 +461,16 @@ function LinkedModelFoldersSection() {
     <div>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-[11px] text-text-secondary uppercase tracking-wider font-medium hover:text-text-primary transition-colors w-full"
+        className="flex items-center gap-1.5 text-xs text-text-secondary uppercase tracking-wider font-medium hover:text-text-primary transition-colors w-full"
       >
         {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <span className="flex-1 text-left">Linked Model Folders</span>
-        <span className="text-[10px] text-text-muted font-normal normal-case">{folders.length} linked</span>
+        <span className="text-2xs text-text-muted font-normal normal-case">{folders.length} linked</span>
       </button>
 
       {open && (
         <div className="mt-3 space-y-3">
-          <p className="text-[10px] text-text-muted leading-relaxed">
+          <p className="text-2xs text-text-muted leading-relaxed">
             Search other apps&apos; model folders for checkpoints you already have — e.g. an existing
             Wan2GP install — instead of re-downloading them. Linked folders are read-only:
             new downloads always go to Maestro&apos;s own ckpts folder.
@@ -481,7 +481,7 @@ function LinkedModelFoldersSection() {
               {folders.map(f => (
                 <div key={f} className="flex items-center gap-2 group">
                   <FolderOpen size={11} className="text-text-secondary shrink-0" />
-                  <span className="flex-1 text-[11px] text-text-primary truncate" title={f}>{f}</span>
+                  <span className="flex-1 text-xs text-text-primary truncate" title={f}>{f}</span>
                   <button
                     onClick={() => save(folders.filter(x => x !== f))}
                     disabled={saving}
@@ -499,7 +499,7 @@ function LinkedModelFoldersSection() {
             <button
               onClick={scan}
               disabled={scanning || saving}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] border border-border rounded text-text-secondary hover:text-text-primary hover:border-border-light transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-2 py-1 text-2xs border border-border rounded text-text-secondary hover:text-text-primary hover:border-border-light transition-colors disabled:opacity-50"
             >
               {scanning ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
               Scan Pinokio apps
@@ -519,8 +519,8 @@ function LinkedModelFoldersSection() {
                     <Plus size={12} />
                   </button>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[11px] text-text-primary truncate">{c.app}</div>
-                    <div className="text-[10px] text-text-muted truncate" title={c.path}>
+                    <div className="text-xs text-text-primary truncate">{c.app}</div>
+                    <div className="text-2xs text-text-muted truncate" title={c.path}>
                       {c.files} files, {c.folders} folders{c.size_gb > 0 ? `, ~${c.size_gb} GB` : ''}
                     </div>
                   </div>
@@ -536,18 +536,18 @@ function LinkedModelFoldersSection() {
               onChange={e => setManualPath(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addFolder(manualPath)}
               placeholder="Or paste a folder path..."
-              className="flex-1 bg-bg-tertiary border border-border rounded px-2 py-1 text-[11px] text-text-primary focus:outline-none focus:border-accent-blue"
+              className="flex-1 bg-bg-tertiary border border-border rounded px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent-blue"
             />
             <button
               onClick={() => addFolder(manualPath)}
               disabled={saving || !manualPath.trim()}
-              className="px-2 py-1 text-[10px] border border-border rounded text-text-secondary hover:text-text-primary hover:border-border-light transition-colors disabled:opacity-50"
+              className="px-2 py-1 text-2xs border border-border rounded text-text-secondary hover:text-text-primary hover:border-border-light transition-colors disabled:opacity-50"
             >
               Add
             </button>
           </div>
 
-          {error && <p className="text-[10px] text-red-400">{error}</p>}
+          {error && <p className="text-2xs text-red-400">{error}</p>}
         </div>
       )}
     </div>
@@ -562,7 +562,7 @@ function SelectField({ label, value, options, onChange }: {
 }) {
   return (
     <div>
-      <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+      <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
         {label}
       </label>
       <select
@@ -600,9 +600,9 @@ function ThemeSection() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium">Appearance</h3>
+      <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Appearance</h3>
       <div>
-        <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
           Mode
         </label>
         <div className="flex rounded-lg border border-border overflow-hidden">
@@ -621,13 +621,13 @@ function ThemeSection() {
           ))}
         </div>
         {prefs.mode === 'auto' && (
-          <p className="text-[10px] text-text-muted mt-1.5">
+          <p className="text-2xs text-text-muted mt-1.5">
             Follows your system's appearance — currently {variant}.
           </p>
         )}
       </div>
       <div>
-        <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
           Theme
         </label>
         <div className="flex items-center gap-2">
@@ -649,7 +649,7 @@ function ThemeSection() {
             ))}
           </select>
         </div>
-        <p className="text-[10px] text-text-muted mt-1.5">
+        <p className="text-2xs text-text-muted mt-1.5">
           {family.description}
         </p>
       </div>
@@ -779,7 +779,7 @@ function AutoPerformanceCard() {
   if (loading) {
     return (
       <div className="space-y-3">
-        <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium">Performance</h3>
+        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Performance</h3>
         <div className="rounded-lg bg-bg-tertiary border border-border p-3 text-xs text-text-muted flex items-center gap-2">
           <Loader2 size={12} className="animate-spin" /> Detecting hardware...
         </div>
@@ -793,7 +793,7 @@ function AutoPerformanceCard() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium">Performance</h3>
+      <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Performance</h3>
 
       <div className="rounded-lg bg-bg-tertiary border border-border p-3 space-y-2.5">
         {/* Hardware readout — GPU name, VRAM, RAM */}
@@ -803,7 +803,7 @@ function AutoPerformanceCard() {
             <div className="text-sm text-text-primary truncate" title={hw?.gpu_name || ''}>
               {cudaOK ? hw!.gpu_name : 'No CUDA GPU detected'}
             </div>
-            <div className="text-[11px] text-text-muted">
+            <div className="text-xs text-text-muted">
               {cudaOK ? `${hw!.gpu_vram_gb} GB VRAM · ${hw!.ram_gb} GB RAM` : `${hw?.ram_gb ?? 0} GB RAM`}
             </div>
           </div>
@@ -813,7 +813,7 @@ function AutoPerformanceCard() {
             visible so users can see what auto WOULD pick before flipping
             the toggle. */}
         {rec && (
-          <div className="text-[11px] text-text-secondary leading-snug pl-6" title={rec._recommendation_reason}>
+          <div className="text-xs text-text-secondary leading-snug pl-6" title={rec._recommendation_reason}>
             {autoOn ? '✨ ' : ''}{rec._recommendation_label}
           </div>
         )}
@@ -846,7 +846,7 @@ function AutoPerformanceCard() {
             <button
               onClick={handleRedetect}
               disabled={applying}
-              className="text-[11px] text-text-secondary hover:text-text-primary flex items-center gap-1 disabled:opacity-50"
+              className="text-xs text-text-secondary hover:text-text-primary flex items-center gap-1 disabled:opacity-50"
               title="Re-run hardware detection (use after a hardware change or driver update)"
             >
               <RefreshCw size={11} className={applying ? 'animate-spin' : ''} /> Re-detect
@@ -856,7 +856,7 @@ function AutoPerformanceCard() {
 
         {/* Toast — feedback after toggle / re-detect */}
         {toast && (
-          <div className="text-[10px] text-indicator-warning bg-amber-500/10 border border-amber-500/30 rounded px-2 py-1.5">
+          <div className="text-2xs text-indicator-warning bg-amber-500/10 border border-amber-500/30 rounded px-2 py-1.5">
             {toast}
           </div>
         )}
@@ -919,7 +919,7 @@ export function SystemSettingsPanel() {
       {/* Performance */}
       <div className="space-y-4">
         {!autoOn && (
-          <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium">Performance</h3>
+          <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Performance</h3>
         )}
 
         <SelectField
@@ -946,7 +946,7 @@ export function SystemSettingsPanel() {
               don't think "I selected FP8 but performance/quality
               feels like INT8 — must be broken." */}
           {systemConfig.transformer_quantization === 'fp8' && (
-            <p className="text-[10px] text-indicator-warning mt-1">
+            <p className="text-2xs text-indicator-warning mt-1">
               ⚠ Many models ship only BF16 + INT8 files. FP8 silently falls back to INT8 for those.
               For guaranteed FP8, pick a model with "FP8" in its name (e.g. "LTX-2.3 Distilled FP8 22B").
             </p>
@@ -972,7 +972,7 @@ export function SystemSettingsPanel() {
 
       {/* Profiles */}
       <div className="space-y-4">
-        <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium">Profiles</h3>
+        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Profiles</h3>
 
         <SelectField
           label="Video Profile"
@@ -995,14 +995,14 @@ export function SystemSettingsPanel() {
           onChange={val => updateConfigWithAutoFlip({ audio_profile: parseFloat(val) })}
         />
 
-        <p className="text-[10px] text-text-muted">
+        <p className="text-2xs text-text-muted">
           Profile changes take effect on next model load
         </p>
 
         {/* VRAM Safety Coefficient */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[11px] text-text-muted uppercase tracking-wider">VRAM Safety Coefficient</label>
+            <label className="text-xs text-text-muted uppercase tracking-wider">VRAM Safety Coefficient</label>
             <span className="text-xs text-text-secondary">{(systemConfig.vram_safety_coefficient ?? 0.8).toFixed(2)}</span>
           </div>
           <input
@@ -1011,12 +1011,12 @@ export function SystemSettingsPanel() {
             onChange={e => updateConfigWithAutoFlip({ vram_safety_coefficient: parseFloat(e.target.value) })}
             className="w-full"
           />
-          <div className="flex justify-between text-[8px] text-text-muted mt-0.5 px-0.5">
+          <div className="flex justify-between text-2xs text-text-muted mt-0.5 px-0.5">
             <span>0.50 (conservative)</span>
             <span>0.80 (default)</span>
             <span>0.95 (aggressive)</span>
           </div>
-          <p className="text-[10px] text-text-muted mt-1">
+          <p className="text-2xs text-text-muted mt-1">
             {(() => {
               // Use detected VRAM when available so the math is honest.
               // Falls back to 24 GB if detection hasn't completed yet
@@ -1044,7 +1044,7 @@ export function SystemSettingsPanel() {
       >
         <HardDrive size={13} className="text-accent-blue" />
         <span className="flex-1 text-left">Storage Manager</span>
-        <span className="text-[10px] text-text-muted">usage, duplicates, cleanup</span>
+        <span className="text-2xs text-text-muted">usage, duplicates, cleanup</span>
       </button>
 
       <hr className="border-border" />
@@ -1070,7 +1070,7 @@ export function SystemSettingsPanel() {
         <div>
           <button
             onClick={() => setAdvancedOpen(o => !o)}
-            className="flex items-center gap-1 text-[11px] text-text-muted hover:text-text-secondary transition-colors"
+            className="flex items-center gap-1 text-xs text-text-muted hover:text-text-secondary transition-colors"
           >
             {advancedOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
             {advancedOpen ? 'Hide' : 'Show'} advanced settings
@@ -1094,7 +1094,7 @@ export function SystemSettingsPanel() {
 
       {/* Output Codecs */}
       <div className="space-y-4">
-        <h3 className="text-[11px] text-text-secondary uppercase tracking-wider font-medium">Output Codecs</h3>
+        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Output Codecs</h3>
 
         <SelectField
           label="Video Codec"

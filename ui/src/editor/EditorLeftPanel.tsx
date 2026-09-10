@@ -45,7 +45,7 @@ export function EditorLeftPanel({ mobile = false }: { mobile?: boolean }) {
             key={value}
             type="button"
             onClick={() => setMobilePanel(value)}
-            className={`flex items-center justify-center gap-1.5 rounded-lg text-[10px] font-medium transition-colors ${tab === value ? 'bg-bg-active text-text-primary shadow-sm' : 'text-text-muted hover:bg-bg-hover hover:text-text-secondary'}`}
+            className={`flex items-center justify-center gap-1.5 rounded-lg text-2xs font-medium transition-colors ${tab === value ? 'bg-bg-active text-text-primary shadow-sm' : 'text-text-muted hover:bg-bg-hover hover:text-text-secondary'}`}
           >
             <Icon size={12} className={tab === value ? 'text-accent-blue' : ''} />
             {label}

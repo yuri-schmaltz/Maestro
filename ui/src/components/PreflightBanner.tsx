@@ -42,7 +42,7 @@ export function PreflightBanner() {
       />
       <div className="flex-1 min-w-0 space-y-0.5">
         {checks.map(c => (
-          <div key={c.id} className="text-[11px] leading-snug text-text-primary">
+          <div key={c.id} className="text-xs leading-snug text-text-primary">
             {c.message}
           </div>
         ))}

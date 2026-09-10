@@ -161,7 +161,7 @@ export function AudioModeSection() {
           {ttsVoiceCount < maxVoiceCount && (
             <button
               onClick={addTtsVoice}
-              className="w-full py-1.5 rounded-lg text-[10px] font-medium border border-dashed border-border text-text-muted hover:text-text-primary hover:border-border-light transition-colors flex items-center justify-center gap-1.5"
+              className="w-full py-1.5 rounded-lg text-2xs font-medium border border-dashed border-border text-text-muted hover:text-text-primary hover:border-border-light transition-colors flex items-center justify-center gap-1.5"
             >
               <Plus size={12} />
               {ttsVoiceCount === 0 ? 'Add Voice Clone' : `Add Voice (${ttsVoiceCount}/${maxVoiceCount})`}
@@ -169,7 +169,7 @@ export function AudioModeSection() {
           )}
 
           {ttsVoiceCount === 0 && (
-            <p className="text-[9px] text-text-muted text-center">
+            <p className="text-2xs text-text-muted text-center">
               Text-only mode. Add voices to clone specific speakers.
             </p>
           )}
@@ -185,7 +185,7 @@ export function AudioModeSection() {
                   >
                     <X size={10} />
                   </button>
-                  <label className="text-[9px] text-text-muted uppercase tracking-wider block mb-1">
+                  <label className="text-2xs text-text-muted uppercase tracking-wider block mb-1">
                     Voice {i + 1}
                   </label>
                   <FileUploadZone
@@ -200,7 +200,7 @@ export function AudioModeSection() {
                     placeholder="Speaker name"
                     value={voice.name}
                     onChange={e => setTtsVoiceName(i, e.target.value)}
-                    className="w-full mt-1 bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-[9px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
+                    className="w-full mt-1 bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-2xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
                   />
                 </div>
               ))}
@@ -211,7 +211,7 @@ export function AudioModeSection() {
           {ttsVoiceCount > 0 && (
             <div className="space-y-1.5 pt-1">
               {ttsVoiceCount >= 2 && (
-                <p className="text-[9px] text-text-muted">
+                <p className="text-2xs text-text-muted">
                   Names auto-fill from prompt. Each name maps to the voice above it.
                 </p>
               )}
@@ -223,7 +223,7 @@ export function AudioModeSection() {
                     setParam('audio_prompt_type', e.target.checked ? current + 'N' : current.replace('N', ''))
                   }}
                   className="accent-accent-blue" />
-                <span className="text-[10px] text-text-secondary group-hover:text-text-primary transition-colors">
+                <span className="text-2xs text-text-secondary group-hover:text-text-primary transition-colors">
                   Normalize audio volumes
                 </span>
               </label>
@@ -235,7 +235,7 @@ export function AudioModeSection() {
                     setParam('audio_prompt_type', e.target.checked ? current + 'V' : current.replace('V', ''))
                   }}
                   className="accent-accent-blue" />
-                <span className="text-[10px] text-text-secondary group-hover:text-text-primary transition-colors">
+                <span className="text-2xs text-text-secondary group-hover:text-text-primary transition-colors">
                   Remove background music
                 </span>
               </label>
@@ -245,7 +245,7 @@ export function AudioModeSection() {
                     checked={!!(params as unknown as Record<string, unknown>).tts_dynaudnorm}
                     onChange={e => setParam('tts_dynaudnorm' as keyof import('../../types').GenerateParams, e.target.checked ? 1 : undefined)}
                     className="accent-accent-blue" />
-                  <span className="text-[10px] text-text-secondary group-hover:text-text-primary transition-colors">
+                  <span className="text-2xs text-text-secondary group-hover:text-text-primary transition-colors">
                     Smooth speaker volumes
                   </span>
                 </label>
@@ -260,7 +260,7 @@ export function AudioModeSection() {
           the audio track from video via ffmpeg before storing as WAV. */}
       {!isAudioOnly && needsAudioUpload && (
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
             Audio File
           </label>
           <FileUploadZone
@@ -280,10 +280,10 @@ export function AudioModeSection() {
       {!isAudioOnly && needsAudioUpload && audioGuideFilename && (
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-[10px] text-text-muted uppercase tracking-wider">
+            <label className="text-2xs text-text-muted uppercase tracking-wider">
               {modelOptions?.audio_scale_name || 'Prompt Audio Strength'}
             </label>
-            <span className="text-[10px] text-text-secondary">
+            <span className="text-2xs text-text-secondary">
               {((params as unknown as Record<string, unknown>).modality_scale as number ?? 1.0).toFixed(1)}
             </span>
           </div>
@@ -293,7 +293,7 @@ export function AudioModeSection() {
             onChange={e => setParam('modality_scale' as keyof import('../../types').GenerateParams, parseFloat(e.target.value))}
             className="w-full accent-accent-blue"
           />
-          <div className="flex justify-between text-[9px] text-text-muted mt-0.5">
+          <div className="flex justify-between text-2xs text-text-muted mt-0.5">
             <span>0.1</span><span>1.0 (Default)</span><span>3.0 (Experimental TTS Boost)</span>
           </div>
         </div>
@@ -302,7 +302,7 @@ export function AudioModeSection() {
       {/* Non-TTS: Video guide upload (control video for soundtrack) */}
       {!isAudioOnly && needsVideoGuideUpload && (
         <div>
-          <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
             Control Video
           </label>
           <FileUploadZone

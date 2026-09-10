@@ -183,7 +183,7 @@ export function RecastControls() {
     <div className="space-y-3">
       <div className="flex items-center gap-1.5">
         <UserRoundPen size={13} className="shrink-0 text-accent-blue" />
-        <span className="text-[10px] font-medium text-text-primary">
+        <span className="text-2xs font-medium text-text-primary">
           Replace characters
         </span>
         <InfoTooltip
@@ -250,14 +250,14 @@ export function RecastControls() {
               resetPreview()
             }}
           />
-          <p className="text-[9px] text-text-muted mt-1 truncate">{editVideoFile.name}</p>
+          <p className="text-2xs text-text-muted mt-1 truncate">{editVideoFile.name}</p>
         </div>
       )}
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <label className="text-[10px] text-text-muted uppercase tracking-wider">
+            <label className="text-2xs text-text-muted uppercase tracking-wider">
               Characters ({mappings.length}/5)
             </label>
             <InfoTooltip
@@ -268,7 +268,7 @@ export function RecastControls() {
           <button
             onClick={handlePreview}
             disabled={!editVideoPath || previewState === 'loading' || mappings.some(mapping => !mapping.target.trim())}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-bg-tertiary border border-border text-[9px] text-text-secondary hover:text-text-primary hover:border-accent-blue/50 transition-colors disabled:opacity-40"
+            className="flex items-center gap-1 px-2 py-1 rounded bg-bg-tertiary border border-border text-2xs text-text-secondary hover:text-text-primary hover:border-accent-blue/50 transition-colors disabled:opacity-40"
             title="Scan the selected timeline and preview each character anchor"
           >
             {previewState === 'loading'
@@ -288,7 +288,7 @@ export function RecastControls() {
                   className="w-3 h-3 rounded-full border border-white/30 shrink-0"
                   style={{ backgroundColor: MAPPING_COLORS[mappingIndex] }}
                 />
-                <span className="text-[10px] font-medium text-text-primary">
+                <span className="text-2xs font-medium text-text-primary">
                   Character {MAPPING_LABELS[mappingIndex]}
                 </span>
                 {mappings.length > 1 && (
@@ -303,7 +303,7 @@ export function RecastControls() {
               </div>
 
               <div>
-                <label className="text-[9px] text-text-muted block mb-0.5">Who to replace</label>
+                <label className="text-2xs text-text-muted block mb-0.5">Who to replace</label>
                 <input
                   type="text"
                   value={mapping.target}
@@ -312,7 +312,7 @@ export function RecastControls() {
                   className="w-full bg-bg-tertiary border border-border rounded px-2 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue"
                 />
                 {mappingResult && (
-                  <p className={`text-[9px] mt-0.5 ${mappingResult.found ? 'text-accent-green' : 'text-status-warning'}`}>
+                  <p className={`text-2xs mt-0.5 ${mappingResult.found ? 'text-accent-green' : 'text-status-warning'}`}>
                     {mappingResult.found
                       ? `Found at ${formatTimelineTime(mappingResult.anchor_time_seconds)}.`
                       : 'Not found in the selected timeline.'}
@@ -322,11 +322,11 @@ export function RecastControls() {
               </div>
 
               <div>
-                <label className="text-[9px] text-text-muted block mb-0.5">Replacement image</label>
+                <label className="text-2xs text-text-muted block mb-0.5">Replacement image</label>
                 {!mapping.refPath ? (
                   <label className="block border border-dashed border-border rounded p-3 text-center cursor-pointer hover:border-accent-blue/50 hover:bg-bg-hover/30">
                     <Upload size={15} className="mx-auto mb-1 text-text-muted" />
-                    <span className="text-[9px] text-text-secondary">Upload character</span>
+                    <span className="text-2xs text-text-secondary">Upload character</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -360,13 +360,13 @@ export function RecastControls() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1">
-                      <span className="text-[9px] text-text-muted">More views</span>
+                      <span className="text-2xs text-text-muted">More views</span>
                       <InfoTooltip
                         label="About additional character views"
                         text="Optional close-up, side, or back views of this same character. Multi-reference is experimental; add only views that reveal details missing from the main image."
                       />
                     </div>
-                    <span className="text-[8px] text-text-muted">
+                    <span className="text-2xs text-text-muted">
                       {mapping.additionalRefs.length}/4
                     </span>
                   </div>
@@ -387,7 +387,7 @@ export function RecastControls() {
                     {mapping.additionalRefs.length < 4 && (
                       <label className="h-14 w-14 flex flex-col items-center justify-center rounded border border-dashed border-border cursor-pointer hover:border-accent-blue/50 text-text-muted">
                         <Plus size={13} />
-                        <span className="text-[7px]">view</span>
+                        <span className="text-2xs">view</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -409,7 +409,7 @@ export function RecastControls() {
               {previews.length > 0 && (
                 <div className="space-y-1.5 border-t border-border pt-1.5">
                   <div className="flex items-center gap-1">
-                    <p className="text-[9px] text-accent-green">Prepared references</p>
+                    <p className="text-2xs text-accent-green">Prepared references</p>
                     <InfoTooltip
                       label="About prepared references"
                       text="These are the identity, spatial-reference, and semantic-mask inputs that will be sent to SCAIL-2."
@@ -420,7 +420,7 @@ export function RecastControls() {
                       key={`${preview.view_index}-${preview.kind}`}
                       title={`Mask: ${preview.mask_source}${preview.detail_source ? ` · ${preview.detail_source}` : ''}`}
                     >
-                      <p className="text-[8px] text-text-muted mb-0.5">
+                      <p className="text-2xs text-text-muted mb-0.5">
                         {preview.kind === 'primary'
                           ? 'Primary'
                           : preview.kind === 'auto_face_detail'
@@ -431,16 +431,16 @@ export function RecastControls() {
                         {preview.clip_identity_image && (
                           <div>
                             <img src={preview.clip_identity_image} alt="Identity reference" className="w-full rounded border border-border" />
-                            <span className="text-[7px] text-text-muted">identity</span>
+                            <span className="text-2xs text-text-muted">identity</span>
                           </div>
                         )}
                         <div>
                           <img src={preview.prepared_image} alt="Prepared reference" className="w-full rounded border border-border" />
-                          <span className="text-[7px] text-text-muted">reference</span>
+                          <span className="text-2xs text-text-muted">reference</span>
                         </div>
                         <div>
                           <img src={preview.semantic_mask} alt="Semantic reference mask" className="w-full rounded border border-border" />
-                          <span className="text-[7px] text-text-muted">mask</span>
+                          <span className="text-2xs text-text-muted">mask</span>
                         </div>
                       </div>
                     </div>
@@ -454,7 +454,7 @@ export function RecastControls() {
         {mappings.length < 5 && (
           <button
             onClick={addMapping}
-            className="w-full flex items-center justify-center gap-1 py-1.5 rounded border border-dashed border-border text-[9px] text-text-secondary hover:text-accent-blue hover:border-accent-blue/50"
+            className="w-full flex items-center justify-center gap-1 py-1.5 rounded border border-dashed border-border text-2xs text-text-secondary hover:text-accent-blue hover:border-accent-blue/50"
           >
             <Plus size={11} />
             Add character
@@ -465,7 +465,7 @@ export function RecastControls() {
       {previewImg && (
         <div>
           <div className="mb-1 flex items-center gap-1">
-            <p className="text-[9px] text-text-muted">Source selection</p>
+            <p className="text-2xs text-text-muted">Source selection</p>
             <InfoTooltip
               label="About source selection"
               text="Maestro scans the selected timeline. Each tile shows one character card at its strongest detected anchor; the same color remains assigned across shots."
@@ -473,25 +473,25 @@ export function RecastControls() {
           </div>
           <img src={previewImg} alt="Target mapping preview" className="w-full rounded border border-border" />
           {previewState === 'found' && previewMatch && (
-            <p className="text-[9px] text-accent-green mt-0.5">
+            <p className="text-2xs text-accent-green mt-0.5">
               Found all {previewMatch.matched} mapped {previewMatch.matched === 1 ? 'person' : 'people'}.
             </p>
           )}
           {previewState === 'notfound' && (
-            <p className="text-[9px] text-status-warning mt-0.5">
+            <p className="text-2xs text-status-warning mt-0.5">
               Found {previewMatch?.matched ?? 0} of {previewMatch?.requested ?? mappings.length}. Refine the highlighted card description or adjust the selected range.
             </p>
           )}
         </div>
       )}
       {previewState === 'error' && (
-        <p className="text-[9px] text-status-error">
+        <p className="text-2xs text-status-error">
           Preview failed{previewError ? ` — ${previewError}` : ' — check the server log.'}
         </p>
       )}
 
       <div className="flex items-center gap-1">
-        <label className="flex cursor-pointer items-center gap-1.5 text-[9px] text-text-secondary">
+        <label className="flex cursor-pointer items-center gap-1.5 text-2xs text-text-secondary">
           <input
             type="checkbox"
             checked={useRelighting}

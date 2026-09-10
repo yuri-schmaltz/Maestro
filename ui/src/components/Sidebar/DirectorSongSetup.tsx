@@ -51,10 +51,10 @@ export function DirectorSongSetup() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+        <label className="text-xs text-text-muted uppercase tracking-wider flex items-center gap-1.5">
           <Music size={12} /> Generate a song
         </label>
-        <label className="flex items-center gap-1.5 cursor-pointer text-[10px] text-text-secondary hover:text-text-primary transition-colors">
+        <label className="flex items-center gap-1.5 cursor-pointer text-2xs text-text-secondary hover:text-text-primary transition-colors">
           <input
             type="checkbox"
             checked={instrumental}
@@ -66,7 +66,7 @@ export function DirectorSongSetup() {
       </div>
 
       <div>
-        <label className="text-[11px] text-text-muted uppercase tracking-wider mb-1.5 block">
+        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
           Music model
         </label>
         {musicModels.length > 0 ? (
@@ -82,13 +82,13 @@ export function DirectorSongSetup() {
                 </option>
               ))}
             </select>
-            <p className="text-[10px] text-text-muted leading-snug mt-1.5">
+            <p className="text-2xs text-text-muted leading-snug mt-1.5">
               {selectedModel?.selector_help || selectedModel?.description}
               {selectedModel?.is_downloaded === false ? ' Downloads on first use.' : ''}
             </p>
           </>
         ) : (
-          <p className="text-[10px] text-amber-400 leading-snug">
+          <p className="text-2xs text-amber-400 leading-snug">
             Enable ACE-Step or MiniMax-Music3 in Settings → System → Enabled Models.
           </p>
         )}
@@ -105,7 +105,7 @@ export function DirectorSongSetup() {
         modelLimitLabel={`${isMusic3 ? 'MiniMax-Music3' : 'ACE-Step'} can generate up to ${formatDuration(maximumDuration)} per song.`}
       />
 
-      <p className="text-[10px] text-text-muted leading-snug">
+      <p className="text-2xs text-text-muted leading-snug">
         Describe your music video in the box below and hit Generate — the song
         {instrumental ? '' : ' + lyrics'} is written for you, then the full video is
         produced with {isMusic3 ? 'MiniMax-Music3' : 'ACE-Step'}. For hands-on

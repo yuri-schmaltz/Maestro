@@ -70,17 +70,17 @@ export function DownloadBar() {
             ) : (
               <AlertCircle size={12} className="text-red-400 shrink-0" />
             )}
-            <span className="text-[11px] text-text-secondary truncate flex-1">{download.filename}</span>
+            <span className="text-xs text-text-secondary truncate flex-1">{download.filename}</span>
             {download.status === 'downloading' && (
               <>
                 <div className="w-24 bg-bg-active rounded-full h-1 overflow-hidden shrink-0">
                   <div className="h-full bg-accent-blue rounded-full transition-all" style={{ width: `${progress}%` }} />
                 </div>
-                <span className="text-[10px] text-text-muted w-8 text-right shrink-0">{Math.round(progress)}%</span>
+                <span className="text-2xs text-text-muted w-8 text-right shrink-0">{Math.round(progress)}%</span>
               </>
             )}
             {download.status === 'failed' && (
-              <span className="text-[10px] text-red-400 truncate">{download.error || 'Download failed'}</span>
+              <span className="text-2xs text-red-400 truncate">{download.error || 'Download failed'}</span>
             )}
           </div>
         )

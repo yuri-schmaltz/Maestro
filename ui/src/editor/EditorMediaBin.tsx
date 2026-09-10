@@ -10,6 +10,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Trash2,
   Type,
   Upload,
 } from 'lucide-react'
@@ -98,10 +99,10 @@ function DirectorRunPreview({ run, compact }: { run: PipelineListItem; compact: 
       ) : (
         <Clapperboard size={compact ? 28 : 22} className="text-accent-warm/80" />
       )}
-      <span className="absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[7px] uppercase tracking-wide text-white/75">
+      <span className="absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-2xs uppercase tracking-wide text-white/75">
         {run.pipeline_type === 'music_video' ? 'Music video' : run.pipeline_type === 'short_film_story' ? 'Short film' : 'Director'}
       </span>
-      <span className="absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[7px] text-white/75">
+      <span className="absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1.5 py-0.5 text-2xs text-white/75">
         {run.clip_count} shot{run.clip_count === 1 ? '' : 's'}
       </span>
     </div>
@@ -126,6 +127,10 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
   const addMedia = useEditorStore(state => state.addMedia)
   const importDirectorRun = useEditorStore(state => state.importDirectorRun)
   const addTitle = useEditorStore(state => state.addTitle)
+  const removeLibraryAsset = useEditorStore(state => state.removeLibraryAsset)
+  // Per-card delete confirmation — first click arms, second click commits.
+  // Lives in local state so accidental hovers don't fire destructive calls.
+  const [pendingDeleteKey, setPendingDeleteKey] = useState<string | null>(null)
 
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -165,7 +170,7 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
     <section className={`flex min-h-0 flex-col bg-bg-secondary ${compact ? 'h-full' : 'w-[260px] shrink-0 border-r border-border'}`}>
       <div className="space-y-2 border-b border-border p-2.5">
         <div className="flex items-center justify-between">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-secondary">Media</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">Media</h2>
           <button type="button" onClick={() => void refreshLibrary()} className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary" title="Refresh media">
             <RefreshCw size={12} />
           </button>
@@ -179,7 +184,7 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
               setVisibleLimit(MEDIA_BATCH_SIZE)
             }}
             placeholder="Search media"
-            className="w-full rounded-lg border border-border bg-bg-tertiary py-1.5 pl-7 pr-2 text-[10px] text-text-primary outline-none placeholder:text-text-muted focus:border-accent-blue/60"
+            className="w-full rounded-lg border border-border bg-bg-tertiary py-1.5 pl-7 pr-2 text-2xs text-text-primary outline-none placeholder:text-text-muted focus:border-accent-blue/60"
           />
         </div>
         <label className="relative flex items-center">
@@ -190,7 +195,7 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
               setWorkspaceFilter(event.target.value)
               setVisibleLimit(MEDIA_BATCH_SIZE)
             }}
-            className="w-full appearance-none rounded-lg border border-border bg-bg-tertiary py-1.5 pl-7 pr-7 text-[9px] text-text-secondary outline-none focus:border-accent-blue/60"
+            className="w-full appearance-none rounded-lg border border-border bg-bg-tertiary py-1.5 pl-7 pr-7 text-2xs text-text-secondary outline-none focus:border-accent-blue/60"
             aria-label="Filter media by workspace"
           >
             <option value="all">All workspaces</option>
@@ -199,7 +204,7 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
             ))}
             <option value="__uploads__">Uploads</option>
           </select>
-          <span className="pointer-events-none absolute right-2.5 text-[8px] text-text-muted">▾</span>
+          <span className="pointer-events-none absolute right-2.5 text-2xs text-text-muted">▾</span>
         </label>
         <div className="grid grid-cols-6 gap-1">
           {(['all', 'video', 'image', 'audio', 'director', 'favorites'] as Filter[]).map(value => {
@@ -222,7 +227,7 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
                   setFilter(value)
                   setVisibleLimit(MEDIA_BATCH_SIZE)
                 }}
-                className={`rounded-md px-1 py-1 text-[9px] capitalize transition-colors ${filter === value ? value === 'favorites' ? 'bg-red-500/15 text-red-400' : 'bg-accent-blue/15 text-accent-blue' : 'text-text-muted hover:bg-bg-hover hover:text-text-secondary'}`}
+                className={`rounded-md px-1 py-1 text-2xs capitalize transition-colors ${filter === value ? value === 'favorites' ? 'bg-red-500/15 text-red-400' : 'bg-accent-blue/15 text-accent-blue' : 'text-text-muted hover:bg-bg-hover hover:text-text-secondary'}`}
                 title={value === 'favorites' ? 'Favorites' : value}
               >
                 {Icon ? <Icon size={10} className="mx-auto" fill={value === 'favorites' && filter === 'favorites' ? 'currentColor' : 'none'} /> : 'All'}
@@ -235,14 +240,14 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            className="flex items-center justify-center gap-1 rounded-lg border border-dashed border-border-light bg-bg-tertiary px-2 py-1.5 text-[9px] text-text-secondary hover:border-accent-blue/50 hover:text-accent-blue disabled:opacity-50"
+            className="flex items-center justify-center gap-1 rounded-lg border border-dashed border-border-light bg-bg-tertiary px-2 py-1.5 text-2xs text-text-secondary hover:border-accent-blue/50 hover:text-accent-blue disabled:opacity-50"
           >
             {uploading ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />} Upload
           </button>
           <button
             type="button"
             onClick={() => addTitle(undefined, selectedTrackId || undefined)}
-            className="flex items-center justify-center gap-1 rounded-lg border border-border bg-bg-tertiary px-2 py-1.5 text-[9px] text-text-secondary hover:border-accent-blue/40 hover:text-accent-blue"
+            className="flex items-center justify-center gap-1 rounded-lg border border-border bg-bg-tertiary px-2 py-1.5 text-2xs text-text-secondary hover:border-accent-blue/40 hover:text-accent-blue"
           >
             <Type size={11} /> Title
           </button>
@@ -269,16 +274,16 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
               compact={compact}
             />
             <div className={compact ? 'p-2' : 'pt-2'}>
-              <div className="line-clamp-2 text-[9px] font-medium leading-snug text-text-primary" title={run.scene_description}>
+              <div className="line-clamp-2 text-2xs font-medium leading-snug text-text-primary" title={run.scene_description}>
                 {run.scene_description || `Director run ${run.id}`}
               </div>
-              <div className="mt-1 flex items-center justify-between gap-1 text-[7px] text-text-muted">
+              <div className="mt-1 flex items-center justify-between gap-1 text-2xs text-text-muted">
                 <span className="truncate">{run.workspace} · {run.status}</span>
                 <button
                   type="button"
                   onClick={() => void importDirectorRun(run.id)}
                   disabled={Boolean(directorImportingId)}
-                  className="flex shrink-0 items-center gap-1 rounded-md bg-accent-warm/15 px-1.5 py-1 text-[8px] font-medium text-accent-warm hover:bg-accent-warm/25 disabled:cursor-wait disabled:opacity-45"
+                  className="flex shrink-0 items-center gap-1 rounded-md bg-accent-warm/15 px-1.5 py-1 text-2xs font-medium text-accent-warm hover:bg-accent-warm/25 disabled:cursor-wait disabled:opacity-45"
                   title="Add every Director shot and its master soundtrack at the playhead"
                 >
                   {directorImportingId === run.id ? <Loader2 size={9} className="animate-spin" /> : <Plus size={9} />}
@@ -288,9 +293,12 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
             </div>
           </article>
         ))}
-        {rendered.map(asset => (
+        {rendered.map(asset => {
+          const deleteKey = `${asset.origin}:${asset.name}`
+          const armed = pendingDeleteKey === deleteKey
+          return (
           <article
-            key={`${asset.origin}:${asset.name}`}
+            key={deleteKey}
             draggable
             onDragStart={event => {
               event.dataTransfer.effectAllowed = 'copy'
@@ -301,18 +309,47 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
               event.dataTransfer.setData('text/plain', `maestro-editor-asset:${payload}`)
             }}
             onDoubleClick={() => void addMedia(asset, undefined, selectedTrackId || undefined)}
-            className={`group overflow-hidden rounded-xl border border-border bg-bg-tertiary transition-all hover:border-border-light hover:bg-bg-hover ${compact ? 'shadow-sm' : 'flex items-center gap-2 p-1.5'}`}
+            className={`group relative overflow-hidden rounded-xl border border-border bg-bg-tertiary transition-all hover:border-border-light hover:bg-bg-hover ${compact ? 'shadow-sm' : 'flex items-center gap-2 p-1.5'}`}
           >
             <div className={`relative shrink-0 overflow-hidden bg-media-canvas ${compact ? 'aspect-video w-full' : 'h-12 w-16 rounded-md'}`}>
               <MediaPreview asset={asset} workspace={projectWorkspace} />
-              <span className="absolute bottom-1 left-1 max-w-[80%] truncate rounded bg-black/65 px-1 py-0.5 text-[7px] text-white/80" title={asset.workspace || asset.origin}>
+              <span className="absolute bottom-1 left-1 max-w-[80%] truncate rounded bg-black/65 px-1 py-0.5 text-2xs text-white/80" title={asset.workspace || asset.origin}>
                 {asset.workspace === '__uploads__' ? 'Uploads' : asset.workspace || asset.origin}
               </span>
               {asset.favorite && <Heart size={9} fill="currentColor" className="absolute right-1 top-1 text-red-400 drop-shadow" />}
+              {/* Delete button — top-right corner, visible on hover.
+                  Two-step confirmation: first click arms (turns red and
+                  shows "?"), second click commits the delete. */}
+              <button
+                type="button"
+                draggable={false}
+                onDragStart={event => event.preventDefault()}
+                onClick={event => {
+                  event.stopPropagation()
+                  if (armed) {
+                    void removeLibraryAsset(asset)
+                    setPendingDeleteKey(null)
+                  } else {
+                    setPendingDeleteKey(deleteKey)
+                  }
+                }}
+                onBlur={() => {
+                  if (armed) setPendingDeleteKey(null)
+                }}
+                aria-label={armed ? `Confirm delete ${asset.name}` : `Delete ${asset.name}`}
+                title={armed ? 'Click again to confirm' : 'Delete media'}
+                className={`absolute right-1 top-1 grid h-5 w-5 place-items-center rounded transition-opacity ${
+                  armed
+                    ? 'bg-red-500 text-white opacity-100'
+                    : 'bg-black/55 text-white/80 opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white focus-visible:opacity-100'
+                }`}
+              >
+                <Trash2 size={10} />
+              </button>
             </div>
             <div className={`min-w-0 ${compact ? 'p-2' : 'flex-1'}`}>
-              <div className="truncate text-[9px] font-medium text-text-secondary" title={asset.name}>{asset.name}</div>
-              <div className="mt-0.5 flex items-center justify-between gap-1 text-[8px] text-text-muted">
+              <div className="truncate text-2xs font-medium text-text-secondary" title={asset.name}>{asset.name}</div>
+              <div className="mt-0.5 flex items-center justify-between gap-1 text-2xs text-text-muted">
                 <span className="capitalize">{asset.type}</span>
                 <button
                   type="button"
@@ -325,12 +362,13 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
               </div>
             </div>
           </article>
-        ))}
+          )
+        })}
         {visibleItems.length > (filter === 'director' ? renderedDirectorRuns.length : rendered.length) && (
           <button
             type="button"
             onClick={() => setVisibleLimit(limit => limit + MEDIA_BATCH_SIZE)}
-            className="col-span-full w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-[9px] text-text-secondary hover:border-accent-blue/40 hover:text-accent-blue"
+            className="col-span-full w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-2xs text-text-secondary hover:border-accent-blue/40 hover:text-accent-blue"
           >
             Show more · {visibleItems.length - (filter === 'director' ? renderedDirectorRuns.length : rendered.length)} remaining
           </button>
@@ -338,7 +376,7 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
         {visibleItems.length === 0 && (
           <div className="col-span-full flex min-h-40 flex-col items-center justify-center gap-2 px-4 text-center text-text-muted">
             <Film size={24} className="opacity-50" />
-            <p className="text-[10px] leading-relaxed">
+            <p className="text-2xs leading-relaxed">
               {filter === 'favorites'
                 ? 'No favorite media matches these filters.'
                 : filter === 'director'

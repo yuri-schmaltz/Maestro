@@ -55,7 +55,7 @@ export function InstalledCheckpoints({ onSelectModel }: Props) {
           )}
         </span>
         {lastCheck && (
-          <span className="text-[10px] text-text-muted">checked {new Date(lastCheck).toLocaleDateString()}</span>
+          <span className="text-2xs text-text-muted">checked {new Date(lastCheck).toLocaleDateString()}</span>
         )}
         <button
           onClick={handleCheck}
@@ -104,26 +104,26 @@ export function InstalledCheckpoints({ onSelectModel }: Props) {
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-text-muted gap-1">
                       <Boxes size={20} className="opacity-30" />
-                      <span className="text-[9px] opacity-40">No preview</span>
+                      <span className="text-2xs opacity-40">No preview</span>
                     </div>
                   )}
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-2 pt-6">
                   <div className="text-xs font-medium text-white truncate">{c.name || c.model_type}</div>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-black/60 text-white/80">{c.architecture}</span>
+                    <span className="text-2xs px-1.5 py-0.5 rounded bg-black/60 text-white/80">{c.architecture}</span>
                     {c.auto_quantize && (
-                      <span className="flex items-center gap-0.5 text-[9px] text-white/60" title="Loads as int8 (optimized VRAM)">
+                      <span className="flex items-center gap-0.5 text-2xs text-white/60" title="Loads as int8 (optimized VRAM)">
                         <Cpu size={8} /> int8
                       </span>
                     )}
-                    {c.base_model && <span className="text-[9px] text-white/50">{c.base_model}</span>}
+                    {c.base_model && <span className="text-2xs text-white/50">{c.base_model}</span>}
                   </div>
                 </div>
                 {c.update_status === 'available' && (
                   <div className="absolute top-1.5 left-1.5">
                     <span
-                      className="flex items-center gap-0.5 text-[8px] px-1 py-0.5 rounded bg-amber-500/90 text-white font-medium shadow-sm"
+                      className="flex items-center gap-0.5 text-2xs px-1 py-0.5 rounded bg-amber-500/90 text-white font-medium shadow-sm"
                       title={c.latest_published_at
                         ? `Update available — published ${new Date(c.latest_published_at).toLocaleDateString()}`
                         : 'Update available on CivitAI'}

@@ -51,7 +51,7 @@ export function ContinueVideoSection() {
 
   return (
     <div className="space-y-2">
-      <label className="text-[11px] text-text-muted uppercase tracking-wider block">
+      <label className="text-xs text-text-muted uppercase tracking-wider block">
         Source Video to Extend
       </label>
 
@@ -68,7 +68,7 @@ export function ContinueVideoSection() {
           <p className="text-xs text-text-secondary">
             {uploading ? 'Uploading...' : 'Drop a video to continue from'}
           </p>
-          <p className="text-[10px] text-text-muted mt-0.5">or click to browse</p>
+          <p className="text-2xs text-text-muted mt-0.5">or click to browse</p>
           <input
             ref={fileRef}
             type="file"
@@ -94,7 +94,7 @@ export function ContinueVideoSection() {
           </button>
           <div className="absolute bottom-1 left-1 flex gap-1.5">
             {continueVideoDuration > 0 && (
-              <span className="text-[9px] bg-black/60 text-white px-1.5 py-0.5 rounded">
+              <span className="text-2xs bg-black/60 text-white px-1.5 py-0.5 rounded">
                 {continueVideoDuration.toFixed(1)}s
               </span>
             )}
@@ -102,14 +102,14 @@ export function ContinueVideoSection() {
         </div>
       )}
 
-      {error && <p className="text-[10px] text-red-400">{error}</p>}
+      {error && <p className="text-2xs text-red-400">{error}</p>}
 
       {/* Source video strength slider */}
       {continueVideo && (
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-[10px] text-text-muted">Source Video Strength</label>
-            <span className="text-[10px] text-text-secondary">{(inputVideoStrength as number).toFixed(2)}</span>
+            <label className="text-2xs text-text-muted">Source Video Strength</label>
+            <span className="text-2xs text-text-secondary">{(inputVideoStrength as number).toFixed(2)}</span>
           </div>
           <input
             type="range"
@@ -118,14 +118,14 @@ export function ContinueVideoSection() {
             onChange={e => setParam('input_video_strength', parseFloat(e.target.value))}
             className="w-full"
           />
-          <p className="text-[9px] text-text-muted mt-0.5">
+          <p className="text-2xs text-text-muted mt-0.5">
             1.0 = seamless continuation. Lower values give the model more creative freedom.
           </p>
         </div>
       )}
 
       {continueVideo && (
-        <p className="text-[10px] text-text-muted text-center">
+        <p className="text-2xs text-text-muted text-center">
           New content will be appended after the source video
         </p>
       )}

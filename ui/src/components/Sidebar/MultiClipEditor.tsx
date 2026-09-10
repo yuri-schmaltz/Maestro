@@ -43,7 +43,7 @@ function ClipDropZone({ file, onFile, onClear }: {
       ) : (
         <>
           <Upload size={14} className="text-text-muted" />
-          <span className="text-[10px] text-text-muted">Start Image</span>
+          <span className="text-2xs text-text-muted">Start Image</span>
         </>
       )}
     </div>
@@ -76,10 +76,10 @@ export function MultiClipEditor() {
         {clips.map((clip, i) => (
           <div key={i} className="border border-border rounded-lg p-2 space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-text-muted uppercase tracking-wider font-medium">
+              <span className="text-xs text-text-muted uppercase tracking-wider font-medium">
                 Clip {i + 1}
               </span>
-              <span className="text-[10px] text-text-muted ml-auto">
+              <span className="text-2xs text-text-muted ml-auto">
                 {slidingWindowSeconds}s
               </span>
             </div>
