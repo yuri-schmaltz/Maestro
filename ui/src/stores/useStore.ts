@@ -9747,6 +9747,17 @@ export const useStore = create<AppState>((set, get) => ({
   // Director (Music Video Director)
   appSection: 'projects',
   setAppSection: (section) => {
+    // Gate project-scoped sections behind having a real (non-default)
+    // workspace selected. Director, Editor and Medias all write or read
+    // from the active workspace; navigating there with only the implicit
+    // "default" workspace would silently route generations to the base
+    // outputs/ folder, defeating the per-project organization. Settings
+    // stays accessible — model/theme/storage tuning is global.
+    const current = get()
+    const gated: AppSection[] = ['director', 'editor', 'medias']
+    if (gated.includes(section) && current.activeWorkspace === 'default') {
+      section = 'projects'
+    }
     set({ appSection: section, sidebarMode: section === 'editor' ? 'editor' : 'workspace', settingsOpen: section === 'configurations', sidebarOpen: false })
   },
   sidebarMode: 'workspace' as const,
@@ -11486,7 +11497,19 @@ export const useStore = create<AppState>((set, get) => ({
   loadWorkspaces: async () => {
     try {
       const data = await api.fetchWorkspaces()
-      set({ workspaces: data.workspaces, activeWorkspace: data.active })
+      // Real user workspaces exclude the implicit "default" container —
+      // it's the backend's root outputs/ directory, not a project. If
+      // the user has no real project yet AND the server reports default
+      // as active, kick them to Projects so they're forced to create or
+      // pick one before any tooling is exposed. Settings still allowed.
+      const realWorkspaces = data.workspaces.filter(w => w.name !== 'default')
+      const activeIsReal = data.active !== 'default'
+      const current = get()
+      if (realWorkspaces.length === 0 && !activeIsReal && current.appSection !== 'configurations') {
+        set({ workspaces: data.workspaces, activeWorkspace: data.active, appSection: 'projects' })
+      } else {
+        set({ workspaces: data.workspaces, activeWorkspace: data.active })
+      }
     } catch (e) {
       console.error('Failed to load workspaces:', e)
     }

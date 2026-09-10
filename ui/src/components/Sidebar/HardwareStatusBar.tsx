@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronUp, ChevronDown, Cpu, MemoryStick, Power, Zap } from 'lucide-react'
+import { Power } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
-import { WorkspaceSelector } from '../MainContent/MainContent'
 import { releaseModels } from '../../api/client'
 
 // Color a "fullness" bar (VRAM / RAM) by how close to full it is —
@@ -13,68 +12,43 @@ function fullnessColor(pct: number): string {
   return 'bg-emerald-500'
 }
 
-// Same thresholds, applied to TEXT (used by the collapsed chips, which
-// have no bars). Low load stays neutral so only pressure stands out.
-function fullnessText(pct: number): string {
-  if (pct >= 90) return 'text-chip-red'
-  if (pct >= 75) return 'text-indicator-warning'
-  return 'text-text-secondary'
-}
-
-function Gauge({
-  label,
-  percent,
-  value,
-  fill,
-  title,
-}: {
+interface MiniGaugeProps {
   label: string
   percent: number
   value: string
   fill: string
   title?: string
-}) {
+}
+
+/**
+ * Compact gauge: label · thin colored bar · value, all on a single line.
+ * Used in the bottom status bar — four of these sit side-by-side,
+ * centered horizontally, occupying the central area between the
+ * project info on the left and the model indicator on the right.
+ */
+function MiniGauge({ label, percent, value, fill, title }: MiniGaugeProps) {
   const w = Math.max(0, Math.min(100, percent))
   return (
-    <div className="flex items-center gap-2" title={title}>
-      <span className="w-10 shrink-0 text-[10px] text-text-muted uppercase tracking-wide">{label}</span>
-      <div className="flex-1 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
-        <div
-          className={`h-full rounded-full ${fill} transition-[width] duration-500`}
-          style={{ width: `${w}%` }}
-        />
-      </div>
-      <span className="w-[92px] shrink-0 text-right text-[10px] text-text-secondary tabular-nums">{value}</span>
+    <div className="mini-gauge" title={title}>
+      <span className="mini-gauge-label">{label}</span>
+      <div className="mini-gauge-bar"><div className={`mini-gauge-fill ${fill}`} style={{ width: `${w}%` }} /></div>
+      <span className="mini-gauge-value">{value}</span>
     </div>
   )
 }
 
-const COLLAPSE_KEY = 'hwbar_collapsed'
-
 /**
- * Live hardware status indicators docked at the bottom of the sidebar.
- * Two views, toggled by the chevron and remembered in localStorage:
- *   - Expanded: labeled mini-gauges (GPU util + VRAM, CPU, RAM) plus the
- *     resident model and loaded LLM.
- *   - Collapsed: a single one-line row of tiny status chips (~the height
- *     of the model line), for users who want the readout but not the bulk.
- * Polls GET /api/v1/system-stats every ~2s while mounted (both views);
- * pauses when the tab is hidden.
+ * Bottom-of-screen status bar. Single-row layout: project info on the
+ * left, four centered mini-gauges (GPU/VRAM/CPU/RAM) in the middle,
+ * resident model + unload control on the right. Polls
+ * GET /api/v1/system-stats every ~2s while mounted (pauses when the
+ * tab is hidden).
  */
 export function HardwareStatusBar() {
   const total = useStore(s => s.outputsTotal)
   const stats = useStore(s => s.systemStats)
   const loadSystemStats = useStore(s => s.loadSystemStats)
   const llmStatus = useStore(s => s.llmStatus)
-
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(COLLAPSE_KEY) !== '0' } catch { return true }
-  })
-  const toggle = () => setCollapsed(c => {
-    const next = !c
-    try { localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0') } catch { /* ignore */ }
-    return next
-  })
 
   // Manual model unload (issue #12). Models stay resident between
   // generations by design (instant retry with the same model); this is
@@ -129,103 +103,50 @@ export function HardwareStatusBar() {
 
   const fmtGb = (used?: number, total?: number) =>
     used == null || total == null ? '—' : `${used.toFixed(1)} / ${total.toFixed(0)} GB`
-  const fmtG = (v?: number) => (v == null ? '—' : `${v.toFixed(1)}G`)
 
-  // One global footer; expansion opens details above it without shifting the canvas.
-  const summary = (
-    <div className="global-status-summary">
-      <div className="status-project"><WorkspaceSelector /><span className="hidden sm:inline text-text-muted">{total} items</span></div>
-      <button onClick={toggle} aria-expanded={!collapsed} aria-controls="hardware-details" title={collapsed ? 'Show hardware status' : 'Hide hardware status'} className="status-telemetry">
-        {gpu?.available && <span title={`GPU · VRAM ${fmtGb(gpu.vram_used_gb, gpu.vram_total_gb)}`}><Zap size={12} /><span>{gpu.percent.toFixed(0)}%</span><span className={fullnessText(gpu.vram_percent)}>{fmtG(gpu.vram_used_gb)}</span></span>}
-        <span title="CPU utilization"><Cpu size={12} />{cpu ? `${cpu.percent.toFixed(0)}%` : '—'}</span>
-        <span title={`RAM ${fmtGb(ram?.used_gb, ram?.total_gb)}`}><MemoryStick size={12} /><span className={fullnessText(ram?.percent ?? 0)}>{fmtG(ram?.used_gb)}</span></span>
-        <span className="status-model" title={modelLoaded ? (model?.name || 'Unknown model') : 'No model loaded'}><span className={`h-1.5 w-1.5 shrink-0 rounded-full ${modelLoaded ? 'bg-emerald-500' : 'bg-text-muted/40'}`} /><span className="truncate">{modelLoaded ? model?.name : 'No model'}</span></span>
-        {collapsed ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-      </button>
-    </div>
-  )
-  if (collapsed) return <footer className="global-status-bar" aria-label="Application status">{summary}</footer>
-
-  // ---- Expanded: full gauges ----------------------------------------
   return (
-    <footer className="global-status-bar" aria-label="Application status">
-      {summary}
-      <div id="hardware-details" className="hardware-details">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[9px] uppercase tracking-wider text-text-muted">System</span>
-        <button
-          onClick={toggle}
-          title="Collapse"
-          className="p-0.5 rounded hover:bg-bg-hover text-text-muted hover:text-text-secondary transition-colors"
-        >
-          <ChevronDown size={13} />
-        </button>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {gpu?.available ? (
-          <>
-            <Gauge label="GPU" percent={gpu.percent} value={`${gpu.percent.toFixed(0)}%`} fill="bg-accent-blue"
-              title={gpu.compute_percent != null ? `3D engine (matches Task Manager) · compute (nvidia-smi): ${gpu.compute_percent.toFixed(0)}%` : undefined} />
-            <Gauge
-              label="VRAM"
-              percent={gpu.vram_percent}
-              value={fmtGb(gpu.vram_used_gb, gpu.vram_total_gb)}
-              fill={fullnessColor(gpu.vram_percent)}
-            />
-          </>
-        ) : (
-          <div className="text-[10px] text-text-muted">No NVIDIA GPU detected</div>
-        )}
-        <Gauge label="CPU" percent={cpu?.percent ?? 0} value={`${(cpu?.percent ?? 0).toFixed(0)}%`} fill="bg-accent-blue" />
-        <Gauge label="RAM" percent={ram?.percent ?? 0} value={fmtGb(ram?.used_gb, ram?.total_gb)} fill={fullnessColor(ram?.percent ?? 0)} />
-      </div>
+    <footer className="global-status-bar" aria-label="System status">
+      <div className="global-status-summary">
+        <div className="status-project" aria-label="Active project items">
+          <span className="status-project-count">{total} {total === 1 ? 'item' : 'items'}</span>
+        </div>
 
-      {/* Currently-loaded model(s) */}
-      <div className="mt-1.5 pt-1.5 border-t border-border/50 flex flex-col gap-0.5">
-        <div
-          className="flex items-center gap-1.5 min-w-0"
-          title={modelLoaded ? `${model?.name || 'Unknown model'} — resident in VRAM` : 'No generation model loaded'}
-        >
-          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${modelLoaded ? 'bg-emerald-500' : 'bg-text-muted/40'}`} />
-          <span className="text-[11px] text-text-secondary truncate">
-            {modelLoaded ? (model?.name || 'Unknown model') : 'No model loaded'}
-          </span>
+        <div className="status-gauges" role="group" aria-label="Hardware telemetry">
+          {gpu?.available ? (
+            <>
+              <MiniGauge label="GPU" percent={gpu.percent} value={`${gpu.percent.toFixed(0)}%`} fill="bg-accent-blue"
+                title={gpu.compute_percent != null ? `3D engine (matches Task Manager) · compute (nvidia-smi): ${gpu.compute_percent.toFixed(0)}%` : undefined} />
+              <MiniGauge label="VRAM" percent={gpu.vram_percent} value={fmtGb(gpu.vram_used_gb, gpu.vram_total_gb)}
+                fill={fullnessColor(gpu.vram_percent)} title={`VRAM ${fmtGb(gpu.vram_used_gb, gpu.vram_total_gb)}`} />
+            </>
+          ) : (
+            <div className="mini-gauge"><span className="mini-gauge-label">GPU</span><span className="mini-gauge-value">No GPU</span></div>
+          )}
+          <MiniGauge label="CPU" percent={cpu?.percent ?? 0} value={`${(cpu?.percent ?? 0).toFixed(0)}%`} fill="bg-accent-blue" />
+          <MiniGauge label="RAM" percent={ram?.percent ?? 0} value={fmtGb(ram?.used_gb, ram?.total_gb)}
+            fill={fullnessColor(ram?.percent ?? 0)} />
+        </div>
+
+        <div className="status-model" title={modelLoaded ? (model?.name || 'Unknown model') : 'No model loaded'}>
+          <span className={`status-model-dot ${modelLoaded ? 'is-loaded' : ''}`} aria-hidden="true" />
+          <span className="status-model-name truncate">{modelLoaded ? model?.name : 'No model'}</span>
           {(modelLoaded || llmStatus?.loaded) && !confirmUnload && !unloading && (
-            <button
-              onClick={() => setConfirmUnload(true)}
+            <button onClick={() => setConfirmUnload(true)}
               title="Unload model — frees VRAM/RAM now; the next generation reloads it"
-              className="ml-auto p-0.5 rounded shrink-0 text-text-muted hover:text-text-secondary hover:bg-bg-hover transition-colors"
-            >
+              className="status-unload" aria-label="Unload model">
               <Power size={11} />
             </button>
           )}
+          {confirmUnload && (
+            <span className="status-unload-confirm">
+              <span className="text-text-secondary">Unload?</span>
+              <button onClick={doUnload} className="status-unload-confirm-yes">Yes</button>
+              <button onClick={() => setConfirmUnload(false)} className="status-unload-confirm-no">No</button>
+            </span>
+          )}
+          {unloading && <span className="status-loading">Unloading…</span>}
+          {unloadNote && !unloading && <span className="status-loading">{unloadNote}</span>}
         </div>
-        {llmStatus?.loaded && llmStatus.model_id && (
-          <div className="flex items-center gap-1.5 min-w-0" title="LLM (Director / prompt enhancer)">
-            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-accent-blue" />
-            <span className="text-[10px] text-text-muted truncate">LLM · {llmStatus.model_id}</span>
-          </div>
-        )}
-        {confirmUnload && (
-          <div className="flex items-center gap-1.5 text-[10px]">
-            <span className="text-text-secondary">Unload and free memory?</span>
-            <button
-              onClick={doUnload}
-              className="px-1.5 py-0.5 rounded bg-red-500/15 text-chip-red hover:bg-red-500/25 transition-colors"
-            >
-              Unload
-            </button>
-            <button
-              onClick={() => setConfirmUnload(false)}
-              className="px-1.5 py-0.5 rounded text-text-muted hover:bg-bg-hover transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-        {unloading && <div className="text-[10px] text-text-muted">Unloading…</div>}
-        {unloadNote && !unloading && <div className="text-[10px] text-text-muted">{unloadNote}</div>}
-      </div>
       </div>
     </footer>
   )

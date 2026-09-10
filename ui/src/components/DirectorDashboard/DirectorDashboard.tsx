@@ -496,19 +496,21 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
   )
 }
 
-export function DirectorDashboard() {
+export function DirectorDashboard({ embedded = false }: { embedded?: boolean }) {
   const open = useStore(s => s.dashboardOpen)
 
-  if (!open) return null
+  // In embedded mode (rendered inline inside the Director page) the
+  // dashboard is always part of the layout — no open/close gate.
+  if (!embedded && !open) return null
 
   return (
     <DashboardErrorBoundary>
-      <DirectorDashboardInner />
+      <DirectorDashboardInner embedded={embedded} />
     </DashboardErrorBoundary>
   )
 }
 
-function DirectorDashboardInner() {
+function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
   const setOpen = useStore(s => s.setDashboardOpen)
   const pipelineList = useStore(s => s.dashboardPipelineList)
   const selectedPipeline = useStore(s => s.dashboardSelectedPipeline)
@@ -618,10 +620,22 @@ function DirectorDashboardInner() {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-bg-primary">
+    <div className={embedded
+      ? 'flex flex-col h-full min-h-0 bg-bg-secondary'
+      : 'fixed inset-0 z-[60] flex flex-col bg-bg-primary'}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2 shrink-0">
         <h1 className="text-sm font-semibold text-text-primary shrink-0">Dashboard</h1>
+        {embedded && (
+          <button
+            onClick={() => setOpen(false)}
+            className="ml-auto p-1 rounded text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
+            title="Hide dashboard"
+            aria-label="Hide dashboard"
+          >
+            <X size={14} />
+          </button>
+        )}
 
         {/* Pipeline selector */}
         <select

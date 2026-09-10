@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { ApplicationHeader } from './components/Shell/ApplicationHeader'
 import { ProjectsPage } from './components/Shell/ProjectsPage'
+import { QueuePage } from './components/Shell/QueuePage'
 import { DirectorPage } from './components/Shell/DirectorPage'
 import { HardwareStatusBar } from './components/Sidebar/HardwareStatusBar'
 import { MainContent } from './components/MainContent/MainContent'
@@ -55,6 +56,7 @@ function App() {
       <ApplicationHeader />
       <div className="application-content" role="tabpanel" id={`panel-${section}`} aria-labelledby={`tab-${section}`} tabIndex={0}>
         {section === 'projects' && <ProjectsPage />}
+        {section === 'queue' && <QueuePage />}
         {section === 'director' && <DirectorPage />}
         {section === 'editor' && <EditorWorkspace />}
         {section === 'medias' && <MainContent />}

@@ -539,6 +539,10 @@ export function DirectorChat() {
   const mvGenerateSetup = isMvGenerate && step === 'upload'
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  // Container ref so we can scroll-to-top when the user picks a new skill —
+  // otherwise scrollIntoView would jump to the bottom composer and hide the
+  // freshly-revealed skill options.
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [localBias, setLocalBias] = useState<number | null>(null)
   const [showAnalysisDetails, setShowAnalysisDetails] = useState(false)
@@ -583,11 +587,6 @@ export function DirectorChat() {
   const currentIndex = STEP_ORDER.indexOf(step)
   const pastStep = (s: DirectorStep) => currentIndex > STEP_ORDER.indexOf(s)
   const atStep = (s: DirectorStep) => step === s
-  const directorPathReady = Boolean(skill && (!isShortFilm || shortFilmPath))
-  // Once prompts exist, controls reopen as the settings for the next immutable
-  // revision. The active renderer keeps its frozen request, so adjusting a
-  // LoRA/model while it runs can never mutate work already in flight.
-  const directorSetupLocked = currentIndex >= STEP_ORDER.indexOf('plan')
     && step !== 'review_video'
 
   const handleFile = useCallback((file: File) => {
@@ -630,12 +629,22 @@ export function DirectorChat() {
       .join(', ')
   }, [plannedClips])
 
-  // Auto-scroll to bottom on step/loading changes. loadingMessage and error
-  // are included so progress-text updates (e.g. "Generating music track…",
-  // analyze phases) and new errors pull the view down to the newest content.
+  // Auto-scroll behavior:
+  //   - On `skill` change, scroll to the TOP so the user sees the freshly
+  //     revealed skill options, not the composer pinned at the bottom.
+  //   - On step/loading changes (and progress updates / new errors), scroll
+  //     to the bottom so the newest content stays in view.
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [step, loading, loadingMessage, error, clipPlans.length, clipImages.length, skill])
+  }, [step, loading, loadingMessage, error, clipPlans.length, clipImages.length])
+
+  useEffect(() => {
+    // Only act on skill changes — initial mount (skill === null) is a no-op.
+    if (skill) {
+      const el = scrollContainerRef.current
+      if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [skill])
 
   const handleChatSubmit = () => {
     // Music Video "Generate a track": the chat is the song description, and
@@ -725,7 +734,7 @@ export function DirectorChat() {
     <div className="flex-1 flex flex-col min-h-0">
       <div className="px-4 pt-2"><DirectorTimelineEditor /></div>
       {/* Message list */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {/* Header with Start Over */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
@@ -807,14 +816,11 @@ export function DirectorChat() {
           </UserBubble>
         )}
 
-        {/* Upload step — hidden for story path and before short film path is chosen */}
-        {/* Core project choices stay mounted throughout Director. Uploading or
-            analyzing media must not make the selected models disappear. */}
-        {directorPathReady && (
-          <SystemBubble>
-            <DirectorSetupPanel locked={directorSetupLocked} />
-          </SystemBubble>
-        )}
+        {/* Core project choices (aspect ratio, resolution, workflow,
+            models) used to render here as a SystemBubble. They now live
+            in the right-hand column on the Director page (mounted by
+            DirectorStage) so the chat stays focused on creative
+            decisions while technical settings sit beside it. */}
 
         {pipelineActive && step === 'review_video' && (
           <div className="space-y-1 rounded-lg border border-accent-blue/25 bg-accent-blue/10 px-3 py-2 text-[10px] leading-relaxed text-text-secondary">
@@ -965,14 +971,11 @@ export function DirectorChat() {
         )}
 
         {/* Analysis result — hidden for story path */}
-        {/* Model-specific generation options follow the media/reference inputs
-            and remain editable until prompt planning begins. */}
-        {directorPathReady && !isStoryPath && !directorSetupLocked && (
-          <SystemBubble>
-            <DirectorGenerationOptions />
-          </SystemBubble>
-        )}
-
+        {/* Model-specific generation options used to render here inline
+            but now live in a dedicated right-hand column on the
+            Director page (mounted by DirectorStage). Removing them from
+            the chat scroll keeps the message list focused on the
+            narrative, while keeping the controls one glance away. */}
         {!isStoryPath && analysis && pastStep('analyze') && (
           <SystemBubble>
             <AnalysisSummary
@@ -1071,9 +1074,6 @@ export function DirectorChat() {
                       </p>
                     </div>
                   </label>
-                  <div className="pt-1 border-t border-border/50">
-                    <DirectorGenerationOptions />
-                  </div>
                 </div>
               </SystemBubble>
             )}
@@ -1485,7 +1485,7 @@ function DirectorResolutionSelector({ disabled = false }: { disabled?: boolean }
   )
 }
 
-function DirectorSetupPanel({ locked }: { locked: boolean }) {
+export function DirectorSetupPanel({ locked }: { locked: boolean }) {
   const autoMode = useStore(s => s.directorAutoMode)
   const setAutoMode = useStore(s => s.setDirectorAutoMode)
   const seamless = useStore(s => s.directorSeamless)
@@ -2926,7 +2926,7 @@ function DirectorLoraAccordion() {
   )
 }
 
-function DirectorGenerationOptions() {
+export function DirectorGenerationOptions() {
   const audioFile = useStore(s => s.directorAudioFile)
   const fixedMediaStrength = useStore(s => {
     const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
