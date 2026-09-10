@@ -1,6 +1,5 @@
-import { Settings, X, Globe, BookMarked } from 'lucide-react'
+import { Globe, BookMarked } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
-import { useIsMobile } from '../../lib/useIsMobile'
 import { GenerationModeSelector } from './GenerationModeSelector'
 import { InputsPanel } from './InputsPanel'
 import { OmniReferenceSection } from './OmniReferenceSection'
@@ -17,8 +16,6 @@ import { AdvancedSettings } from './AdvancedSettings'
 import { GenerateButton } from './GenerateButton'
 import { ModelSelector } from './ModelSelector'
 import { MultiClipEditor } from './MultiClipEditor'
-import { DirectorChat } from './DirectorChat'
-import { DirectorStage } from '../Stages/DirectorStage'
 import { RestyleControls } from './RestyleControls'
 import { InpaintControls } from './InpaintControls'
 import { OutpaintControls } from './OutpaintControls'
@@ -29,27 +26,20 @@ import { BlendControls } from './BlendControls'
 import { AnchorReturnBanner } from './AnchorReturnBanner'
 import { VoiceRefSection } from './VoiceRefSection'
 import { ToolsPanel } from './ToolsPanel'
-import { HardwareStatusBar } from './HardwareStatusBar'
 import { MiniMaxH3Optimizations } from './MiniMaxH3Optimizations'
 import { H3MultiWindowControls } from './H3MultiWindowControls'
 import { VideoWorkflowSelector } from './VideoWorkflowSelector'
 import { ImageWorkflowSelector } from './ImageWorkflowSelector'
 import { ImageWorkflowControls } from './ImageWorkflowControls'
-import { AppModeToggle, MaestroBrand } from '../AppModeNavigation'
 
 export function Sidebar() {
-  const toggleSettings = useStore(s => s.toggleSettings)
   const generationMode = useStore(s => s.generationMode)
   const imageMode = useStore(s => s.params.image_mode)
   const modelOptions = useStore(s => s.modelOptions)
-  const sidebarOpen = useStore(s => s.sidebarOpen)
-  const setSidebarOpen = useStore(s => s.setSidebarOpen)
-  const sidebarMode = useStore(s => s.sidebarMode)
   const editSubMode = useStore(s => s.editSubMode)
   const modelType = useStore(s => s.params.model_type)
   const selectedModel = useStore(s => s.models.find(model => model.model_type === s.params.model_type))
   const openLoraBrowser = useStore(s => s.setLoraBrowserOpen)
-  const isMobile = useIsMobile()
 
   const isVideo = generationMode === 'video'
   const isImage = generationMode === 'image'
@@ -86,26 +76,6 @@ export function Sidebar() {
   const isMultiClip = isVideo && imageMode === 2
   const isContinue = isVideo && imageMode === 3
   const isBlend = isVideo && imageMode === 4
-  // Strategy B (Director-as-Stage): when the rollout flag is on AND
-  // we're in Studio mode, the user can mount `<DirectorStage/>` as
-  // an in-Workspace stage. We expose this as an extra panel that
-  // sits next to the existing studio controls via `workspaceStage`.
-  // Pre-flag (default) behavior is unchanged.
-  const workspaceUnifiedDirector = useStore(s => s.workspaceUnifiedDirector)
-  const workspaceStage = useStore(s => s.workspaceStage)
-  const openDirectorStage = useStore(s => s.openDirectorStage)
-  const closeDirectorStage = useStore(s => s.closeDirectorStage)
-  // Legacy `isDirector` flag — the old top-level Director sidebar that
-  // bypassed the Studio. Strategy B collapses this into the in-Workspace
-  // Stage (`workspaceStage === 'director'`). When the rollout flag is on,
-  // the Stage is rendered instead of `<DirectorChat/>` directly.
-  const isLegacyDirectorSidebar = sidebarMode === 'director'
-    || (sidebarMode === 'workspace' && !workspaceUnifiedDirector && false)
-  const isDirector = isLegacyDirectorSidebar
-    || (sidebarMode === 'workspace' && workspaceUnifiedDirector && workspaceStage === 'director')
-  const showDirectorStage = workspaceUnifiedDirector
-    && sidebarMode === 'workspace'
-    && workspaceStage === 'director'
   const isI2vOnly = modelOptions?.i2v_class && !modelOptions?.t2v_class
 
   // Video Transform controls backed by the legacy edit-mode engines.
@@ -232,7 +202,7 @@ export function Sidebar() {
 
         {/* LTX Voice Reference (ID-LoRA) — gated by Video Frames →
             Advanced. VoiceRefSection also verifies the active LTX model. */}
-        {isVideo && !isDirector && !isOmniReference && imageMode !== 0 && imageMode !== 3 && <VoiceRefSection />}
+        {isVideo && !isOmniReference && imageMode !== 0 && imageMode !== 3 && <VoiceRefSection />}
         </>
         )}
       </div>
@@ -272,90 +242,9 @@ export function Sidebar() {
     </>
   )
 
-  // Mobile: overlay drawer
-  if (isMobile) {
-    return (
-      <>
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/40 z-40"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-        <aside className={`fixed top-0 left-0 h-full w-[380px] max-w-[85vw] bg-bg-secondary border-r border-border z-50 flex flex-col transform transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}>
-          {/* Header */}
-          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-            <MaestroBrand compact />
-            <div className="flex items-center gap-1.5">
-              <AppModeToggle size="sm" />
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-          {isLegacyDirectorSidebar ? (
-            <DirectorChat />
-          ) : showDirectorStage ? (
-            <DirectorStage onClose={closeDirectorStage} />
-          ) : (
-            studioControls
-          )}
-          <HardwareStatusBar />
-        </aside>
-      </>
-    )
-  }
-
-  // Desktop: static sidebar
   return (
-    <aside className="w-[420px] h-full bg-bg-secondary border-r border-border flex flex-col shrink-0">
-      {/* Header */}
-      <div className="flex h-14 items-center justify-between border-b border-border px-4">
-        <MaestroBrand />
-        <div className="flex items-center gap-2">
-          {workspaceUnifiedDirector && (
-            <button
-              onClick={() => showDirectorStage ? closeDirectorStage() : openDirectorStage()}
-              className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                showDirectorStage
-                  ? 'bg-accent-blue text-white'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-              }`}
-              title={showDirectorStage ? 'Return to Studio' : 'Open Director planning stage'}
-            >
-              {showDirectorStage ? 'Studio' : 'Director'}
-            </button>
-          )}
-          <AppModeToggle />
-          <button
-            onClick={toggleSettings}
-            className="p-1.5 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors"
-            title="Settings"
-          >
-            <Settings size={16} />
-          </button>
-        </div>
-      </div>
-      {/* Strategy B rollout: when the Stage is open, the studio controls
-          collapse to make room for `<DirectorStage/>` on the right. The
-          Studio controls remain reachable through the toggle above. Pre-
-          flag behavior (sidebarMode === 'director' branch) is unchanged. */}
-      {isLegacyDirectorSidebar ? (
-        // Pre-rollout legacy path: keep `<DirectorChat/>` mounted
-        // directly so existing users see no change after disabling the
-        // workspace_unified_v1 flag.
-        <DirectorChat />
-      ) : showDirectorStage ? (
-        <DirectorStage onClose={closeDirectorStage} />
-      ) : (
-        studioControls
-      )}
-      <HardwareStatusBar />
+    <aside className="flex h-full min-h-0 w-full shrink-0 flex-col border-border bg-bg-secondary md:w-[400px] md:border-r xl:w-[440px]" aria-label="Manual generation controls">
+      {studioControls}
     </aside>
   )
 }

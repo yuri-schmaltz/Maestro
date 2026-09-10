@@ -68,7 +68,7 @@ export function DownloadStatusBanner() {
   }, downloads[0])
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 max-w-md w-[calc(100vw-2rem)] sm:w-auto">
+    <div className="fixed bottom-14 right-4 z-40 max-w-md w-[calc(100vw-2rem)] sm:w-auto">
       {/* Outer container is always solid bg-bg-secondary so text
           stays readable over images/videos in the main feed.
           Border color switches to amber on stall to draw the eye

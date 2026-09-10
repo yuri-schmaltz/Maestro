@@ -21,7 +21,7 @@ export function NotificationToastHost() {
 
   return (
     <div
-      className="fixed right-3 top-14 z-[95] flex w-[min(360px,calc(100vw-1.5rem))] flex-col gap-2 md:right-5 md:top-5"
+      className="fixed right-3 bottom-14 z-[95] flex w-[min(360px,calc(100vw-1.5rem))] flex-col gap-2 md:right-5"
       aria-live="polite"
       aria-atomic="false"
     >

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronUp, ChevronDown, Cpu, MemoryStick, Power, Zap } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
+import { WorkspaceSelector } from '../MainContent/MainContent'
 import { releaseModels } from '../../api/client'
 
 // Color a "fullness" bar (VRAM / RAM) by how close to full it is —
@@ -61,12 +62,13 @@ const COLLAPSE_KEY = 'hwbar_collapsed'
  * pauses when the tab is hidden.
  */
 export function HardwareStatusBar() {
+  const total = useStore(s => s.outputsTotal)
   const stats = useStore(s => s.systemStats)
   const loadSystemStats = useStore(s => s.loadSystemStats)
   const llmStatus = useStore(s => s.llmStatus)
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(COLLAPSE_KEY) === '1' } catch { return false }
+    try { return localStorage.getItem(COLLAPSE_KEY) !== '0' } catch { return true }
   })
   const toggle = () => setCollapsed(c => {
     const next = !c
@@ -129,47 +131,26 @@ export function HardwareStatusBar() {
     used == null || total == null ? '—' : `${used.toFixed(1)} / ${total.toFixed(0)} GB`
   const fmtG = (v?: number) => (v == null ? '—' : `${v.toFixed(1)}G`)
 
-  // ---- Collapsed: one row of tiny status chips ----------------------
-  if (collapsed) {
-    return (
-      <button
-        onClick={toggle}
-        title="Show hardware status"
-        className="w-full flex items-center gap-2.5 px-3 py-1.5 border-t border-border bg-bg-secondary hover:bg-bg-hover transition-colors text-[10px] shrink-0"
-      >
-        {gpu?.available && (
-          <span
-            className="flex items-center gap-1 shrink-0 text-text-secondary"
-            title={`GPU ${gpu.percent.toFixed(0)}% (3D engine)${gpu.compute_percent != null ? ` · compute ${gpu.compute_percent.toFixed(0)}%` : ''} · VRAM ${fmtGb(gpu.vram_used_gb, gpu.vram_total_gb)}`}
-          >
-            <Zap size={11} className="text-text-muted" />
-            <span className="tabular-nums">{gpu.percent.toFixed(0)}%</span>
-            <span className={`tabular-nums ${fullnessText(gpu.vram_percent)}`}>{fmtG(gpu.vram_used_gb)}</span>
-          </span>
-        )}
-        <span className="flex items-center gap-1 shrink-0 text-text-secondary" title={`CPU ${(cpu?.percent ?? 0).toFixed(0)}%`}>
-          <Cpu size={11} className="text-text-muted" />
-          <span className="tabular-nums">{(cpu?.percent ?? 0).toFixed(0)}%</span>
-        </span>
-        <span className="flex items-center gap-1 shrink-0 text-text-secondary" title={`RAM ${fmtGb(ram?.used_gb, ram?.total_gb)}`}>
-          <MemoryStick size={11} className="text-text-muted" />
-          <span className={`tabular-nums ${fullnessText(ram?.percent ?? 0)}`}>{fmtG(ram?.used_gb)}</span>
-        </span>
-        <span
-          className="flex items-center gap-1 min-w-0 ml-auto"
-          title={modelLoaded ? `${model?.name || 'Unknown model'} — loaded` : 'No model loaded'}
-        >
-          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${modelLoaded ? 'bg-emerald-500' : 'bg-text-muted/40'}`} />
-          <span className="truncate text-text-muted">{modelLoaded ? (model?.name || '—') : 'No model'}</span>
-        </span>
-        <ChevronUp size={13} className="shrink-0 text-text-muted" />
+  // One global footer; expansion opens details above it without shifting the canvas.
+  const summary = (
+    <div className="global-status-summary">
+      <div className="status-project"><WorkspaceSelector /><span className="hidden sm:inline text-text-muted">{total} items</span></div>
+      <button onClick={toggle} aria-expanded={!collapsed} aria-controls="hardware-details" title={collapsed ? 'Show hardware status' : 'Hide hardware status'} className="status-telemetry">
+        {gpu?.available && <span title={`GPU · VRAM ${fmtGb(gpu.vram_used_gb, gpu.vram_total_gb)}`}><Zap size={12} /><span>{gpu.percent.toFixed(0)}%</span><span className={fullnessText(gpu.vram_percent)}>{fmtG(gpu.vram_used_gb)}</span></span>}
+        <span title="CPU utilization"><Cpu size={12} />{cpu ? `${cpu.percent.toFixed(0)}%` : '—'}</span>
+        <span title={`RAM ${fmtGb(ram?.used_gb, ram?.total_gb)}`}><MemoryStick size={12} /><span className={fullnessText(ram?.percent ?? 0)}>{fmtG(ram?.used_gb)}</span></span>
+        <span className="status-model" title={modelLoaded ? (model?.name || 'Unknown model') : 'No model loaded'}><span className={`h-1.5 w-1.5 shrink-0 rounded-full ${modelLoaded ? 'bg-emerald-500' : 'bg-text-muted/40'}`} /><span className="truncate">{modelLoaded ? model?.name : 'No model'}</span></span>
+        {collapsed ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
       </button>
-    )
-  }
+    </div>
+  )
+  if (collapsed) return <footer className="global-status-bar" aria-label="Application status">{summary}</footer>
 
   // ---- Expanded: full gauges ----------------------------------------
   return (
-    <div className="px-3 py-2 border-t border-border bg-bg-secondary shrink-0">
+    <footer className="global-status-bar" aria-label="Application status">
+      {summary}
+      <div id="hardware-details" className="hardware-details">
       <div className="flex items-center justify-between mb-1">
         <span className="text-[9px] uppercase tracking-wider text-text-muted">System</span>
         <button
@@ -180,7 +161,7 @@ export function HardwareStatusBar() {
           <ChevronDown size={13} />
         </button>
       </div>
-      <div className="flex flex-col gap-1">
+      <div className="grid gap-2 sm:grid-cols-2">
         {gpu?.available ? (
           <>
             <Gauge label="GPU" percent={gpu.percent} value={`${gpu.percent.toFixed(0)}%`} fill="bg-accent-blue"
@@ -245,6 +226,7 @@ export function HardwareStatusBar() {
         {unloading && <div className="text-[10px] text-text-muted">Unloading…</div>}
         {unloadNote && !unloading && <div className="text-[10px] text-text-muted">{unloadNote}</div>}
       </div>
-    </div>
+      </div>
+    </footer>
   )
 }

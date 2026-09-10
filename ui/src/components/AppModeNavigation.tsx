@@ -1,15 +1,4 @@
 import { useStore } from '../stores/useStore'
-import type { AppMode } from '../types'
-
-// Strategy B collapses the three-mode toggle into two (Workspace + Editor).
-// The "Director" tab is still exposed when the rollout flag is off so
-// pre-rollout users see no change; once `workspaceUnifiedDirector` flips
-// on, the Stage wrapper renders Director inside the Workspace and the
-// legacy tab disappears.
-const APP_MODES: Array<{ mode: AppMode; label: string }> = [
-  { mode: 'workspace', label: 'Workspace' },
-  { mode: 'editor', label: 'Editor' },
-]
 
 export function MaestroBrand({
   compact = false,
@@ -35,34 +24,6 @@ export function MaestroBrand({
           <span className={`${compact ? 'text-[9px]' : 'mt-0.5 text-[10px]'} whitespace-nowrap font-normal text-text-muted`}>v{appVersion}</span>
         )}
       </>
-    </div>
-  )
-}
-
-export function AppModeToggle({ size = 'md' }: { size?: 'sm' | 'md' }) {
-  const activeMode = useStore(state => state.sidebarMode)
-  const setSidebarMode = useStore(state => state.setSidebarMode)
-
-  return (
-    <div
-      className="flex shrink-0 rounded-lg border border-border bg-bg-tertiary p-0.5"
-      role="group"
-      aria-label="Application mode"
-    >
-      {APP_MODES.map(({ mode, label }) => (
-        <button
-          key={mode}
-          type="button"
-          onClick={() => setSidebarMode(mode)}
-          className={`${size === 'sm' ? 'px-2 py-1 text-[11px]' : 'px-3 py-1 text-xs'} rounded-md transition-all ${
-            activeMode === mode
-              ? 'bg-toggle-active text-white shadow-accent-glow'
-              : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
-          }`}
-        >
-          {label}
-        </button>
-      ))}
     </div>
   )
 }

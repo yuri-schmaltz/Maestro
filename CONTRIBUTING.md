@@ -8,13 +8,8 @@ pipeline and distributed as a standalone Python application.
 
 Maestro is a standalone (fork) release, so the easiest dev loop is:
 
-1. Install the Python environment once:
-   ```bash
-   cd app
-   python3 -m venv env
-   env/bin/pip install -r requirements.txt
-   ```
-   This creates the venv in `app/env/` and installs all backend dependencies.
+1. Follow [Install in README.md](README.md#install) from the repository root.
+   It includes the pinned PyTorch CUDA runtime and the UI build.
 2. Edit the source in place. The layout:
    - **Launcher scripts** (`start_local.sh`, `stop_local.sh`) live at the repo
      root.
@@ -37,18 +32,17 @@ Maestro is a standalone (fork) release, so the easiest dev loop is:
 
 ## Before you open a PR
 
-CI runs these checks on every PR — please run them locally first:
+Run these checks locally from the repository root:
 
 ```bash
 # 1. UI type-check + build
-cd ui && npm install && npm run build
+(cd ui && npm run build && npm run test:control)
 
 # 2. Python syntax on the modules you touched
 python -m compileall -q app/launch.py app/wgp.py app/services
 
-# 3. Backend smoke (after rebuild)
-./start_local.sh   # should bind in <30s and serve HTTP 200 on /
-./stop_local.sh
+# 3. Standalone launch integration (isolated HTTP backend, no models)
+python3 tests/test_standalone_launch.py
 ```
 
 ### Local data hygiene

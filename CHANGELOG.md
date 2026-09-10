@@ -5,14 +5,35 @@ pipeline's own history lives in [app/docs/CHANGELOG.md](app/docs/CHANGELOG.md).
 
 ## [Unreleased]
 
-### Director-as-Stage (Strategy B from the merge feasibility analysis)
+### Application interface overhaul
+
+- Added centered Projects, Director, Editor, Medias and Configurations tabs
+  in a shared responsive header; Projects is the initial page.
+- Added project cards and workspace management, full-page configurations,
+  and Planning / Studio navigation inside Director.
+- Moved workspace selection, media counts and hardware telemetry to a single
+  full-width status footer. Queue access stays in the global header.
+- Preserved Director review/progress, workflow shortcuts and Editor history
+  across sections; pending Editor changes save when leaving the section.
+
+
+- Removed Tailscale integration, remote-access endpoints, setup UI and QR-code dependency. Notifications remain available.
+
+### Earlier Director-as-Stage rollout (superseded navigation)
 
 The three-mode toggle (`Director | Studio | Editor`) has been collapsed
 into two (`Workspace | Editor`). Director now lives inside the Workspace
 as an in-place Stage, gated by the `workspaceUnifiedDirector` feature
-flag. The flag defaults to off so existing users see no change; flipping
-it on exposes a "Director" button in the sidebar header that mounts
-`<DirectorStage/>` next to the Studio controls.
+flag. The flag defaults to on and `workspaceStage` defaults to `director`,
+so a fresh session opens the skill chooser. The "Studio" button closes the
+Stage; "Director" reopens it. An explicit `0` in
+`maestro.workspaceUnifiedDirector` in localStorage opts out.
+
+- The gallery and Maestro headers now both use `h-14` and `px-4`.
+- Explicit `SERVER_NAME` takes precedence over the legacy
+  `PINOKIO_SHARE_LOCAL` variable, including when using `start_local.sh`.
+- Standalone installation and update instructions replace
+  references to removed launcher actions.
 
 - New `useStore.cancelPlan()` unifies the four parallel cancel surfaces
   (`stopPipeline`, `cancelDirectorV2Plan`, `cancelJob`, repair-cancel)
@@ -42,7 +63,7 @@ it on exposes a "Director" button in the sidebar header that mounts
   X-button can call it directly without going through the legacy
   sidebar toggle.
 
-Tests:
+Historical tests (removed in `2f96b76`; not present in this checkout):
 
 - `tests/test_workspace_unified_stage.py` (new) — 7 cases locking in
   the rollout invariants (no new Python routes, no parallel pipeline,
@@ -51,7 +72,7 @@ Tests:
   covering `cancelPlan`'s v2-plan and pipeline branches, double-cancel
   safety, and thread-safe `request_cancel`.
 
-Validation:
+Historical validation before removal of the Python test suite:
 
 - `tsc --noEmit`: 0 errors.
 - `vite build`: ✓ 1845 modules · 6.05s · 1.4 MB JS · 374 KB gz.
@@ -61,6 +82,8 @@ Validation:
   tests/test_workspace_unified_stage.py
   tests/test_workspace_unified_cancel_plan.py tests/test_llm_provider_api_key.py
   tests/test_classic_ui_status.py`: **129/129 pass in 2.34s**.
+
+Current control checks: `cd ui && npm run test:control`.
 
 ## [2.0.1] - 2026-09-04
 
@@ -239,13 +262,7 @@ nightly resolution and cached-runtime reuse.
 
 Notifications and remote access: added in-app completion alerts, optional
 browser and host chimes, event preferences, an installable PWA, and encrypted
-closed-app Web Push. Optional Tailscale Serve integration creates a private
-HTTPS address inside each user's own tailnet, displays a QR code, and remembers
-the selected Maestro backend port across restarts. Windows setup registers one
-fixed on-demand route-restoration task so later opted-in Maestro starts recover
-remote access without another UAC prompt. Dynamic ports remain the default for
-users who never opt in, Maestro never enables public Funnel access, and an
-existing unrelated Serve route is not overwritten.
+closed-app Web Push.
 
 Gallery workflow: the active card now follows the media being viewed or played,
 and starting playback activates and unmutes that item. Expandable generation
@@ -259,7 +276,7 @@ Launcher and polish: adopted the new orange Maestro icon, simplified Start and
 LoRA-folder actions, removed the normal Classic UI entry points, and kept the
 the launcher launcher schema version independent from Maestro's application version.
 The release also includes H3 continuation diagnostics, reference manifest and
-Turbo update coverage, safer remote-access persistence, and expanded Editor,
+Turbo update coverage, expanded Editor,
 Studio image, film-grain, character-library, and PDD regression tests. Final
 hardening cleared the frontend lint backlog, fixed a hidden invalid image-hook
 call and incomplete Director v2 clip metadata, and repaired a shipped LongCat

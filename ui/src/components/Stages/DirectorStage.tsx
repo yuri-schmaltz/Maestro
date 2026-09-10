@@ -128,7 +128,7 @@ export function DirectorStage({ onClose, embedded = false }: DirectorStageProps)
 
   return (
     <div
-      className="flex flex-col h-full bg-bg-secondary border-l border-border"
+      className="flex flex-col h-full min-h-0 bg-bg-secondary"
       data-testid="director-stage"
       data-pipeline-status={pipelineStatus?.status ?? 'idle'}
     >
@@ -136,7 +136,7 @@ export function DirectorStage({ onClose, embedded = false }: DirectorStageProps)
         <div className="flex items-center gap-2 text-text-primary">
           <Sparkles size={14} className="text-accent-blue" />
           <span className="text-xs font-semibold uppercase tracking-wider">
-            Director — Planning
+            Creative brief
           </span>
           {directorSkill && (
             <span className="text-[10px] text-text-muted normal-case tracking-normal">
@@ -202,7 +202,7 @@ export function DirectorStage({ onClose, embedded = false }: DirectorStageProps)
           )}
         </div>
       </header>
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <DirectorChat />
       </div>
       {/* In-stage skill chooser modal. Renders above the chat but does

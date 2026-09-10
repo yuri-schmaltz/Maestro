@@ -56,11 +56,11 @@ export function WelcomeModal() {
           <Row icon={<Cpu size={16} className="text-accent-blue" />} title="Director runs on a local LLM">
             Director mode plans your video with a local language model (Gemma 4, ~5 GB,
             downloaded on first Director use) — nothing is sent to the cloud. You can
-            switch models, or plug in an external API, under Settings → Services.
+            switch models, or plug in an external API, under Configurations → Integrations.
           </Row>
           <Row icon={<ShieldAlert size={16} className="text-red-400" />} title="Mature mode is off by default">
             Adult content generation is an explicit opt-in behind a disclaimer in
-            Settings → Services. Leave it off and content stays PG-13.
+            Configurations → Integrations. Leave it off and content stays PG-13.
           </Row>
         </div>
 

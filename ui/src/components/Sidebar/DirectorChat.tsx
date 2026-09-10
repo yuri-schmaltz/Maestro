@@ -730,7 +730,7 @@ export function DirectorChat() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             {isShortFilm ? <Film size={14} className="text-accent-blue" /> : <Music size={14} className="text-accent-blue" />}
-            <span className="text-xs font-medium text-text-primary">Director</span>
+            <span className="text-xs font-medium text-text-primary">{skill ? (isShortFilm ? 'Short Film' : 'Music Video') : 'Choose a skill'}</span>
             {analysis && !isShortFilm && (
               <span className="text-[10px] text-text-muted">
                 {analysis.bpm.toFixed(0)} BPM

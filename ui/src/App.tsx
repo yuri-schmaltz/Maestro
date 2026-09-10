@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
-import { Menu, Settings } from 'lucide-react'
-import { Sidebar } from './components/Sidebar/Sidebar'
+import { ApplicationHeader } from './components/Shell/ApplicationHeader'
+import { ProjectsPage } from './components/Shell/ProjectsPage'
+import { DirectorPage } from './components/Shell/DirectorPage'
+import { HardwareStatusBar } from './components/Sidebar/HardwareStatusBar'
 import { MainContent } from './components/MainContent/MainContent'
 import { SettingsDrawer } from './components/SettingsDrawer/SettingsDrawer'
 import { LoraBrowser } from './components/LoraBrowser/LoraBrowser'
@@ -12,14 +14,11 @@ import { DownloadStatusBanner } from './components/DownloadStatusBanner'
 import { PreflightBanner } from './components/PreflightBanner'
 import { WelcomeModal } from './components/WelcomeModal'
 import { RecipesOverlay } from './components/Recipes/RecipesOverlay'
-import { GlobalQueuePopover } from './components/GlobalQueuePopover'
 import { NotificationCoordinator } from './components/NotificationCoordinator'
 import { NotificationToastHost } from './components/NotificationToastHost'
 import { EditorWorkspace } from './editor/EditorWorkspace'
-import { AppModeToggle, MaestroBrand } from './components/AppModeNavigation'
 import { EditorRoundTripBanner } from './editor/EditorRoundTripBanner'
 import { useStore } from './stores/useStore'
-import { useIsMobile } from './lib/useIsMobile'
 
 function App() {
   const loadModels = useStore(s => s.loadModels)
@@ -31,12 +30,7 @@ function App() {
   const loadLlmStatus = useStore(s => s.loadLlmStatus)
   const loadLlmModels = useStore(s => s.loadLlmModels)
   const loadPipelineList = useStore(s => s.loadPipelineList)
-  const toggleSidebar = useStore(s => s.toggleSidebar)
-  const setSidebarOpen = useStore(s => s.setSidebarOpen)
-  const toggleSettings = useStore(s => s.toggleSettings)
-  const sidebarMode = useStore(s => s.sidebarMode)
-  const isMobile = useIsMobile()
-  const isEditor = sidebarMode === 'editor'
+  const section = useStore(s => s.appSection)
 
   useEffect(() => {
     loadModels()
@@ -57,40 +51,16 @@ function App() {
   }, [loadLlmStatus])
 
   return (
-    <div className="flex flex-col md:flex-row h-full w-full bg-bg-primary">
-      {/* Mobile header */}
-      {isMobile && !isEditor && (
-        <header className="h-12 shrink-0 gap-1 px-2 border-b border-border flex items-center bg-bg-secondary">
-          <button
-            onClick={toggleSidebar}
-            className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors"
-          >
-            <Menu size={20} />
-          </button>
-          <MaestroBrand compact />
-          <AppModeToggle size="sm" />
-          <div className="ml-auto flex items-center gap-0.5">
-            <GlobalQueuePopover iconSize={20} panelAlign="header-edge" />
-            <button
-              onClick={() => { setSidebarOpen(false); toggleSettings() }}
-              className="p-2 rounded-lg hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors"
-              title="Settings"
-            >
-              <Settings size={20} />
-            </button>
-          </div>
-        </header>
-      )}
-
-      {isEditor ? (
-        <EditorWorkspace />
-      ) : (
-        <>
-          <Sidebar />
-          <MainContent />
-        </>
-      )}
-      <SettingsDrawer />
+    <div className="application-shell">
+      <ApplicationHeader />
+      <div className="application-content" role="tabpanel" id={`panel-${section}`} aria-labelledby={`tab-${section}`} tabIndex={0}>
+        {section === 'projects' && <ProjectsPage />}
+        {section === 'director' && <DirectorPage />}
+        {section === 'editor' && <EditorWorkspace />}
+        {section === 'medias' && <MainContent />}
+        {section === 'configurations' && <SettingsDrawer />}
+      </div>
+      <HardwareStatusBar />
       <LoraBrowser />
       <DirectorDashboard />
       <StorageDashboard />

@@ -3,18 +3,11 @@ import {
   Bell,
   BellRing,
   Check,
-  Copy,
-  ExternalLink,
   MonitorSpeaker,
-  RefreshCw,
-  ShieldCheck,
-  Smartphone,
   Volume2,
 } from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
 import { useStore } from '../../stores/useStore'
 import * as api from '../../api/client'
-import type { TailscaleRemoteAccessStatus } from '../../types'
 import {
   disableBackgroundPush,
   enableBackgroundPush,
@@ -90,28 +83,17 @@ export function NotificationSettingsPanel() {
   const [testingHost, setTestingHost] = useState(false)
   const [testingPush, setTestingPush] = useState(false)
   const [pushState, setPushState] = useState<BackgroundPushState | null>(null)
-  const [tailscale, setTailscale] = useState<TailscaleRemoteAccessStatus | null>(null)
-  const [loadingRemote, setLoadingRemote] = useState(true)
-  const [changingRemote, setChangingRemote] = useState(false)
-  const [copiedRemoteUrl, setCopiedRemoteUrl] = useState(false)
-
   useEffect(() => subscribeDeviceNotificationPreferences(setPreferences), [])
 
   useEffect(() => {
     let cancelled = false
-    void Promise.all([
-      getBackgroundPushState(),
-      api.fetchTailscaleRemoteAccessStatus(),
-    ]).then(([nextPush, nextTailscale]) => {
+    void getBackgroundPushState().then(nextPush => {
       if (cancelled) return
       setPushState(nextPush)
-      setTailscale(nextTailscale)
     }).catch(error => {
       if (!cancelled) {
-        setMessage(error instanceof Error ? error.message : 'Remote access status is unavailable.')
+        setMessage(error instanceof Error ? error.message : 'Background notification status is unavailable.')
       }
-    }).finally(() => {
-      if (!cancelled) setLoadingRemote(false)
     })
     return () => { cancelled = true }
   }, [])
@@ -212,44 +194,6 @@ export function NotificationSettingsPanel() {
       setTestingPush(false)
       setPushState(await getBackgroundPushState())
     }
-  }
-
-  const refreshRemoteStatus = async () => {
-    setLoadingRemote(true)
-    setMessage(null)
-    try {
-      setTailscale(await api.fetchTailscaleRemoteAccessStatus())
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not read Tailscale status.')
-    } finally {
-      setLoadingRemote(false)
-    }
-  }
-
-  const handleRemoteToggle = async (enabled: boolean) => {
-    setChangingRemote(true)
-    setMessage(null)
-    try {
-      const status = enabled
-        ? await api.enableTailscaleRemoteAccess()
-        : await api.disableTailscaleRemoteAccess()
-      setTailscale(status)
-      setMessage(enabled
-        ? 'Private HTTPS access is ready. Install Tailscale on your phone and use the address below.'
-        : 'Private Tailscale access was disabled.')
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not update private access.')
-      await refreshRemoteStatus()
-    } finally {
-      setChangingRemote(false)
-    }
-  }
-
-  const copyRemoteUrl = async () => {
-    if (!tailscale?.https_url) return
-    await navigator.clipboard.writeText(tailscale.https_url)
-    setCopiedRemoteUrl(true)
-    window.setTimeout(() => setCopiedRemoteUrl(false), 1500)
   }
 
   const hostEnabled = systemConfig?.host_notification_sound_enabled ?? false
@@ -416,110 +360,6 @@ export function NotificationSettingsPanel() {
         <p className="text-[9px] leading-relaxed text-text-muted">
           Closed-app delivery uses the browser vendor&apos;s standard encrypted Web Push service. Maestro&apos;s signing key and your device subscription remain on your Maestro computer; there is no Maestro cloud account or relay.
         </p>
-      </section>
-
-      <section className="space-y-3 rounded-lg border border-border bg-bg-tertiary p-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={15} className="text-accent-blue" />
-            <div>
-              <div className="text-xs font-medium text-text-primary">Private phone access</div>
-              <div className="text-[10px] text-text-muted">Optional Tailscale HTTPS · never public</div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={refreshRemoteStatus}
-            disabled={loadingRemote}
-            aria-label="Refresh Tailscale status"
-            className="rounded p-1 text-text-muted transition-colors hover:bg-bg-hover hover:text-text-primary disabled:opacity-40"
-          >
-            <RefreshCw size={12} className={loadingRemote ? 'animate-spin' : ''} />
-          </button>
-        </div>
-
-        {loadingRemote && !tailscale ? (
-          <div className="text-[10px] text-text-muted">Checking this computer…</div>
-        ) : tailscale && !tailscale.installed ? (
-          <div className="space-y-2">
-            <p className="text-[10px] leading-relaxed text-text-muted">
-              Install the free Tailscale Personal app on this computer and your phone, then sign both into your own account. Maestro never joins or manages your tailnet.
-            </p>
-            <a
-              href={tailscale.install_url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-[10px] text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
-            >
-              Install Tailscale on this computer <ExternalLink size={10} />
-            </a>
-          </div>
-        ) : tailscale && !tailscale.connected ? (
-          <div className="space-y-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-2.5 py-2 text-[10px] leading-relaxed text-amber-100">
-            <div className="font-medium">Tailscale is installed but not connected</div>
-            <div>Open the Tailscale app on this computer, sign in, then refresh this status.</div>
-          </div>
-        ) : tailscale ? (
-          <>
-            <Toggle
-              checked={tailscale.configured && tailscale.enabled}
-              onChange={checked => void handleRemoteToggle(checked)}
-              label="Private HTTPS access"
-              description="Tailscale Serve securely proxies only devices in your personal tailnet to this local Maestro instance."
-              disabled={changingRemote}
-            />
-
-            {tailscale.https_url && tailscale.configured && (
-              <div className="space-y-3 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="rounded-lg bg-white p-2">
-                    <QRCodeSVG
-                      value={tailscale.https_url}
-                      size={132}
-                      level="M"
-                      marginSize={1}
-                    />
-                  </div>
-                  <div className="text-center text-[9px] leading-relaxed text-emerald-100">
-                    Scan after installing Tailscale on your phone and signing into the same account.
-                  </div>
-                </div>
-                <div className="break-all rounded bg-bg-primary/70 px-2 py-1.5 text-[9px] text-text-secondary">
-                  {tailscale.https_url}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={copyRemoteUrl}
-                    className="flex items-center justify-center gap-1 rounded-md border border-border px-2 py-1.5 text-[10px] text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  >
-                    {copiedRemoteUrl ? <Check size={10} /> : <Copy size={10} />}
-                    {copiedRemoteUrl ? 'Copied' : 'Copy URL'}
-                  </button>
-                  <a
-                    href={tailscale.https_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-center gap-1 rounded-md border border-border px-2 py-1.5 text-[10px] text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  >
-                    Open <ExternalLink size={10} />
-                  </a>
-                </div>
-              </div>
-            )}
-
-            <ol className="space-y-1 text-[9px] leading-relaxed text-text-muted">
-              <li className="flex gap-1.5"><span>1.</span><span>Install Tailscale on the phone and use the same personal account.</span></li>
-              <li className="flex gap-1.5"><span>2.</span><span>Open the secure URL in Safari, then Share → Add to Home Screen.</span></li>
-              <li className="flex gap-1.5"><span>3.</span><span>Open the installed Maestro app and enable System notifications above.</span></li>
-            </ol>
-          </>
-        ) : null}
-
-        <div className="flex items-start gap-1.5 rounded-md border border-border/60 bg-bg-primary/40 px-2.5 py-2 text-[9px] leading-relaxed text-text-muted">
-          <Smartphone size={11} className="mt-0.5 shrink-0" />
-          <span>Tailscale&apos;s Personal plan can be used independently by each user. This feature does not use Funnel and does not expose Maestro to the public internet.</span>
-        </div>
       </section>
 
       <section className="space-y-3 rounded-lg border border-border bg-bg-tertiary p-3">

@@ -446,6 +446,8 @@ export interface OutputFile {
  *  kept for backward-compat with any persisted UI state — it now
  *  aliases to 'workspace' + workspaceStage='director' on first read.
  */
+export type AppSection = 'projects' | 'director' | 'editor' | 'medias' | 'configurations'
+
 export type AppMode = 'workspace' | 'editor'
 /** @deprecated Use `AppMode = 'workspace'` + `workspaceStage =
  *  'director'` instead. Kept as a value-only literal so existing
@@ -1049,21 +1051,6 @@ export interface WebPushMutationResult {
   subscribed?: boolean
   unsubscribed?: boolean
   subscription_count: number
-}
-
-export interface TailscaleRemoteAccessStatus {
-  installed: boolean
-  connected: boolean
-  backend_state: string
-  dns_name: string | null
-  https_url: string | null
-  configured: boolean
-  enabled: boolean
-  target_port: number
-  install_url: string
-  platform: string
-  needs_login: boolean
-  error: string | null
 }
 
 export interface MultiClip {

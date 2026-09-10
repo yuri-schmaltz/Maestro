@@ -23,7 +23,7 @@ export function EditorRoundTripBanner() {
   const finished = roundTrip.status === 'completed' || roundTrip.status === 'failed'
   const failed = roundTrip.status === 'failed'
   return (
-    <div className="fixed left-1/2 top-3 z-[260] flex w-[min(620px,calc(100vw-1rem))] -translate-x-1/2 items-center gap-2 rounded-xl border border-border bg-bg-secondary/95 px-3 py-2.5 shadow-2xl backdrop-blur-xl">
+    <div className="fixed left-1/2 bottom-14 z-[260] flex w-[min(620px,calc(100vw-1rem))] -translate-x-1/2 items-center gap-2 rounded-xl border border-border bg-bg-secondary/95 px-3 py-2.5 shadow-2xl backdrop-blur-xl">
       {failed ? (
         <XCircle size={16} className="shrink-0 text-red-400" />
       ) : roundTrip.status === 'completed' ? (

@@ -63,7 +63,6 @@ from services.checkpoint_compatibility import (
     validate_checkpoint_file,
 )
 from services.generation_eta import AdaptiveGenerationEta, GenerationEtaHistory
-from services.remote_access import TailscaleManager
 from services.web_push import WebPushService, WebPushUnavailable
 from services.editor_projects import (
     build_editor_media_preview,
@@ -154,17 +153,9 @@ from models.minimax_h3.turbo import (
 )
 print(f"[Maestro] WanGP loaded: {len(wgp.displayed_model_types)} models available")
 
-# Optional private HTTPS + closed-app notification services. Their state is
-# stored under app/settings (already gitignored), never in a Maestro cloud
-# account. Creating them is cheap and does not require Tailscale or Web Push to
-# be installed/enabled.
+# Closed-app notification state remains local under app/settings.
 _maestro_settings_dir = os.path.join(_app_dir, "settings")
 _web_push = WebPushService(_maestro_settings_dir)
-try:
-    _maestro_server_port = int(os.environ.get("SERVER_PORT", "7860"))
-except (TypeError, ValueError):
-    _maestro_server_port = 7860
-_tailscale = TailscaleManager(_maestro_settings_dir, _maestro_server_port)
 
 # WanGP's legacy notifier fires at low-level output boundaries, which means a
 # multi-window generation or Director project can chime once per internal
@@ -6457,27 +6448,6 @@ async def test_web_push(request: Request):
     }
 
 
-@api.get("/api/v1/remote-access/tailscale/status")
-def get_tailscale_remote_access_status():
-    return _tailscale.status()
-
-
-@api.post("/api/v1/remote-access/tailscale/enable")
-def enable_tailscale_remote_access():
-    try:
-        return _tailscale.enable()
-    except RuntimeError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-
-
-@api.post("/api/v1/remote-access/tailscale/disable")
-def disable_tailscale_remote_access():
-    try:
-        return _tailscale.disable()
-    except RuntimeError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-
-
 @api.get("/api/v1/model-folders/scan")
 def scan_model_folders():
     """Discover sibling Pinokio apps with a Wan2GP-style ckpts folder.
@@ -6929,7 +6899,7 @@ def system_preflight():
             "id": "torch",
             "level": "error",
             "message": "PyTorch failed to import — the install may be "
-                       "incomplete. Try Reset then Install in Pinokio.",
+                       "incomplete. Reinstall PyTorch in the active Python environment; see README.md.",
         })
 
     # Free disk on the output drive.
@@ -28438,7 +28408,7 @@ def editor_media_cache(preview_id: str, kind: str, workspace: str = ""):
     # Preview IDs include the source path, size, and mtime, so these artifacts
     # are immutable. Explicit caching lets iOS reuse the standby deck's range
     # data when the persistent playback deck reaches the edit instead of
-    # competing with itself over Tailscale for the same proxy.
+    # requesting the same proxy data twice over the network.
     return FileResponse(
         path,
         media_type=media_type,
@@ -28582,26 +28552,11 @@ else:
 if __name__ == "__main__":
     port = int(os.environ.get("SERVER_PORT", "7860"))
 
-    # Bind-host resolution priority:
-    #   1. PINOKIO_SHARE_LOCAL — Pinokio's per-app + global ENVIRONMENT
-    #      var. "true" → 0.0.0.0 (LAN-accessible), anything else
-    #      → 127.0.0.1 (loopback only). This is the primary Pinokio path
-    #      and CRITICALLY: per-app ENVIRONMENT overrides global here
-    #      because os.environ reflects the merged shell env. (start.js's
-    #      kernel.envs only sees global, which is why we can't make this
-    #      decision in start.js — Pinokio doesn't merge per-app into
-    #      kernel.envs as of 2026-05-04.)
-    #   2. SERVER_NAME — manual override for direct python launches
-    #      outside Pinokio. Lets devs force a bind without going through
-    #      the env-var dance.
-    #   3. Default 127.0.0.1 (safe loopback).
-    pinokio_share = (os.environ.get("PINOKIO_SHARE_LOCAL") or "").strip().lower()
-    if pinokio_share == "true":
-        host = "0.0.0.0"
-    elif pinokio_share == "false":
-        host = "127.0.0.1"
-    else:
-        host = os.environ.get("SERVER_NAME", "127.0.0.1")
+    # Explicit standalone settings take precedence over the legacy share flag.
+    host = (os.environ.get("SERVER_NAME") or "").strip()
+    if not host:
+        pinokio_share = (os.environ.get("PINOKIO_SHARE_LOCAL") or "").strip().lower()
+        host = "0.0.0.0" if pinokio_share == "true" else "127.0.0.1"
 
     # Port resolution: Pinokio hands us a free port via SERVER_PORT, but a
     # stale prior instance or another app can still be holding it by the time
@@ -28632,8 +28587,8 @@ if __name__ == "__main__":
             f"\n[Maestro] ERROR: could not find a free port in "
             f"{port}-{port + 20}. Another app (or a stale Maestro instance) "
             f"is holding them.\n"
-            f"  • Close the other program, or stop the existing Maestro from "
-            f"the Pinokio menu, then Start again.\n"
+            f"  • Close the other program, or run ./stop_local.sh from the "
+            f"project root, then start Maestro again.\n"
             f"  • On Windows you can see what holds a port with: "
             f"netstat -ano | findstr :{port}\n",
             flush=True,
@@ -28645,13 +28600,6 @@ if __name__ == "__main__":
             flush=True,
         )
         port = resolved_port
-
-    # Pinokio may assign a different port on every launch (and the fallback
-    # above can move it again). Recreate the manager with the actual port,
-    # then refresh an already-opted-in private Tailscale route in the
-    # background. Local startup never waits on or requires Tailscale.
-    _tailscale = TailscaleManager(_maestro_settings_dir, port)
-    _tailscale.refresh_if_enabled()
 
     # Browsers can't navigate to 0.0.0.0 (it's a non-routable bind
     # address), so when binding wider we still SURFACE the loopback

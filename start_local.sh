@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-# Maestro — launcher local (sem Pinokio)
+# Maestro — launcher local standalone
 #
 # Sobe o backend FastAPI/Uvicorn direto, usando o venv já criado em app/env/.
-# É o equivalente "standalone" do node start.js — útil quando se roda o fork
-# sem o Pinokio desktop (que era o caso original deste fork yuri-schmaltz/Maestro).
 #
 # Uso:
 #   ./start_local.sh                  # porta padrão 7860, log em .launcher.log
@@ -29,7 +27,17 @@ SKIP_BUILD=0
 # Parse args
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --port|-p)     PORT="$2"; shift 2 ;;
+    --port|-p)
+      if [[ $# -lt 2 || ! "$2" =~ ^[0-9]{1,5}$ ]]; then
+        echo "[start_local] ERRO: --port requer um número entre 1 e 65535" >&2
+        exit 2
+      fi
+      PORT=$((10#$2))
+      if (( PORT < 1 || PORT > 65535 )); then
+        echo "[start_local] ERRO: porta deve estar entre 1 e 65535" >&2
+        exit 2
+      fi
+      shift 2 ;;
     --compile)     COMPILE_FLAG="--compile"; shift ;;
     --share)       BIND_HOST="0.0.0.0"; shift ;;
     --no-build)    SKIP_BUILD=1; shift ;;
@@ -55,8 +63,7 @@ done
 
 if [[ -z "$VENV" ]]; then
   echo "[start_local] ERRO: nenhum venv encontrado em app/env{,-sol,-rtx50}/" >&2
-  echo "             Rode install uma vez (Pinokio → Install ou manual):" >&2
-  echo "             cd app && python3 -m venv env && env/bin/pip install -r requirements.txt" >&2
+  echo "             Crie o ambiente Python conforme README.md:" >&2
   exit 1
 fi
 PY="$APP_DIR/$VENV/bin/python"
@@ -68,7 +75,7 @@ if command -v nvidia-smi >/dev/null 2>&1; then
   GPU_DRIVER=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 || true)
   echo "[start_local] GPU: ${GPU_NAME:-desconhecida} (driver ${GPU_DRIVER:-?})"
 else
-  echo "[start_local] AVISO: nvidia-smi não encontrado — backend vai rodar em CPU"
+  echo "[start_local] AVISO: nvidia-smi não encontrado — verifique o driver NVIDIA antes de gerar mídia"
 fi
 
 # --- 3. Sanity: UI buildada ---
@@ -124,7 +131,7 @@ echo "$BACKEND_PID" > "$PIDFILE"
 echo "[start_local] Backend PID: $BACKEND_PID"
 
 # --- 7. Espera o bind aparecer ---
-URL="http://${BIND_HOST}:${PORT}/"
+URL="http://127.0.0.1:${PORT}/"
 echo -n "[start_local] Aguardando bind em ${BIND_HOST}:${PORT} "
 WAITED=0
 MAX_WAIT=120
@@ -136,7 +143,7 @@ while (( WAITED < MAX_WAIT )); do
     rm -f "$PIDFILE"
     exit 4
   fi
-  if curl -sS -o /dev/null --max-time 1 "$URL" 2>/dev/null; then
+  if curl --noproxy '*' --fail -sS -o /dev/null --max-time 1 "$URL" 2>/dev/null; then
     echo " OK (após ${WAITED}s)"
     break
   fi

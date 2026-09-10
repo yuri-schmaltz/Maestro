@@ -222,14 +222,6 @@ Maestro can now report completed, failed, and queued work through:
 - encrypted Web Push for supported closed desktop browsers and an installed
   iPhone/iPad Maestro Home Screen app.
 
-Optional Tailscale integration gives Maestro a private HTTPS address in the
-user's own Tailscale network. It does not create a Maestro account, join a
-Maestro-owned network, or expose Tailscale Funnel publicly. The one-time setup
-remembers the selected backend port so the same saved address survives Maestro
-restarts. Windows setup now installs a fixed on-demand restore helper, allowing
-later Maestro starts to repair the private route without another UAC prompt.
-See [Use Maestro Remotely with Tailscale](TAILSCALE_REMOTE_ACCESS.md).
-
 ## Interface and quality-of-life improvements
 
 - New orange Maestro icon for the app, PWA, and shared header.
@@ -246,8 +238,6 @@ See [Use Maestro Remotely with Tailscale](TAILSCALE_REMOTE_ACCESS.md).
 - Gallery activation follows the item being viewed or played; playback also
   activates and unmutes that media so Studio actions target the expected clip.
 - Cleaner **Start** and LoRA-folder menus without normal Classic UI links.
-- Dynamic launch ports remain the default unless a user explicitly enables
-  persistent Tailscale access.
 - The v1.9.1 llama.cpp nightly-download hotfix is retained, with a newer runtime
   floor needed by Qwen3.8.
 
@@ -257,9 +247,6 @@ Run your normal update flow, then start Maestro normally. Existing models,
 outputs, workspaces, Director projects, presets, and local settings are
 preserved. A hard browser refresh may be needed if an old UI bundle remains
 cached after the first v2.0 launch.
-
-Tailscale is optional and is not installed or configured for users who do not
-select **Secure Remote Access (Tailscale)**.
 
 ## Release validation
 

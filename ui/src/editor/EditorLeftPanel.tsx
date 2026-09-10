@@ -1,5 +1,4 @@
 import { FolderOpen, SlidersHorizontal, X } from 'lucide-react'
-import { AppModeToggle, MaestroBrand } from '../components/AppModeNavigation'
 import { useStore } from '../stores/useStore'
 import { EditorInspector } from './EditorInspector'
 import { EditorMediaBin } from './EditorMediaBin'
@@ -23,9 +22,8 @@ export function EditorLeftPanel({ mobile = false }: { mobile?: boolean }) {
     >
       {mobile && (
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-          <MaestroBrand />
+          <span className="text-sm font-semibold">Editor tools</span>
           <div className="flex items-center gap-1.5">
-            <AppModeToggle size="sm" />
             <button
               type="button"
               onClick={() => setSidebarOpen(false)}

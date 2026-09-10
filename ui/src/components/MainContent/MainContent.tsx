@@ -4,14 +4,12 @@ import { TabFilter } from './TabFilter'
 import { ThumbnailGallery } from './ThumbnailGallery'
 import { MediaFeedItem } from './MediaFeedItem'
 import { DirectorReview } from '../DirectorDashboard/DirectorReview'
-import { GlobalQueuePopover } from '../GlobalQueuePopover'
 import { useStore } from '../../stores/useStore'
-import { useIsMobile } from '../../lib/useIsMobile'
 import { formatEstimatedClock, formatEtaDuration } from '../../lib/format'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../../lib/promptEnhancementActivity'
 import type { GenerationJob } from '../../types'
 
-function WorkspaceSelector() {
+export function WorkspaceSelector() {
   const workspaces = useStore(s => s.workspaces)
   const activeWorkspace = useStore(s => s.activeWorkspace)
   const browsingUploads = useStore(s => s.browsingUploads)
@@ -84,7 +82,7 @@ function WorkspaceSelector() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-56 bg-bg-secondary border border-border rounded-lg shadow-lg z-50 overflow-hidden">
+        <div className="absolute left-0 bottom-full mb-2 w-64 bg-bg-secondary border border-border rounded-lg shadow-lg z-50 overflow-hidden">
           <div className="px-2 py-1.5 border-b border-border">
             <span className="text-[10px] text-text-muted uppercase tracking-wider">Workspaces</span>
           </div>
@@ -371,7 +369,7 @@ function JobPlaceholder({ job, onStop, onDismiss }: { job: GenerationJob; onStop
   )
 }
 
-function PipelinePlaceholder() {
+export function PipelinePlaceholder() {
   const pipelineStatus = useStore(s => s.pipelineStatus)
   const pipelineId = useStore(s => s.pipelineId)
   const stopPipeline = useStore(s => s.stopPipeline)
@@ -528,9 +526,8 @@ function PipelinePlaceholder() {
 }
 
 export function MainContent() {
-  const isMobile = useIsMobile()
+  const standalone = useStore(s => s.appSection === 'medias')
   const outputs = useStore(s => s.filteredOutputs())
-  const outputsTotal = useStore(s => s.outputsTotal)
   const outputsLoading = useStore(s => s.outputsLoading)
   const jobs = useStore(s => s.jobs)
   const isEnhancing = useStore(s => s.isEnhancing)
@@ -888,19 +885,11 @@ export function MainContent() {
   }, [startIndex, endIndex, outputs, activeIndex, activateIndex, handlePlaybackStart, handleItemMeasured, itemOffsets])
 
   return (
-    <main className="flex-1 flex flex-col h-full overflow-hidden">
+    <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
       {/* Top bar */}
-      <div className="flex h-14 items-center justify-between gap-2 border-b border-border px-4">
+      <div className="flex min-h-14 shrink-0 items-center gap-2 border-b border-border px-4">
         <TabFilter />
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="hidden text-xs text-text-muted xl:block">
-            {outputsTotal > outputs.length
-              ? `${outputs.length} / ${outputsTotal} items`
-              : `${outputs.length} ${outputs.length === 1 ? 'item' : 'items'}`}
-          </div>
-          <WorkspaceSelector />
-          {!isMobile && <GlobalQueuePopover />}
-        </div>
+
       </div>
 
       {/* Content area: feed + thumbnails */}
@@ -966,7 +955,7 @@ export function MainContent() {
                   </div>
                   <p className="text-sm text-text-secondary">Your generated {noun} will appear here.</p>
                   <ol className="text-xs text-text-muted space-y-1.5 text-left">
-                    <li><span className="text-accent-blue font-medium">1.</span> Pick a model in the sidebar (a good default is already selected).</li>
+                    <li><span className="text-accent-blue font-medium">1.</span> {standalone ? 'Open Director → Studio and choose a model.' : 'Choose a model in the controls on the left.'}</li>
                     <li><span className="text-accent-blue font-medium">2.</span> Type a prompt — e.g. <span className="text-text-secondary italic">“{example}”</span></li>
                     <li><span className="text-accent-blue font-medium">3.</span> Hit Generate.</li>
                   </ol>
@@ -975,6 +964,7 @@ export function MainContent() {
                     once (often tens of GB) before generation starts — later runs
                     are fast. Progress shows at the bottom-right.
                   </p>
+                  {standalone && <button onClick={() => useStore.getState().closeDirectorStage()} className="shell-primary-button">Open Studio</button>}
                   <button
                     onClick={() => useStore.getState().setRecipesOpen(true)}
                     className="mt-1 flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent-blue/10 border border-accent-blue/30 rounded-lg text-accent-blue hover:bg-accent-blue/20 transition-colors"

@@ -90,7 +90,7 @@ previous item.
   desktop Web Push subscriptions even though foreground tests worked.
 - Maestro now parses its persisted VAPID PEM key explicitly before signing a
   push and uses a public-domain contact claim accepted by Apple's push service.
-  Existing device subscriptions, permissions, and Tailscale Home Screen apps
+  Existing device subscriptions, permissions, and installed Home Screen apps
   remain valid; users do not need to enroll again.
 - Notification settings now distinguish the foreground-only test from the
   closed-app test, so a local browser alert cannot be mistaken for proof that

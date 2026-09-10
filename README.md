@@ -67,10 +67,9 @@ Appearance mode is **Dark / Light / Auto** — Auto follows your system's appear
 ### 📂 Workspaces
 Multiple isolated output directories with a quick switcher in the sidebar. Useful for separating client projects, NSFW vs SFW, or experiments. Pinned and favorited outputs are tracked per workspace.
 
-### 🔔 Completion alerts and private phone access
+### 🔔 Completion alerts
 - In-app alerts, optional browser notifications, per-device chimes, and a host-computer completion sound are available under **Settings → Notifications**.
 - Encrypted Web Push can notify an installed iPhone/iPad Home Screen app or supported desktop browser even after Maestro is closed.
-- Optional **Tailscale Serve** support gives each user a private, trusted HTTPS address for Maestro using their own Tailscale account. It is restricted to that user's tailnet—Maestro never enables public Tailscale Funnel access and does not operate a cloud relay.
 
 ### 🔒 Mature mode + experimental gate
 - **NSFW mode** is opt-in with a disclaimer step. Disabled by default. Gates uncensored model variants, NSFW LoRAs in the CivitAI browser, and the Settings → Services NSFW toggle.
@@ -81,7 +80,7 @@ View all past Director runs with their full state — clip plans, generated imag
 
 ## Updates
 
-The version you are running is shown next to the Maestro title in the UI. To update, use the launcher's Update button when using the launcher.
+The version you are running is shown next to the Maestro title in the UI. For standalone update commands, see [Updating](#updating).
 
 ### v2.0.1 (2026-09-04)
 
@@ -112,12 +111,12 @@ See the [complete v2.0.1 release notes](docs/RELEASE_NOTES_V2.0.1.md).
 - Added Qwen3.8 27B Uncensored with creative thinking controls, prompt-enhancement telemetry, and non-thinking structured-output paths.
 
 **Remote workflow and release polish**
-- Added completion alerts, optional chimes, encrypted closed-app Web Push, an installable Maestro web app, and optional private HTTPS access through each user's own Tailscale account. Windows restores opted-in Tailscale access after Maestro restarts without repeated approval prompts.
+- Added completion alerts, optional chimes, encrypted closed-app Web Push, and an installable Maestro web app.
 - Added per-clip, multi-window, and full Director completion estimates, including cache-aware calibration for First Block Cache and private local timing history for more accurate future estimates.
 - Expanded gallery details and search across model, resolution, LoRAs, H3 optimizations, prompts, window counts, and generation timing, while making the viewed or playing clip the reliable active Studio target.
 - Updated Maestro's orange app icon, unified the responsive Director / Studio / Editor header and version display, added Director first-frame thumbnails and full-rate iOS Editor preview playback, simplified the launcher menu, and preserved the v1.9.1 llama.cpp nightly-download hotfix.
 
-See the [complete v2.0 release notes](docs/RELEASE_NOTES_V2.0.md) and [Tailscale setup guide](docs/TAILSCALE_REMOTE_ACCESS.md).
+See the [complete v2.0 release notes](docs/RELEASE_NOTES_V2.0.md).
 
 ### v1.9.1 (2026-08-25)
 
@@ -698,7 +697,7 @@ Initial public release. See [CHANGELOG.md](CHANGELOG.md) for the full feature ru
 | **GPU** | NVIDIA, 6 GB VRAM | NVIDIA RTX 3090 / 4090 / 5090, 24 GB+ VRAM |
 | **System RAM** | 16 GB | 32 GB+ |
 | **Disk space** | **150 GB free** | **500 GB free** (for full model collection) |
-| **Python** | Auto-installed by the launcher | — |
+| **Python** | Python 3.12 for the standalone environment below | — |
 
 **What to expect by GPU** (rough ballpark — varies with model, resolution, and length):
 
@@ -712,93 +711,98 @@ The first video is always the slow one: install is ~10–20 min, then the first 
 
 > ⚠ **AMD GPUs and macOS are not currently supported.** The pipeline depends on CUDA and several NVIDIA-only kernels. MacOS support is in development.  
 
-> ⚠ **Model downloads are large.** A typical install pulls **50–100 GB** of model weights on first launch. The full collection can exceed **300 GB**. Make sure you have headroom on the drive where the launcher is installed. However, only models requested during generation will be downloaded. 
+> ⚠ **Model downloads are large.** A typical install pulls **50–100 GB** of model weights on first launch. The full collection can exceed **300 GB**. Make sure you have headroom on the drive containing Maestro. However, only models requested during generation will be downloaded.
 
 ## Install
 
-1. Install [the launcher](https://example.com).
-2. In the launcher, open the **Discover** tab and search for *Maestro* — or click the **Download** button on the [Maestro repo page](https://github.com/Blizaine/Maestro) and paste the URL.
-3. Click **Install**. The launcher will:
-   - Create the hardware-matched Python environment: `app/env-sol/` on supported RTX 40-class GPUs, `app/env-rtx50/` on RTX 50-series GPUs, or `app/env/` on other supported NVIDIA GPUs
-   - Install all Python dependencies (torch, xformers, transformers, fastapi, …)
-   - Build the React UI in `ui/`
-4. When install finishes, click **Start**. The first generation in each model triggers a one-time weight download.
+From the repository root, create the standalone Python environment and build
+the UI (the commands below use the CUDA 12.8 runtime verified on this fork):
 
-The install (without model downloads) typically takes **10–20 minutes** depending on internet speed. SAM 3.1 (used only for the experimental Inpaint feature) is **not installed by default** — install it on demand via the launcher menu → "Install Inpaint Support (SAM 3.1)" if you want to use Inpaint.
+```bash
+cd app
+python3.12 -m venv env
+env/bin/pip install --upgrade pip
+env/bin/pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu128
+env/bin/pip install -r requirements.txt
+cd ../ui
+npm install
+npm run build
+cd ..
+./start_local.sh
+```
 
-Maestro does **not** require a Maestro account or a Hugging Face account. Its default managed models download anonymously from public sources. If you intentionally use custom gated assets or want higher Hugging Face download limits, choose **Connect Hugging Face (Optional)** in the launcher launcher menu.
-
-Supported RTX 40- and 50-series cards use Maestro's standard Python 3.11, PyTorch 2.10, CUDA 13 H3 performance runtime. NVIDIA driver 580 or newer is required for that runtime. Existing installations migrate automatically through the normal **Update** action; RTX 40 migrations are created alongside the prior `app/env/` environment so a failed or interrupted upgrade can still launch the compatibility runtime. On Linux, Maestro installs tested prebuilt SageAttention and FlashAttention wheels rather than compiling them against the host CUDA toolkit; if either optional wheel is temporarily unavailable, the required Sol runtime still completes and uses Sol/SDPA fallback. Maestro prints a short runtime audit at startup. If it reports a missing H3 kernel after Update completes, use **Advanced → Repair H3 Performance Runtime** in the launcher menu.
-
-MiniMax H3 offers an optional **Sol Engine (Experimental)** sparse-attention backend inside the H3 Optimizations panel. Its runtime support is installed and launched by default on compatible hardware; there is no separate Sol installer or Start mode. The optimization toggle remains per-generation so existing projects do not silently change their rendering recipe. The first Sol generation compiles Triton kernels and can start more slowly. RTX 20/30-series GPUs remain on SageAttention because the optimized Sol kernels do not support their compute architecture. If Sol cannot handle a call, Maestro reports it once and falls back to the normal dense H3 attention path.
-
-On one RTX 4090 test system, a 14.4-second 720p H3 generation at 30 steps measured 23m43s with neither optimization, 19m30s with Sol, 17m54s with First Block Cache, and 12m59s with both. Treat these as a directional example only: model choice, prompt/reference load, resolution, drivers, cache threshold, and hardware all affect speed and quality.
+The launcher selects `app/env-sol`, then `app/env-rtx50`, then `app/env` if
+present. Model weights download when requested; existing weights remain in
+`app/ckpts/`. Optional acceleration and SAM environments are not installed by
+these commands. No automatic hardware-runtime migration is performed.
 
 ### Updating
 
-Click **Update** in the launcher menu. This pulls the latest launcher scripts and app code, migrates or repairs the active hardware runtime when needed, reinstalls new Python dependencies, and rebuilds the React UI. When an older RTX 40 installation first receives the unified H3 runtime, the launcher automatically continues into the one-time migration after the code pull.
+Stop Maestro, update your checkout, install dependencies in the environment
+used by the launcher, and rebuild the UI. For the `app/env` setup above:
+
+```bash
+./stop_local.sh
+git pull --ff-only
+app/env/bin/pip install -r app/requirements.txt
+cd ui
+npm install
+npm run build
+cd ..
+./start_local.sh
+```
+
+If using `env-sol` or `env-rtx50`, use that environment's pip instead.
 
 ### Resetting
 
-The `app/env-sol/` H3 performance environment is removed along with the other Maestro environments.
-
-Click **Reset** to wipe the install and start over. Removes `app/env/`, `app/env-sol/`, `app/env-rtx50/`, `ui/node_modules/`, `ui/dist/`, and the SAM venv if installed. Model checkpoints in `app/ckpts/` are NOT removed by default — delete them manually if you want a true fresh start.
+Stop Maestro before recreating a Python environment or reinstalling UI
+dependencies. There is no Reset menu in this fork. Keep `app/ckpts/`,
+`app/settings/` and your output folders to preserve models, preferences and media.
 
 ## Usage
 
-After clicking **Start**, the launcher shows an **Open Web UI** button once the server is up.
+Run `./start_local.sh` and open the printed URL (default
+`http://127.0.0.1:7860/`). Stop with `./stop_local.sh`.
 
-- **Top navigation** — switch between Director, Studio, and Editor without leaving the current project
-- **Studio sidecar** — workflow and model picker, prompt, references, LoRAs, and advanced settings
-- **Main workspace** — generated outputs, Director pipeline status, or the full Editor canvas and timeline
-- **Settings drawer** (gear icon) — model visibility, performance auto-tune, services (LLM, API keys, NSFW, theme)
-- **the launcher menu** — Update, Reset, Install Inpaint Support, LoRA folder shortcuts
+- **Projects** — create and open production workspaces; this is the home page.
+- **Director** — plan Music Videos and Short Films, review productions, or use
+  the **Studio** subview for manual generation.
+- **Editor** — edit timelines and export finished videos.
+- **Medias** — browse, filter and reuse generated media.
+- **Configurations** — manage performance, integrations and notifications.
+- **Status bar** — switch workspaces, check media counts and view live GPU,
+  CPU, RAM and model status across all sections. Expand it for details.
+- **Custom port** — `./start_local.sh --port 7900`.
+- **Compilation** — `./start_local.sh --compile`.
+
+The launcher builds the UI only when `ui/dist/index.html` is missing; rebuild
+manually after frontend changes.
 
 ## Sharing on the local network
 
-Maestro honors the `PINOKIO_SHARE_LOCAL` environment variable (inherited from its historical launcher integration). Set it to `false` to bind the server to loopback only; set to `true` for LAN access. The variable is read from the shell environment when `start_local.sh` (or `launch.py` directly) launches the backend, so put it in your shell session or export it inline.
+Use `./start_local.sh --share` to listen on `0.0.0.0`; the default listens on
+`127.0.0.1`. Open `http://<computer-LAN-IP>:7860/` from another device.
+For direct `launch.py` launches, `SERVER_NAME` takes priority. The legacy
+`PINOKIO_SHARE_LOCAL=true` setting enables LAN access only when `SERVER_NAME`
+is unset or empty; otherwise the explicit address wins.
 
-## Private HTTPS and phone notifications
+## Notifications
 
-For complete first-time setup and troubleshooting, see [Use Maestro Remotely with Tailscale](docs/TAILSCALE_REMOTE_ACCESS.md).
+Use **Configurations → Notifications** for system notifications, device chimes,
+host sounds and Web Push. Browser notifications require a secure context
+(HTTPS or localhost); HTTPS hosting must be configured separately for remote
+access. Web Push keys and subscriptions remain in `app/settings/web_push.json`.
 
-Tailscale is optional. Its Personal plan is suitable for an individual connecting their own devices; every Maestro user signs into their own Tailscale account rather than joining a Maestro-owned network.
-
-1. Install Tailscale on the Maestro computer and phone, then sign both into the same account.
-2. Start Maestro. In the launcher menu choose **Secure Remote Access (Tailscale)**, or use **Settings → Notifications → Private HTTPS access** when the operating system permits non-elevated setup.
-3. Scan/copy the private `https://…ts.net` address shown in Maestro's Notifications settings.
-4. On iPhone/iPad, open that address in Safari, use **Share → Add to Home Screen**, open the installed Maestro app, and enable **System notifications**.
-
-The one-time Secure Remote Access action remembers Maestro's actual backend port and reuses it on future starts. On Windows it also registers a fixed, on-demand restore helper for that loopback target, so Maestro can repair the private route on later starts without another UAC prompt. Users who enabled an earlier v2 preview should run the action one final time after updating. If the saved port is occupied and Maestro falls back to another one, run Secure Remote Access once to adopt the new port. Disable it from Notifications settings or run `tailscale serve --https=443 off`. Maestro will refuse to overwrite a different existing Serve route. Web Push signing keys and browser subscriptions live only in `app/settings/web_push.json` (a gitignored local file). Notification payloads travel directly from the local Maestro host to the browser vendor's encrypted Web Push endpoint.
-
-### Notification and remote-access API
-
-The same local endpoints used by the UI are available for automation. For example:
+### Notification API
 
 ```bash
-# Curl
-curl http://127.0.0.1:7860/api/v1/remote-access/tailscale/status
 curl http://127.0.0.1:7860/api/v1/notifications/push/status
 ```
 
-```python
-# Python
-import requests
-
-status = requests.get(
-    "http://127.0.0.1:7860/api/v1/remote-access/tailscale/status",
-    timeout=10,
-).json()
-print(status.get("https_url"))
-```
-
-```javascript
-// JavaScript
-const status = await fetch('/api/v1/remote-access/tailscale/status').then(r => r.json())
-console.log(status.https_url)
-```
-
-Mutating endpoints are `POST /api/v1/remote-access/tailscale/enable`, `POST /api/v1/remote-access/tailscale/disable`, `POST|DELETE /api/v1/notifications/push/subscribe`, and `POST /api/v1/notifications/push/test`. A Push subscription contains browser-issued endpoint and encryption keys and should be treated as private local configuration.
+Subscription endpoints are `POST|DELETE /api/v1/notifications/push/subscribe`;
+`POST /api/v1/notifications/push/test` sends a test notification. Browser-issued
+subscription endpoints and encryption keys are private local configuration.
 
 ## Credits
 
@@ -815,8 +819,7 @@ Maestro is built on top of, and indebted to, the following projects:
 - [**MMAudio**](https://github.com/hkchengrex/MMAudio) — automatic ambient audio generation.
 - [**CivitAI**](https://civitai.com) — LoRA browser and weight recommendations.
 - [**llama.cpp**](https://github.com/ggml-org/llama.cpp) — local LLM inference engine.
-- [**the launcher**](https://example.com) by [@cocktailpeanut](https://github.com/cocktailpeanut) — the launcher framework.
-- The original the launcher Wan2GP launcher by [@cocktailpeanut](https://github.com/cocktailpeanut), which Maestro forks and extends.
+- The original launcher integration and Wan2GP launcher by [@cocktailpeanut](https://github.com/cocktailpeanut), from which this standalone fork descends.
 
 ## License
 

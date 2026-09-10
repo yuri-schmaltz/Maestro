@@ -2,7 +2,7 @@
 
 The library deliberately stores copies beneath ``uploads/characters`` rather
 than remembering temporary upload paths.  A saved character can therefore be
-recalled from another browser (including a Tailscale-connected phone) without
+recalled from another browser (including a connected phone) without
 depending on browser-local storage.
 """
 

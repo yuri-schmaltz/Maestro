@@ -1,171 +1,131 @@
 # Handoff — Maestro fork standalone (2026-09-10)
 
-> **Para:** próximo mantenedor do fork
-> **De:** agente GitHub Copilot (sessão 2026-09-09/10)
-> **Estado:** working tree em `main` @ `ac399a5`, 3 commits à frente de `origin/main`
+## Estado e escopo
 
----
+Fork local baseado em `Blizaine/Maestro v2.0.1`, executado por scripts Bash e
+ambiente Python local. Os scripts e menus do antigo launcher foram removidos.
+Compatibilidade com configurações legadas ainda existe no backend; referências
+históricas não significam dependência do launcher.
 
-## Resumo do fork
+O HEAD verificado antes desta revisão é `1c3a241`, que já inclui o alinhamento
+dos headers e a versão anterior deste handoff. As correções descritas abaixo
+estão no working tree, sem commit nem push. Não use uma contagem antiga de
+commits à frente do remoto como estado atual; consulte `git status` e `git log`.
 
-Fork local do Maestro (base `Blizaine/Maestro v2.0.1`) consolidado como **distribuição standalone**, sem dependência do launcher Pinokio. Tudo o que era Pinokio (instaladores, manifest, scripts de update, scripts de Start/Sol/Classic/Tailscale/SAM/Reset) foi removido; substituído por dois scripts Bash na raiz + instalação manual do venv Python.
+## Como executar
 
-### Como rodar
-
-```bash
-# 1. venv Python (uma vez — equivalent of pinokio install)
-cd app && python3 -m venv env
-env/bin/pip install --upgrade pip
-env/bin/pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu128
-env/bin/pip install -r requirements.txt
-touch env/.maestro_torch_v1.installed env/.maestro_flash_disabled_v2.installed
-
-# 2. UI (uma vez — equivalent of pinokio update rebuilding ui)
-cd ../ui && npm install && npm run build && cd ..
-
-# 3. Sobe o backend (start automática UI build se ui/dist/ faltar)
-./start_local.sh                  # loopback, porta 7860
-./start_local.sh --port 7900      # porta custom
-./start_local.sh --share          # 0.0.0.0 (LAN)
-./start_local.sh --compile        # passa --compile para launch.py
-
-./stop_local.sh                   # SIGTERM gracioso
-```
-
-`start_local.sh` é quem cuida de:
-- Detectar venv disponível (`env-sol` → `env-rtx50` → `env` legacy)
-- Mostrar GPU/driver via `nvidia-smi`
-- Auto-build UI se `ui/dist/` ausente
-- Limpar instância anterior (pidfile + holder da porta)
-- Subir backend em background com log em `app/.launcher.log`
-- Aguardar o bind (curl em loop de 1s, timeout 120s)
-
----
-
-## Commits entregues nesta sessão (3)
-
-### `ac399a5` — feat(ui): default Director-as-Stage to discoverable
-**Problema:** a skill chooser (Music Video / Short Film) ficou invisível para quem abria o app fresco, porque o flag `workspaceUnifiedDirector` carregava `false` por default e `workspaceStage` carregava `'studio'`.
-
-**Mudanças em `ui/src/stores/useStore.ts`:**
-- `workspaceUnifiedDirector` agora default `true`; lê `'0'` explícito do localStorage como opt-out (null/undefined = opt-in)
-- `workspaceStage` agora default `'director'` (era `'studio'`)
-
-**Resultado:** primeiro launch abre o `<DirectorStage>` automaticamente com os 4 cards de skill visíveis (Music Video, Short Film, Video Podcast [coming soon], Viral Video [coming soon]). Fechar o Stage via botão "Close Director stage" da header; voltar via botão "Studio" no mesmo lugar.
-
-**Migração:** usuários existentes que tinham `'1'` em localStorage não veem mudança (já estavam opt-in). Quem tinha o app aberto antes vai ver Stage abrir ao recarregar — esse é o novo discoverability.
-
-### `d3f59b6` — Refactor README and documentation for launcher integration
-**Escopo (já commitado por você antes):** restaurou `CONTRIBUTING.md`, `THIRD_PARTY_NOTICES.md`, `docs/RELEASE_NOTES_V2.0.md`, `docs/RELEASE_NOTES_V2.0.1.md`, `docs/TAILSCALE_REMOTE_ACCESS.md` do HEAD anterior, com limpeza de todas as referências a Pinokio (mantido `PINOKIO_SHARE_LOCAL` como nome técnico de env var que o `launch.py` ainda lê). Também confirmou deleção de 3 docs pessoais (`docs/ANALISE-*`, `IMPLEMENTACAO-*`, `MONITORAMENTO-*`) e de `scripts/control_gauntlet.py` (runner pessoal).
-
-**O que mudou nos docs:**
-- `CONTRIBUTING.md` reescrito para fluxo standalone (`python3 -m venv env && pip install -r requirements.txt`)
-- `TAILSCALE_REMOTE_ACCESS.md` reescrito (passos não dependem mais do menu Pinokio)
-- `RELEASE_NOTES_V2.0.md` + `v2.0.1.md`: seção Updating reescrita ("Run your normal update flow" em vez de "Use Update from Maestro's Pinokio page")
-- Bulk substituições via sed em `README.md` (19 ocorrências) e `CHANGELOG.md` (4 ocorrências) preservando o histórico
-
-### `d798e60` — feat: Implement gauntlet control and monitoring features
-**Escopo (já commitado antes):** feature nova do fork com suite de "gauntlet control", monitoramento local, e logs LLM. Está no commit antes do cleanup e antes do HEAD atual, então ainda referenced em `docs/release_todo.md` (gitignored).
-
----
-
-## Arquivos chave do fork
-
-### Launchers (raiz)
-
-| Arquivo | Função |
-|---|---|
-| `start_local.sh` | Sobe o backend, detecta venv, valida GPU, auto-build UI, aguarda bind |
-| `stop_local.sh` | Para o backend via SIGTERM/SIGKILL grace |
-
-### Backend (app/)
-
-| Arquivo | Função |
-|---|---|
-| `app/launch.py` | Entry point FastAPI/Uvicorn (28.5K linhas) |
-| `app/wgp.py` | Backend WanGP upstream (20K linhas) |
-| `app/env/bin/python` | venv Python 3.12 com torch+CUDA 12.8 |
-| `app/.launcher.{pid,log}` | Controle do `start_local.sh` |
-
-### Frontend (ui/)
-
-| Arquivo | Função |
-|---|---|
-| `ui/src/stores/useStore.ts` | Zustand store; mudou default de `workspaceUnifiedDirector`/`workspaceStage` |
-| `ui/src/components/Stages/DirectorStage.tsx` | Renderiza o skill chooser |
-| `ui/src/components/Sidebar/Sidebar.tsx` | Header com botão Director (linhas 321+) |
-| `ui/src/components/MainContent/MainContent.tsx` | Header de mídias alinhado a `h-14` (próxima seção) |
-| `ui/dist/assets/index-*.js` | Bundle Vite (1.4 MB) |
-
-### Mudança de UI restante (não commitada)
-
-Sessão atual ainda tem uma mudança em `ui/src/components/MainContent/MainContent.tsx` linha 891:
-
-```diff
-- <div className="px-2 md:px-6 py-2 md:py-3 border-b border-border flex items-center justify-between gap-2">
-+ <div className="flex h-14 items-center justify-between gap-2 border-b border-border px-4">
-```
-
-**Por quê:** header de mídias (TabFilter + WorkspaceSelector) estava com altura responsiva (`py-2 md:py-3` = 40-44px) enquanto o header Maestro tem `h-14` (56px fixo). Os borders-bottom ficavam em eixos Y diferentes — visivelmente desalinhado.
-
-**Fix:** ambos passam a usar `h-14` + `px-4` + `items-center` + `border-b` idênticos. TabFilter interno (`py-1`) fica centrado pelos 56px do container sem precisar ajustar.
-
-**Status:** modificação em working tree, ainda não commitada. Rebuild UI feito (`npm run build` 5.64s, 1.41 MB JS).
-
----
-
-## Tasks em aberto
-
-1. **Commit do header alignment** — diff pronto em `ui/src/components/MainContent/MainContent.tsx`. Mensagem sugerida:
-   ```
-   fix(ui): align media gallery header with maestro header
-   
-   Both top bars now use h-14 + px-4 + border-b + items-center so the
-   divider lines land on the same Y axis. The TabFilter's internal
-   py-1 stays centred within the 56px container.
-   ```
-
-2. **CHANGELOG.md desatualizado** — a entrada `[Unreleased] / Director-as-Stage` ainda diz *"flag defaults to off"* (escrita antes do commit `ac399a5`). Vale atualizar para refletir o novo default `true` e o `workspaceStage: 'director'`.
-
-3. **Backend ainda OK** — `app/env/` (9.2 GB), `app/ckpts/` (30 GB), `ui/dist/` todos intactos. `./start_local.sh` rodando em PID atual, basta `tail -f app/.launcher.log` para acompanhar.
-
-4. **Smoke tests da pasta `tests/`** — foram **inteiramente removidos** no commit `2f96b76`. Se quiser reintroduzir, dá pra `git checkout 5f50095 -- tests/` para restaurar tudo de uma vez.
-
-5. **Tailscale daemon-side** — o backend tem `services/remote_access.py` funcional, mas o glue entre ele e o `<DirectorStage>` UI é frágil. Toda a parte `tailscale_setup.js` Pinokio foi removida. Persistência fica em `app/settings/remote_access.json` quando o usuário ativa via Settings → Notifications → Private phone access.
-
----
-
-## Verificações que rodei
-
-- `start_local.sh` smoke test: bind em 17s, 3 endpoints HTTP 200 (`/`, `/classic/`, `/docs`)
-- `stop_local.sh`: SIGTERM gracioso, libera porta
-- GPU: NVIDIA GeForce RTX 3060 (SM 86), driver 595, CUDA 12.8 (via torch 2.7.1+cu128)
-- 199 modelos disponíveis via `Maestro WanGP loaded`
-- Build UI: tsc-via-vite em ~5-6s, 1.41 MB JS, 108 KB CSS, 0 type errors
-- Python imports: `torch`, `mmgp 3.7.12`, `diffusers 0.36.0`, `transformers 4.57.1`, `fastapi 0.141.1`, `gradio 5.29.0` — todos OK
-
----
-
-## Como retomar
-
-Tudo já está commitado localmente em `main` (3 commits à frente de `origin/main`). Para publicar:
+Siga [README — Install](README.md#install) para criar `app/env` com Python 3.12,
+PyTorch 2.7.1/CUDA 12.8 e dependências, e construir a UI.
 
 ```bash
-git push origin main
+./start_local.sh                 # 127.0.0.1:7860
+./start_local.sh --port 7900     # porta explícita
+./start_local.sh --share         # 0.0.0.0, acesso LAN
+./start_local.sh --compile       # encaminha --compile ao backend
+./stop_local.sh
 ```
 
-Para voltar ao skill chooser se ele sumir por alguma razão:
+O script seleciona `env-sol` → `env-rtx50` → `env`, informa GPU/driver,
+constrói a UI se `ui/dist/index.html` estiver ausente, inicia o backend e
+aguarda resposta HTTP de sucesso. O probe usa loopback e ignora proxies do
+ambiente, inclusive com `--share`. Portas inválidas são rejeitadas antes do
+lançamento. PID e log ficam em `app/.launcher.pid` e `app/.launcher.log`.
+
+`SERVER_NAME` explícito agora prevalece sobre `PINOKIO_SHARE_LOCAL`. Assim,
+a variável legada não inverte o comportamento de `start_local.sh`. Em execução
+direta de `launch.py`, ela continua servindo de fallback sem `SERVER_NAME`.
+
+Rebuild após mudanças de frontend: `cd ui && npm run build`. O script não
+detecta código-fonte mais recente quando já existe um bundle.
+
+## Implementações confirmadas
+
+- **Interface reorganizada:** cinco abas centrais no header: Projects,
+  Director, Editor, Medias e Configurations. Projects é a página inicial.
+- **Projects:** espaços de trabalho com criação, pesquisa, abertura e exclusão
+  confirmada. Atalhos para Director, Editor, Medias e produções salvas.
+- **Director:** Planning e Studio na mesma seção. Revisão/aprovação e progresso
+  de produção continuam acessíveis, inclusive em telas pequenas.
+- **Skills:** Music Video e Short Film disponíveis; Video Podcast e Viral
+  Video permanecem desabilitados como funcionalidades futuras.
+- **Configurations:** página própria com Performance, Integrations e Notifications.
+- **Barra de status:** única e global, em toda a largura inferior. Projeto ativo,
+  contagem de mídias, GPU/VRAM, CPU/RAM e modelo; detalhes expansíveis acima.
+- **Editor:** troca de abas preserva histórico e salva alterações pendentes.
+- **Compatibilidade:** atalhos antigos para Studio/Director/Editor selecionam a
+  aba correspondente; a flag legada não oculta mais a navegação Director.
+- **Documentação:** CHANGELOG corrigido para os defaults atuais; README substitui menus removidos por instruções standalone. Mensagens
+  de erro de PyTorch e porta não encaminham mais ao antigo launcher.
+- **Controle:** `ui/scripts/control-gauntlet.mjs` verifica snapshots, revisão
+  persistida, reordenação e operações na timeline.
+- **Acesso remoto integrado removido:** serviço Tailscale, rotas, controles
+  da interface, guia de configuração e dependência de QR code foram removidos.
+  Notificações e acesso LAN via `--share` permanecem.
+
+## Histórico corrigido
+
+- `ac399a5`: defaults do Director.
+- `d3f59b6`: limpeza de documentação e exclusão de documentos pessoais/runner.
+- `d798e60`: adicionou **documentação**, não implementação de monitoramento.
+  O relatório de monitoramento descrevia uma coleta temporária da sessão,
+  sem serviço permanente. Logs e UI de acompanhamento existentes não devem
+  ser confundidos com um coletor contínuo novo.
+- `2f96b76`: removeu a antiga suíte Python. Ela não foi restaurada integralmente.
+  Esta revisão adiciona apenas `tests/test_standalone_launch.py` para as
+  regressões de execução standalone. Os testes em `ui/` permanecem disponíveis.
+
+## Validação
+
+Na análise anterior às correções:
+
+- UI: `npm run build` aprovado, incluindo TypeScript; avisos de bundle grande
+  e import estático/dinâmico, sem erro de build.
+- `npm run test:control`: aprovado.
+- Instância existente: `/`, `/classic/` e `/docs` responderam HTTP 200.
+- Imports: torch `2.7.1+cu128`, mmgp `3.7.12`, diffusers `0.36.0`,
+  transformers `4.57.1`, fastapi `0.141.1`, gradio `5.29.0` aprovados.
+- CUDA 12.8 disponível; RTX 3060, driver 595.84.
+
+Após as correções: os três testes standalone passaram (incluindo seis casos
+de precedência, seis entradas de porta inválidas e dois ciclos de início/parada).
+Os testes de controle da UI, a sintaxe Bash/Python e `git diff --check` também
+passaram. Para repetir sem carregar modelos:
 
 ```bash
-# console do browser (DevTools)
-localStorage.setItem('maestro.workspaceUnifiedDirector', '1')
-location.reload()
+python3 tests/test_standalone_launch.py
+bash -n start_local.sh stop_local.sh
+python3 -m py_compile app/launch.py
+(cd ui && npm run test:control)
+git diff --check
 ```
 
-Para parar de ver o Director Stage e usar só o modo Studio:
+O teste standalone cobre prioridade de endereço, porta inválida e início/parada
+com backend HTTP temporário, tanto em loopback quanto com `--share`, incluindo
+ambiente com proxy inválido. Não é um teste de geração ou do backend completo.
+
+## Limites e próximos passos
+
+- Reiniciar a instância real para carregar alterações de Python. A revisão
+  preservou a instância aberta; o teste de ciclo de vida usa uma cópia isolada.
+- Geração real de imagem/vídeo não foi executada nesta revisão.
+- O launcher ainda encerra a instância do pidfile e um processo ocupando a porta
+  solicitada. Escolha uma porta livre quando houver outros serviços locais.
+- O backend pode escolher outra porta se a solicitada ficar ocupada durante
+  o lançamento; o probe do script observa a porta solicitada. Essa corrida
+  não é coberta pela validação atual.
+- Não há coletor de monitoramento permanente entregue por esta revisão.
+
+## Verificação visual da nova interface
+
+Com o backend e o Vite (`cd ui && npm run dev`) ativos, execute:
 
 ```bash
-# console do browser (DevTools)
-localStorage.setItem('maestro.workspaceUnifiedDirector', '0')
-location.reload()
+python tests/test_application_shell.py
 ```
+
+Requer Playwright com Chromium instalado. O teste usa cinco larguras de tela,
+verifica centralização das abas e geometria do rodapé em todas as seções,
+atalhos, configurações, revisão do Director, persistência do Editor e CRUD de
+projetos. As gravações de projetos exercitadas pelo teste são interceptadas;
+as fixtures não são persistidas no backend. Capturas e resultado vão para
+`/tmp/maestro-overhaul` por padrão.

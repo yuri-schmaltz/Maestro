@@ -2,7 +2,7 @@ import type { SceneSlot } from '../lib/directorTimeline'
 import { create } from 'zustand'
 import { reorderWindowPrompts } from '../lib/reorderWindowPrompts'
 import { reviewSnapshot } from '../lib/reviewSnapshot'
-import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode } from '../types'
+import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection } from '../types'
 import * as api from '../api/client'
 import { applyThemePrefs, getStoredPrefs, type FamilyId, type ThemeMode, type ThemePrefs } from '../lib/theme'
 import {
@@ -1914,6 +1914,8 @@ interface AppState {
   // values too so persisted UI state with 'director' | 'studio' loads
   // without crashing. The store's setSidebarMode translates them on
   // write so the runtime invariant is AppMode.
+  appSection: AppSection
+  setAppSection: (section: AppSection) => void
   sidebarMode: AppMode | 'director' | 'studio'
   /** Strategy B (Director-as-Stage) rollout flag. When true, the
    *  Sidebar mounts `<DirectorStage/>` as a tab inside the Workspace
@@ -2385,7 +2387,7 @@ async function _buildDirectorRestorePatch(
       : savedStep
 
   return {
-    sidebarMode: 'director',
+    appSection: 'director' as const, workspaceStage: 'director' as const, sidebarMode: 'director',
     sidebarOpen: true,
     dashboardOpen: false,
     dashboardSelectedPipeline: pipeline,
@@ -3921,8 +3923,11 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   settingsOpen: false,
-  toggleSettings: () => set(s => ({ settingsOpen: !s.settingsOpen })),
-  setSettingsOpen: (open) => set({ settingsOpen: open }),
+  toggleSettings: () => get().setAppSection(get().appSection === 'configurations' ? 'director' : 'configurations'),
+  setSettingsOpen: (open) => {
+    if (open) get().setAppSection('configurations')
+    else set({ settingsOpen: false })
+  },
   sidebarOpen: false,
   toggleSidebar: () => set(s => ({ sidebarOpen: !s.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -4240,7 +4245,7 @@ export const useStore = create<AppState>((set, get) => ({
         // in-Workspace Director Stage (post-rollout) or the legacy
         // Director sidebar (pre-rollout). Always pick the new path so
         // the cancelPlan / Stage wrapper sees the active pipeline.
-        sidebarMode: 'workspace' as const,
+        appSection: 'director' as const, sidebarMode: 'workspace' as const,
         workspaceStage: 'director' as const,
         sidebarOpen: true,
         dashboardOpen: false,
@@ -4281,11 +4286,11 @@ export const useStore = create<AppState>((set, get) => ({
           // user is viewing. Explicit Resume does focus Director and opens its
           // chat, matching the action's intent.
           ...(!focusDirector ? {
-            sidebarMode: state.sidebarMode,
+            appSection: state.appSection, sidebarMode: state.sidebarMode,
             sidebarOpen: state.sidebarOpen,
             dashboardOpen: state.dashboardOpen,
           } : {
-            sidebarMode: 'workspace' as const,
+            appSection: 'director' as const, sidebarMode: 'workspace' as const,
             workspaceStage: 'director' as const,
             sidebarOpen: true,
             dashboardOpen: false,
@@ -8186,7 +8191,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Generation failed'
-      // A mobile/Tailscale connection can drop after the backend accepted
+      // A mobile connection can drop after the backend accepted
       // the request but before fetch receives its small JSON response. Recover
       // that exact job by the browser-generated submission ID instead of
       // showing a false failure while the real generation continues.
@@ -8212,7 +8217,7 @@ export const useStore = create<AppState>((set, get) => ({
             await get().reconnectJobs()
             return
           }
-        } catch { /* retry transient browser/Tailscale disconnects */ }
+        } catch { /* retry transient browser disconnects */ }
       }
       // Submit itself failed (pre-queue). Convert the placeholder to a failed
       // state in place so the user sees what happened, rather than making the
@@ -9740,6 +9745,10 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   // Director (Music Video Director)
+  appSection: 'projects',
+  setAppSection: (section) => {
+    set({ appSection: section, sidebarMode: section === 'editor' ? 'editor' : 'workspace', settingsOpen: section === 'configurations', sidebarOpen: false })
+  },
   sidebarMode: 'workspace' as const,
   // Hydrate the rollout flag from localStorage if the user opted in
   // previously; default to true so the Director (Music Video / Short Film)
@@ -10120,76 +10129,24 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setSidebarMode: (mode) => {
-    // Strategy B compat: legacy callers (and persisted state from
-    // before Stage 3) may still pass 'director' | 'studio'. Translate
-    // them to the new 'workspace' mode and route through the Stage
-    // selector when the rollout flag is on.
-    const { sidebarMode, directorAudioFile, workspaceUnifiedDirector } = get()
-    if (mode === 'director') {
-      // Legacy path: entering the Director UI. Stage 3 maps this to
-      // 'workspace' + workspaceStage='director' when the rollout flag
-      // is on; otherwise it falls back to the historical 'director'
-      // behavior (still stored under 'workspace' for the AppMode
-      // type, but with the legacy sidebar branches active).
-      if (workspaceUnifiedDirector) {
-        if (sidebarMode !== 'workspace') {
-          if (!directorAudioFile) {
-            set({ sidebarMode: 'workspace', directorStep: 'upload', directorError: null })
-          } else {
-            set({ sidebarMode: 'workspace' })
-          }
-        }
-        set({ workspaceStage: 'director' })
-      } else {
-        // Pre-rollout behaviour: keep Director's old sidebar by
-        // dispatching to the director toggle directly. Use the legacy
-        // 'director' value via a one-shot localStorage flag that
-        // `AppModeToggle` honours.
-        if (sidebarMode !== 'workspace') {
-          if (!directorAudioFile) {
-            set({ sidebarMode: 'workspace', directorStep: 'upload', directorError: null })
-          } else {
-            set({ sidebarMode: 'workspace' })
-          }
-        }
-      }
-      void get().loadDirectorQueue()
-      return
-    }
-    if (mode === 'studio') {
-      // Legacy alias: 'studio' → 'workspace' with workspaceStage='studio'.
-      set({ sidebarMode: 'workspace', workspaceStage: 'studio' })
-      return
-    }
     if (mode === 'editor') {
-      // Editor owns the full canvas rather than living inside the Studio
-      // sidebar. Close the mobile drawer as we hand the app shell over.
-      set({ sidebarMode: 'editor', sidebarOpen: false, settingsOpen: false })
-      return
+      get().setAppSection('editor')
+    } else if (mode === 'director') {
+      get().openDirectorStage()
+    } else if (mode === 'studio') {
+      get().closeDirectorStage()
+    } else if (mode === 'workspace') {
+      get().setAppSection('director')
     }
-    if (mode === 'workspace') {
-      set({ sidebarMode: 'workspace' })
-      return
-    }
-    // Unknown value: ignore to avoid corrupting state.
-    console.warn('setSidebarMode: unknown mode', mode)
   },
 
   openDirectorStage: () => {
-    // Only meaningful when the rollout flag is on. Calling it when off is
-    // a no-op so tests / old callers don't have to gate themselves.
-    if (!get().workspaceUnifiedDirector) return
-    if (get().sidebarMode !== 'studio') {
-      // Director-as-Stage lives inside the Studio view. Flip into studio
-      // mode if the user is in editor or some other surface.
-      set({ sidebarMode: 'studio' })
-    }
-    set({ workspaceStage: 'director' })
+    set({ appSection: 'director', sidebarMode: 'workspace', workspaceStage: 'director', sidebarOpen: false, settingsOpen: false })
     void get().loadDirectorQueue()
   },
 
   closeDirectorStage: () => {
-    set({ workspaceStage: 'studio' })
+    set({ appSection: 'director', sidebarMode: 'workspace', workspaceStage: 'studio', settingsOpen: false })
   },
 
   setWorkspaceUnifiedDirector: (enabled) => {
@@ -11070,7 +11027,7 @@ export const useStore = create<AppState>((set, get) => ({
       durationSeconds: totalDurationCapped,
       slidingWindowSeconds: maxClipFrames / fps,
       audioGuideFilename: directorAudioFile?.name ?? null,
-      sidebarMode: 'studio' as const,
+      appSection: 'director' as const, workspaceStage: 'studio' as const, sidebarMode: 'studio' as const,
     }))
   },
 
@@ -11090,7 +11047,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   directorReset: () => {
     set({
-      sidebarMode: 'studio' as const,
+      appSection: 'director' as const, workspaceStage: 'director' as const, sidebarMode: 'workspace' as const,
       directorStep: 'upload',
       directorAudioFile: null,
       directorAudioPath: null,
@@ -11822,7 +11779,7 @@ export const useStore = create<AppState>((set, get) => ({
       const workspace = typeof p.editor_workspace === 'string' && p.editor_workspace
         ? p.editor_workspace
         : get().activeWorkspace
-      set({ sidebarMode: 'editor' })
+      set({ appSection: 'editor', sidebarMode: 'editor' })
       const { useEditorStore } = await import('../editor/useEditorStore')
       const editor = useEditorStore.getState()
       if (editor.workspace !== workspace) await editor.initialize(workspace)
@@ -11838,7 +11795,7 @@ export const useStore = create<AppState>((set, get) => ({
       || (p.model_type === 'audio_mixer' && Array.isArray(p.audio_mixer_tracks))
     ) {
       set(s => ({
-        sidebarMode: 'studio',
+        appSection: 'director' as const, workspaceStage: 'studio' as const, sidebarMode: 'studio',
         generationMode: 'audio',
         audioSubMode: 'mixer',
         params: {
@@ -11896,7 +11853,7 @@ export const useStore = create<AppState>((set, get) => ({
         : []
       set(restoredTool === 'upscale'
         ? {
-            sidebarMode: 'studio',
+            appSection: 'director' as const, workspaceStage: 'studio' as const, sidebarMode: 'studio',
             generationMode: 'tools',
             toolsTool: 'upscale',
             toolsUpscaleMedia: restoredUpscaleMedia,
@@ -11910,7 +11867,7 @@ export const useStore = create<AppState>((set, get) => ({
           }
         : restoredTool === 'film_grain'
           ? {
-              sidebarMode: 'studio',
+              appSection: 'director' as const, workspaceStage: 'studio' as const, sidebarMode: 'studio',
               generationMode: 'tools',
               toolsTool: 'film_grain',
               toolsUpscaleMedia: 'video',
@@ -11922,7 +11879,7 @@ export const useStore = create<AppState>((set, get) => ({
               filmGrainSaturation: Number(p.saturation ?? p.film_grain_saturation ?? 0.5),
             }
           : {
-              sidebarMode: 'studio',
+              appSection: 'director' as const, workspaceStage: 'studio' as const, sidebarMode: 'studio',
               generationMode: 'tools',
               toolsTool: 'revoice',
               audioSubMode: 'revoice',
@@ -11982,7 +11939,7 @@ export const useStore = create<AppState>((set, get) => ({
       : null
     if (model) {
       const mode = restoredModelMode!
-      set({ sidebarMode: 'studio', generationMode: mode })
+      set({ appSection: 'director' as const, workspaceStage: 'studio' as const, sidebarMode: 'studio', generationMode: mode })
       // Audio outputs restore the SUB-TAB too (Speech / Music / SFX) —
       // previously the pencil landed on the Audio tab but left whatever
       // sub-tab was last open. Newer sidecars record _audio_sub_mode;
@@ -12712,7 +12669,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     set(s => ({
-      sidebarMode: 'studio',
+      appSection: 'director' as const, workspaceStage: 'studio' as const, sidebarMode: 'studio',
       ...(restoredModelMode ? { generationMode: restoredModelMode } : {}),
       ...(restoredModelMode ? {
         selectedModelPerMode: {
@@ -12970,7 +12927,7 @@ export const useStore = create<AppState>((set, get) => ({
             ? null
             : editSubMode as StudioVideoWorkflow
       set(s => ({
-        sidebarMode: 'studio',
+        appSection: 'director' as const, workspaceStage: 'studio' as const, sidebarMode: 'studio',
         generationMode: 'avatar',
         ...(restoredEditWorkflow ? { studioVideoWorkflow: restoredEditWorkflow } : {}),
         editSubMode: editSubMode as 'retake' | 'inpaint' | 'restyle' | 'outpaint' | 'edit_anything' | 'recast',

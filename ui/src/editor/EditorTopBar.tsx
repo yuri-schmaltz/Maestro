@@ -9,12 +9,9 @@ import {
   Menu,
   Redo2,
   Save,
-  Settings,
   Trash2,
   Undo2,
 } from 'lucide-react'
-import { GlobalQueuePopover } from '../components/GlobalQueuePopover'
-import { AppModeToggle, MaestroBrand } from '../components/AppModeNavigation'
 import { useIsMobile } from '../lib/useIsMobile'
 import { useStore } from '../stores/useStore'
 import { EditorExportDialog } from './EditorExportDialog'
@@ -83,7 +80,6 @@ export function EditorTopBar() {
   const setCanvas = useEditorStore(state => state.setCanvas)
   const undo = useEditorStore(state => state.undo)
   const redo = useEditorStore(state => state.redo)
-  const toggleSettings = useStore(state => state.toggleSettings)
   const toggleSidebar = useStore(state => state.toggleSidebar)
 
   useEffect(() => {
@@ -99,7 +95,7 @@ export function EditorTopBar() {
   }, [projectMenuOpen])
 
   return (
-    <header className={`flex shrink-0 items-center border-b border-border bg-bg-secondary ${isMobile ? 'h-auto flex-wrap gap-1 px-2 py-1.5' : 'h-14 gap-2 px-4'}`}>
+    <header className={`flex shrink-0 items-center border-b border-border bg-bg-secondary ${isMobile ? 'h-14 gap-1 px-2 py-1.5' : 'h-14 gap-2 px-4'}`}>
       {isMobile && (
         <button
           type="button"
@@ -110,11 +106,7 @@ export function EditorTopBar() {
           <Menu size={20} />
         </button>
       )}
-      <MaestroBrand compact={isMobile} className={isMobile ? '' : 'w-[158px]'} />
-
-      <AppModeToggle size={isMobile ? 'sm' : 'md'} />
-
-      <div ref={rootRef} className={`relative min-w-0 md:ml-2 md:max-w-[440px] ${isMobile ? 'order-3 w-full flex-none' : 'flex-1'}`}>
+      <div ref={rootRef} className={`relative min-w-0 md:ml-2 md:max-w-[440px] flex-1`}>
         <div className="flex min-w-0 items-center rounded-lg border border-border bg-bg-tertiary focus-within:border-accent-blue/60">
           <ProjectNameField
             key={project?.id || 'no-project'}
@@ -268,10 +260,6 @@ export function EditorTopBar() {
             </button>
           </>
         )}
-        <GlobalQueuePopover iconSize={isMobile ? 20 : undefined} panelAlign={isMobile ? 'header-edge' : undefined} />
-        <button type="button" onClick={toggleSettings} className="rounded-lg p-2 text-text-secondary hover:bg-bg-hover hover:text-text-primary" title="Settings">
-          <Settings size={isMobile ? 20 : 16} />
-        </button>
       </div>
       <EditorExportDialog open={exportDialogOpen} onClose={() => setExportDialogOpen(false)} />
     </header>

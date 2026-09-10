@@ -34,7 +34,13 @@ export function EditorWorkspace() {
   const setPlaying = useEditorStore(state => state.setPlaying)
 
   useEffect(() => {
-    void initialize(activeWorkspace)
+    const current = useEditorStore.getState()
+    if (!current.project || current.workspace !== activeWorkspace) void initialize(activeWorkspace)
+    return () => {
+      const editor = useEditorStore.getState()
+      editor.setPlaying(false)
+      if (editor.dirty) void editor.saveProject()
+    }
   }, [activeWorkspace, initialize])
 
   useEffect(() => {

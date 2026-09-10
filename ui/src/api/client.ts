@@ -1931,30 +1931,6 @@ export async function testWebPush(endpoint: string): Promise<{
   return res.json()
 }
 
-export async function fetchTailscaleRemoteAccessStatus(): Promise<import('../types').TailscaleRemoteAccessStatus> {
-  const res = await fetch(`${BASE}/api/v1/remote-access/tailscale/status`)
-  if (!res.ok) throw new Error('Failed to read Tailscale status')
-  return res.json()
-}
-
-export async function enableTailscaleRemoteAccess(): Promise<import('../types').TailscaleRemoteAccessStatus> {
-  const res = await fetch(`${BASE}/api/v1/remote-access/tailscale/enable`, { method: 'POST' })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Tailscale setup failed' }))
-    throw new Error(err.detail || 'Tailscale setup failed')
-  }
-  return res.json()
-}
-
-export async function disableTailscaleRemoteAccess(): Promise<import('../types').TailscaleRemoteAccessStatus> {
-  const res = await fetch(`${BASE}/api/v1/remote-access/tailscale/disable`, { method: 'POST' })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Could not disable Tailscale access' }))
-    throw new Error(err.detail || 'Could not disable Tailscale access')
-  }
-  return res.json()
-}
-
 // --- Performance Auto-Tune ---
 
 /** Read the user's current hardware + the auto-tune recommendation
