@@ -890,7 +890,7 @@ export function MainContent() {
   return (
     <main className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Top bar */}
-      <div className="px-2 md:px-6 py-2 md:py-3 border-b border-border flex items-center justify-between gap-2">
+      <div className="flex h-14 items-center justify-between gap-2 border-b border-border px-4">
         <TabFilter />
         <div className="flex items-center gap-2 shrink-0">
           <div className="hidden text-xs text-text-muted xl:block">
