@@ -9742,16 +9742,25 @@ export const useStore = create<AppState>((set, get) => ({
   // Director (Music Video Director)
   sidebarMode: 'workspace' as const,
   // Hydrate the rollout flag from localStorage if the user opted in
-  // previously; default to false so a fresh install behaves as before.
+  // previously; default to true so the Director (Music Video / Short Film)
+  // skill chooser is discoverable from the main UI. Users who prefer the
+  // legacy pure-Studio view can flip this off in localStorage via the
+  // keys listed below — or use `setWorkspaceUnifiedDirector(false)`.
   workspaceUnifiedDirector: (() => {
     try {
-      if (typeof window === 'undefined' || !window.localStorage) return false
-      return window.localStorage.getItem('maestro.workspaceUnifiedDirector') === '1'
+      if (typeof window === 'undefined' || !window.localStorage) return true
+      const raw = window.localStorage.getItem('maestro.workspaceUnifiedDirector')
+      if (raw === null || raw === undefined) return true
+      return raw === '1'
     } catch {
-      return false
+      return true
     }
   })(),
-  workspaceStage: 'studio' as const,
+  // Default 'director' so the skill chooser (Music Video / Short Film)
+  // is visible on first launch when the unified-director flag is on.
+  // Users can toggle back to the Studio controls via the in-header
+  // "Studio" button that appears once the Stage is open.
+  workspaceStage: 'director' as const,
   directorStep: 'upload',
   directorAudioFile: null,
   directorAudioPath: null,
