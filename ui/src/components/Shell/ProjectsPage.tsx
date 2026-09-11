@@ -90,6 +90,9 @@ export function ProjectsPage() {
             <FolderOpen size={40} strokeWidth={1.5} />
             <h2>Create your first project</h2>
             <p>Projects keep your media, edits and Director productions organized. Pick a name to get started — you can rename or delete it later.</p>
+            <button className="shell-primary-button" onClick={() => { setError(null); setCreating(true) }}>
+              <Plus size={16} /> New project
+            </button>
           </div>
         )}
         {hasProjects && visible.length === 0 && (

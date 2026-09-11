@@ -9,6 +9,8 @@ import {
   Menu,
   Redo2,
   Save,
+  CircleCheck,
+  CircleDot,
   Trash2,
   Undo2,
 } from 'lucide-react'
@@ -40,30 +42,20 @@ function ProjectNameField({
   }
 
   return (
-    <>
-      <input
-        value={draft}
-        onChange={event => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={event => {
-          if (event.key === 'Enter') event.currentTarget.blur()
-          if (event.key === 'Escape') {
-            setDraft(projectName)
-            event.currentTarget.blur()
-          }
-        }}
-        className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-xs text-text-primary outline-none"
-        aria-label="Project name"
-      />
-      {dirty && (
-        <span
-          data-testid="project-dirty-indicator"
-          className="mr-1 inline-flex h-2 w-2 shrink-0 rounded-full bg-amber-400 shadow-[0_0_4px_rgba(251,191,36,0.6)]"
-          title="Unsaved changes"
-          aria-label="Unsaved changes"
-        />
-      )}
-    </>
+    <input
+      value={draft}
+      onChange={event => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={event => {
+        if (event.key === 'Enter') event.currentTarget.blur()
+        if (event.key === 'Escape') {
+          setDraft(projectName)
+          event.currentTarget.blur()
+        }
+      }}
+      className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-xs text-text-primary outline-none"
+      aria-label="Project name"
+    />
   )
 }
 
@@ -92,23 +84,6 @@ export function EditorTopBar() {
   const redo = useEditorStore(state => state.redo)
   const toggleSidebar = useStore(state => state.toggleSidebar)
 
-  // Transient "Saved" indicator that pulses for ~1.5s after a successful
-  // save. Lets the user see autosave feedback without the indicator
-  // lingering. Tracked separately from `dirty`/`saving` because the
-  // store doesn't expose a "lastSavedAt" timestamp.
-  const [savedFlash, setSavedFlash] = useState(false)
-  const lastSavingRef = useRef(saving)
-  useEffect(() => {
-    // We only want to flash when saving transitions FROM true → false,
-    // which is the signal that the autosave finished cleanly.
-    if (lastSavingRef.current && !saving && !dirty) {
-      setSavedFlash(true)
-      const timer = window.setTimeout(() => setSavedFlash(false), 1500)
-      return () => window.clearTimeout(timer)
-    }
-    lastSavingRef.current = saving
-  }, [saving, dirty])
-
   useEffect(() => {
     if (!projectMenuOpen) return
     const close = (event: MouseEvent) => {
@@ -135,14 +110,6 @@ export function EditorTopBar() {
       )}
       <div ref={rootRef} className={`relative min-w-0 md:ml-2 w-[220px] shrink-0`}>
         <div className="flex min-w-0 items-center rounded-lg border border-border bg-bg-tertiary focus-within:border-accent-blue/60">
-          {savedFlash && !dirty && (
-            <span
-              data-testid="project-saved-flash"
-              className="ml-2 mr-1 inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-2xs font-medium text-emerald-400 animate-[fadeOut_1.5s_ease-out_forwards]"
-            >
-              <Check size={10} /> Saved
-            </span>
-          )}
           <ProjectNameField
             key={project?.id || 'no-project'}
             projectName={project?.name || ''}
@@ -258,6 +225,19 @@ export function EditorTopBar() {
             <option key={preset.label} value={`${preset.width}x${preset.height}`}>{preset.label}</option>
           ))}
         </select>
+      )}
+
+      {!isMobile && project && (
+        <span
+          className={`hidden items-center gap-1 whitespace-nowrap text-2xs lg:flex ${
+            saving ? 'text-accent-blue' : dirty ? 'text-indicator-warning' : 'text-indicator-success'
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {saving ? <Loader2 size={10} className="animate-spin" /> : dirty ? <CircleDot size={10} /> : <CircleCheck size={10} />}
+          {saving ? 'Saving…' : dirty ? 'Unsaved changes' : 'Saved'}
+        </span>
       )}
 
       <div className={`ml-auto flex shrink-0 items-center gap-0.5 md:gap-1 ${isMobile ? 'order-2' : ''}`}>

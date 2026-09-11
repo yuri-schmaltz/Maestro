@@ -27,6 +27,7 @@
 
 import { useStore } from '../../stores/useStore'
 import { useMemo, useState, useRef } from 'react'
+import { Redo2, Undo2 } from 'lucide-react'
 import {
   StructureView,
   StyleForm,
@@ -135,6 +136,36 @@ export function DirectorPlanColumn() {
   const directorQueueEditingEntryId = useStore(s => s.directorQueueEditingEntryId)
   const queueCurrentDirectorPipeline = useStore(s => s.queueCurrentDirectorPipeline)
 
+  const planHistory = useRef<Array<{
+    index: number
+    field: 'video_prompt' | 'image_prompt'
+    previous: string
+    next: string
+  }>>([])
+  const [historyCursor, setHistoryCursor] = useState(-1)
+  const [historyLength, setHistoryLength] = useState(0)
+  const editPlanWithHistory = (index: number, field: 'video_prompt' | 'image_prompt', value: string) => {
+    const current = useStore.getState().directorClipPlans[index]?.[field] || ''
+    if (current === value) return
+    planHistory.current = planHistory.current.slice(0, historyCursor + 1)
+    planHistory.current.push({ index, field, previous: current, next: value })
+    setHistoryCursor(planHistory.current.length - 1)
+    setHistoryLength(planHistory.current.length)
+    editClipPlan(index, field, value)
+  }
+  const undoPlanEdit = () => {
+    const change = planHistory.current[historyCursor]
+    if (!change) return
+    editClipPlan(change.index, change.field, change.previous)
+    setHistoryCursor(cursor => cursor - 1)
+  }
+  const redoPlanEdit = () => {
+    const change = planHistory.current[historyCursor + 1]
+    if (!change) return
+    editClipPlan(change.index, change.field, change.next)
+    setHistoryCursor(cursor => cursor + 1)
+  }
+
   // speaker samples (recomputed from analysis lyrics)
   const analysis = useStore(s => s.directorAnalysis)
   const speakerSamples = useMemo<Record<string, string[]>>(() => {
@@ -239,6 +270,18 @@ export function DirectorPlanColumn() {
         </section>
       )}
 
+      {(clipPlans.length > 0 || plannedClips.length > 0) && (
+        <div className="flex items-center justify-end gap-1">
+          <span className="mr-auto text-2xs text-text-muted">Prompt edits</span>
+          <button type="button" onClick={undoPlanEdit} disabled={historyCursor < 0} className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary disabled:opacity-30" title="Undo prompt edit">
+            <Undo2 size={12} />
+          </button>
+          <button type="button" onClick={redoPlanEdit} disabled={historyCursor >= historyLength - 1} className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary disabled:opacity-30" title="Redo prompt edit">
+            <Redo2 size={12} />
+          </button>
+        </div>
+      )}
+
       {/* 3) Plan loading + log — the first LLM pass writes
           image_prompt per clip. The collapsible log stays in the chat
           history once complete; we re-render it here so the user can
@@ -265,7 +308,7 @@ export function DirectorPlanColumn() {
             clipPlans={clipPlans}
             plannedClips={plannedClips}
             speakerMappings={speakerMappings}
-            editClipPlan={editClipPlan}
+            editClipPlan={editPlanWithHistory}
             planPrompts={isStoryPath ? shortFilmPlanFromStory : isShortFilm ? shortFilmPlanPrompts : planPrompts}
             planVideoPrompts={isShortFilm ? shortFilmPlanVideoPrompts : planVideoPrompts}
             generateStartImages={generateStartImages}
@@ -312,7 +355,7 @@ export function DirectorPlanColumn() {
             setClipImage={setClipImage}
             allowSceneImageUploads={!usesShotImages && !autoMode}
             speakerMappings={speakerMappings}
-            editClipPlan={editClipPlan}
+            editClipPlan={editPlanWithHistory}
             planVideoPrompts={isShortFilm ? shortFilmPlanVideoPrompts : planVideoPrompts}
             directorGenerate={directorGenerate}
             queueCurrent={queueCurrentDirectorPipeline}

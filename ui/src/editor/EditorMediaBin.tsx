@@ -128,9 +128,36 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
   const importDirectorRun = useEditorStore(state => state.importDirectorRun)
   const addTitle = useEditorStore(state => state.addTitle)
   const removeLibraryAsset = useEditorStore(state => state.removeLibraryAsset)
+  const filterStorageKey = `maestro-editor-media-filters:${projectWorkspace}`
+  const filtersLoaded = useRef(false)
   // Per-card delete confirmation — first click arms, second click commits.
   // Lives in local state so accidental hovers don't fire destructive calls.
   const [pendingDeleteKey, setPendingDeleteKey] = useState<string | null>(null)
+
+  useEffect(() => {
+    filtersLoaded.current = false
+    try {
+      const saved = localStorage.getItem(filterStorageKey)
+      if (saved) {
+        const parsed = JSON.parse(saved) as { filter?: Filter; workspaceFilter?: string }
+        if (parsed.filter) setFilter(parsed.filter)
+        setWorkspaceFilter(parsed.workspaceFilter || 'all')
+      } else {
+        setFilter('all')
+        setWorkspaceFilter('all')
+      }
+    } catch {
+      setFilter('all')
+      setWorkspaceFilter('all')
+    }
+    setVisibleLimit(MEDIA_BATCH_SIZE)
+    filtersLoaded.current = true
+  }, [filterStorageKey])
+
+  useEffect(() => {
+    if (!filtersLoaded.current) return
+    localStorage.setItem(filterStorageKey, JSON.stringify({ filter, workspaceFilter }))
+  }, [filter, filterStorageKey, workspaceFilter])
 
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase()

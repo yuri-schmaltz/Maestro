@@ -230,6 +230,17 @@ function EnergyDot({ energy }: { energy: number }) {
   return <span className={`inline-block w-2 h-2 rounded-full ${color}`} title={`Energy: ${(energy * 100).toFixed(0)}%`} />
 }
 
+function ShotStatus({ status }: { status: 'pending' | 'generating' | 'ready' | 'failed' }) {
+  const labels = { pending: 'Pending', generating: 'Generating', ready: 'Ready', failed: 'Failed' }
+  const styles = {
+    pending: 'bg-bg-hover text-text-muted',
+    generating: 'bg-accent-blue/15 text-accent-blue',
+    ready: 'bg-indicator-success/15 text-indicator-success',
+    failed: 'bg-red-500/15 text-red-400',
+  }
+  return <span className={`rounded-full px-1.5 py-0.5 text-2xs ${styles[status]}`}>{labels[status]}</span>
+}
+
 // Event/entry wrapper used by the chat column on the Director page.
 //
 // The app moved away from the conversational "chat bubble" pattern
@@ -716,6 +727,27 @@ export function DirectorChat() {
 
   // Determine chat input state
   const chatInputEnabled = (step === 'style' || mvGenerateSetup) && !loading
+  useEffect(() => {
+    const onDirectorShortcut = (event: KeyboardEvent) => {
+      const command = event.metaKey || event.ctrlKey
+      if (!command) return
+
+      if (event.key === 'Enter' && chatInputEnabled) {
+        event.preventDefault()
+        if (event.shiftKey) void handleQueueDraft()
+        else handleChatSubmit()
+        return
+      }
+
+      if (event.key.toLowerCase() === 'g' && !event.shiftKey && step === 'review' && !loading) {
+        event.preventDefault()
+        void generateStartImages()
+      }
+    }
+    window.addEventListener('keydown', onDirectorShortcut)
+    return () => window.removeEventListener('keydown', onDirectorShortcut)
+  }, [chatInputEnabled, handleQueueDraft, handleChatSubmit, step, loading, generateStartImages])
+
   const chatInputPlaceholder = !skill
     ? 'Choose a skill above...'
     : mvGenerateSetup
@@ -3060,6 +3092,8 @@ export function ImagePromptsReview({
   isActive: boolean
   isShortFilm?: boolean
 }) {
+  const clipImages = useStore(s => s.directorClipImages)
+  const imageGenProgress = useStore(s => s.directorImageGenProgress)
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -3080,10 +3114,19 @@ export function ImagePromptsReview({
       <div className="space-y-2">
         {clipPlans.map((plan, i) => {
           const clip = plannedClips[i]
+          const image = clipImages.find(item => item.clipIndex === i)
+          const status = image
+            ? 'ready'
+            : imageGenProgress?.status === 'error' && imageGenProgress.current === i
+              ? 'failed'
+              : imageGenProgress && imageGenProgress.current === i && imageGenProgress.status !== 'done'
+                ? 'generating'
+                : 'pending'
           return (
             <div key={i} className="bg-bg-tertiary rounded-lg p-2 space-y-1.5">
               <div className="flex items-center gap-1.5 text-2xs text-text-muted">
                 <span className="font-medium text-text-secondary">{isShortFilm ? 'Shot' : 'Clip'} {i + 1}</span>
+                <ShotStatus status={status} />
                 {clip && (
                   <>
                     <span>{formatTime(clip.start)}-{formatTime(clip.end)}</span>
@@ -3253,6 +3296,7 @@ export function VideoPromptsReview({
   editingQueueEntryId?: string | null
 }) {
   const queueBusy = useStore(s => s.directorQueueLoading)
+  const pipelineStatus = useStore(s => s.pipelineStatus)
   const [queueConfirmation, setQueueConfirmation] = useState<string | null>(null)
 
   useEffect(() => {
@@ -3322,10 +3366,21 @@ export function VideoPromptsReview({
         {clipPlans.map((plan, i) => {
           const clip = plannedClips[i]
           const clipImage = clipImages.find(image => image.clipIndex === i)
+          const currentClip = pipelineStatus?.progress?.current_clip
+          const totalClips = pipelineStatus?.progress?.total_clips
+          const status = pipelineStatus?.status === 'failed' && currentClip === i + 1
+            ? 'failed'
+            : clipImage
+              ? 'ready'
+              : pipelineStatus?.status === 'running' && currentClip === i + 1
+                ? 'generating'
+                : 'pending'
           return (
             <div key={i} className="bg-bg-tertiary rounded-lg p-2 space-y-1.5">
               <div className="flex items-center gap-1.5 text-2xs text-text-muted">
                 <span className="font-medium text-text-secondary">{isShortFilm ? 'Shot' : 'Clip'} {i + 1}</span>
+                <ShotStatus status={status} />
+                {totalClips && <span>{i + 1}/{totalClips}</span>}
                 {clip && (
                   <>
                     <span>{formatTime(clip.start)}-{formatTime(clip.end)}</span>

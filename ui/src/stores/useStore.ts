@@ -11043,15 +11043,24 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   directorGenerate: () => {
-    if (get().pipelineStatus?.status === 'paused') {
+    const state = get()
+    if (state.pipelineStatus?.status === 'paused') {
       set({ directorError: 'Approve the scene cards in the main workspace to continue this production.' })
       return
     }
-    void get().startDirectorPipeline(
-      get().directorQueueEditingEntryId
-        || get().pipelinePolling
-        || get().isGenerating
-        || get().directorQueue?.running
+    if (!state.directorClipPlans.length) {
+      set({ directorError: 'Add at least one shot prompt before generating the Director project.' })
+      return
+    }
+    if (!state.selectedModelPerMode.video) {
+      set({ directorError: 'Select a compatible video model in Director setup before generating.' })
+      return
+    }
+    void state.startDirectorPipeline(
+      state.directorQueueEditingEntryId
+        || state.pipelinePolling
+        || state.isGenerating
+        || state.directorQueue?.running
         ? 'queue' : 'now',
     )
   },
