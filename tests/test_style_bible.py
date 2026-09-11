@@ -353,5 +353,118 @@ class DefaultDirSmokeTest(unittest.TestCase):
         self.assertIn("settings", BIBLE_DEFAULT_DIR.parts)
 
 
+class YamlSupportTests(unittest.TestCase):
+    """YAML is optional — PyYAML may or may not be installed in the
+    test env. We test both branches."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = Path(self.tmp.name)
+
+    def test_yaml_available_or_not(self):
+        from app.services.style_bible.registry import yaml_available, yaml_import_error
+        # Either yaml_available() is True (PyYAML present) or False
+        # with a non-empty yaml_import_error(). Both states are valid;
+        # the rest of this test class skips the YAML-specific cases
+        # when PyYAML is missing.
+        if not yaml_available():
+            self.assertIsNotNone(yaml_import_error())
+
+    def test_save_and_load_yaml_round_trip(self):
+        from app.services.style_bible.registry import yaml_available
+        if not yaml_available():
+            self.skipTest("PyYAML not installed")
+        bible = _make_sample_bible()
+        path = save_bible(bible, directory=self.dir, fmt="yaml")
+        self.assertEqual(path.suffix, ".yaml")
+        # The YAML file is plain text — sanity check a few substrings.
+        text = path.read_text(encoding="utf-8")
+        self.assertIn("test-bible-1", text)
+        # Round-trip
+        loaded = load_bible_from_path(path)
+        self.assertEqual(loaded, bible)
+
+    def test_yaml_save_refuses_overwrite_when_disabled(self):
+        from app.services.style_bible.registry import yaml_available
+        if not yaml_available():
+            self.skipTest("PyYAML not installed")
+        bible = _make_sample_bible()
+        save_bible(bible, directory=self.dir, fmt="yaml")
+        with self.assertRaises(FileExistsError):
+            save_bible(bible, directory=self.dir, fmt="yaml", overwrite=False)
+
+    def test_yaml_save_requires_pyyaml(self):
+        from app.services.style_bible import registry as reg
+        if reg._yaml is not None:
+            self.skipTest("PyYAML is installed — cannot exercise the missing-PyYAML branch")
+        bible = _make_sample_bible()
+        with self.assertRaises(ImportError):
+            save_bible(bible, directory=self.dir, fmt="yaml")
+
+    def test_load_yaml_without_pyyaml_raises(self):
+        from app.services.style_bible import registry as reg
+        if reg._yaml is not None:
+            self.skipTest("PyYAML is installed — cannot exercise the missing-PyYAML branch")
+        fake_yaml = self.dir / "test.yaml"
+        fake_yaml.write_text("metadata:\n  id: x\n  title: x\n", encoding="utf-8")
+        with self.assertRaises(ImportError):
+            load_bible_from_path(fake_yaml)
+
+    def test_list_includes_yaml_when_pyyaml_installed(self):
+        from app.services.style_bible.registry import yaml_available
+        if not yaml_available():
+            self.skipTest("PyYAML not installed")
+        json_bible = StyleBible(metadata=BibleMetadata(id="json-one", title="JSON One"))
+        yaml_bible = StyleBible(metadata=BibleMetadata(id="yaml-one", title="YAML One"))
+        save_bible(json_bible, directory=self.dir, fmt="json")
+        save_bible(yaml_bible, directory=self.dir, fmt="yaml")
+        bibles = list_bibles(directory=self.dir)
+        titles = sorted(b.metadata.title for b in bibles)
+        self.assertEqual(titles, ["JSON One", "YAML One"])
+
+    def test_mixed_format_directory_lists_correctly(self):
+        from app.services.style_bible.registry import yaml_available
+        if not yaml_available():
+            self.skipTest("PyYAML not installed")
+        # Save the same bible in both formats. The list should
+        # return both — they're independent files.
+        bible = _make_sample_bible()
+        save_bible(bible, directory=self.dir, fmt="json")
+        save_bible(bible, directory=self.dir, fmt="yaml", overwrite=False)
+        bibles = list_bibles(directory=self.dir)
+        ids = [b.metadata.id for b in bibles]
+        self.assertEqual(ids.count("test-bible-1"), 2)
+
+    def test_delete_removes_both_formats(self):
+        from app.services.style_bible.registry import yaml_available
+        if not yaml_available():
+            self.skipTest("PyYAML not installed")
+        bible = _make_sample_bible()
+        save_bible(bible, directory=self.dir, fmt="json")
+        save_bible(bible, directory=self.dir, fmt="yaml", overwrite=False)
+        self.assertTrue(delete_bible("test-bible-1", directory=self.dir))
+        # Both files gone
+        self.assertFalse((self.dir / "test-bible-1.json").exists())
+        self.assertFalse((self.dir / "test-bible-1.yaml").exists())
+
+    def test_invalid_fmt_raises_valueerror(self):
+        with self.assertRaises(ValueError):
+            save_bible(_make_sample_bible(), directory=self.dir, fmt="xml")  # type: ignore[arg-type]
+
+    def test_yaml_round_trip_preserves_color_palettes_as_lists(self):
+        # Regression test: color_palette is a tuple internally but
+        # must serialize/deserialize as a list (YAML/JSON have no
+        # tuples). If the to_dict path forgot the list() coercion,
+        # the from_dict would crash with "color_palette must be a list".
+        from app.services.style_bible.registry import yaml_available
+        if not yaml_available():
+            self.skipTest("PyYAML not installed")
+        bible = _make_sample_bible()
+        path = save_bible(bible, directory=self.dir, fmt="yaml")
+        loaded = load_bible_from_path(path)
+        self.assertEqual(loaded.characters["ana"].color_palette, ("muted earth tones", "soft pastels"))
+
+
 if __name__ == "__main__":
     unittest.main()
