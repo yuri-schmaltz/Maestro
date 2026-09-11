@@ -71,6 +71,68 @@ jobs:
         # execute them yet. Keep this explicit runner until they are migrated.
         run: python tests/test_call_llm_json_grammar.py
 
+  smoke-import:
+    # Pattern lifted from directo_studio v1.1.7 (lifted the smoke-import
+    # step after a string of releases shipped through 5 quality gates
+    # with broken imports). Catches the class of bugs where a module
+    # fails to import at runtime even though it compiles cleanly:
+    # missing `_` alias in shims, modules referenced in manifests that
+    # no longer exist, side effects at module top-level that need GPU
+    # weights, etc. We run the same pytest test that runs locally so
+    # there is no drift between local and CI.
+    name: Smoke-import (each entry point in fresh subprocess)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install lightweight test dependencies
+        # Mirrors the lightweight deps the guard job installs — smoke-import
+        # only needs pytest itself plus the modules under test to be importable.
+        # We deliberately reuse the same dependency surface as guard so a
+        # smoke failure here is independent of an install failure in guard.
+        run: >-
+          python -m pip install
+          "starlette==0.46.1"
+          "numpy==2.2.6"
+          "opencv-python-headless==4.12.0.88"
+          "Pillow==11.3.0"
+          "requests==2.32.4"
+          "cryptography==49.0.0"
+          "ffmpeg-python==0.2.0"
+          "imageio==2.37.2"
+          "av==16.1.0"
+          "decord==0.6.0"
+          "iopath==0.1.10"
+          "onnxruntime==1.22.0"
+          "pycocotools==0.0.11"
+          "rembg==2.0.65"
+          "scipy==1.15.3"
+          "timm==1.0.24"
+          "ftfy==6.3.1"
+          "pytest==9.1.1"
+      - name: Install CPU PyTorch test dependency
+        run: >-
+          python -m pip install
+          "torch==2.7.1"
+          "torchvision==0.22.1"
+          "torchaudio==2.7.1"
+          --index-url https://download.pytorch.org/whl/cpu
+      - name: Install pinned core model test dependencies
+        run: >-
+          python -m pip install
+          "mmgp==3.7.12"
+          "diffusers==0.36.0"
+          "transformers==4.57.1"
+          "tokenizers==0.22.1"
+          "accelerate==1.12.0"
+          "einops==0.8.2"
+          "safetensors==0.8.0"
+          "triton==3.3.1"
+      - name: Run smoke-import
+        run: python -m pytest tests/test_smoke_imports.py -v
+
   ui-build:
     name: UI type-check + build
     runs-on: ubuntu-latest
