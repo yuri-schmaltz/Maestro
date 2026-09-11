@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Check, X, LockKeyhole, Unlock, Loader2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import * as api from '../../api/client'
+import { CinemaWarningsPanel } from './CinemaWarningsPanel'
 
 /** One card per scene; approval belongs to the displayed server revision. */
 export function DirectorReview() {
@@ -97,6 +98,19 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
                   onChange={event => change(index, 'window_prompts', plan.window_prompts!.map((p, j) => j === wi ? event.target.value : p))} />
               </label>
             ))}
+            {/*
+              Cinema rules advisor: surfaces era / anachronism / lighting
+              issues against the video prompt so the operator can fix them
+              before the GPU runs. Collapsed by default; we send the
+              current prompts on demand when the operator opens it.
+              Backed by the /api/v1/director/cinema/evaluate endpoint,
+              which calls the same advisor used by validate_shot_plan
+              internally.
+            */}
+            <CinemaWarningsPanel
+              label={`Scene ${index + 1}`}
+              fields={{ scene_goal: plan.video_prompt ?? '' }}
+            />
             <div className="flex flex-wrap items-center gap-4">
             <button type="button" disabled={busy} className="flex items-center gap-2 text-xs text-accent-blue"
               onClick={() => {

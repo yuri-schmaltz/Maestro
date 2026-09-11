@@ -9444,6 +9444,77 @@ def director_queue_list():
     return list_director_queue(base)
 
 
+@api.post("/api/v1/director/cinema/evaluate")
+async def director_cinema_evaluate(request: Request):
+    """Run the cinema-rules pass on a shot's textual fields and return
+    the warnings the pass raised. Pattern lifted from directo_studio
+    Phase 3 — a Director-side advisor that flags era inconsistencies,
+    anachronisms, and lighting contradictions so the operator can
+    see them in the dashboard. The pass is purely advisory (same as
+    the in-pipeline shot_validator hook); it never blocks generation.
+
+    Request body shape:
+      {
+        "scene_goal": str = "",
+        "environment": str = "",
+        "lighting": str = "",
+        "wardrobe": str = "",
+        "props": list[str] = []
+      }
+
+    Response body shape:
+      {
+        "warnings": list[str],   // human-readable, prefixed [cinema:RULE]
+        "hits": [                // structured form (severity, rule_id, ...)
+          {
+            "rule_id": str,
+            "severity": "info" | "warning" | "error",
+            "message": str,
+            "field": str,
+            "suggestion": str,
+          }
+        ],
+        "era": "medieval" | "industrial" | ... | "unknown"
+      }
+    """
+    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="JSON object required")
+    # Lazy import — keeps `from launch import api` cheap when no
+    # Director endpoints are hit.
+    from services.director.cinema import Severity, evaluate_shot
+    from services.director.cinema.era import detect_era
+    props = body.get("props", []) or []
+    if not isinstance(props, list):
+        raise HTTPException(status_code=400, detail="props must be a list of strings")
+    result = evaluate_shot(
+        scene_goal=str(body.get("scene_goal", "") or ""),
+        environment=str(body.get("environment", "") or ""),
+        lighting=str(body.get("lighting", "") or ""),
+        wardrobe=str(body.get("wardrobe", "") or ""),
+        props=tuple(str(p) for p in props),
+    )
+    era = detect_era(
+        scene_goal=str(body.get("scene_goal", "") or ""),
+        environment=str(body.get("environment", "") or ""),
+    )
+    hits = [
+        {
+            "rule_id": h.rule_id,
+            "severity": h.severity.value,
+            "message": h.message,
+            "field": h.field,
+            "suggestion": h.suggestion,
+        }
+        for h in result.hits
+    ]
+    return {
+        "warnings": result.warnings,
+        "hits": hits,
+        "era": era.era.value,
+    }
+
+
 @api.post("/api/v1/director/queue")
 async def director_queue_add(request: Request):
     """Freeze a Director project revision in the held queue."""
