@@ -257,7 +257,33 @@ from services.access_log_filter import install_quiet_access_filter
 # filters. Install early, then idempotently confirm it again before startup.
 install_quiet_access_filter()
 
-api = FastAPI(title="Maestro API", version="1.0.0")
+# Read the Maestro release version from VERSION at the repo root (one level
+# above app/). Falls back to "0.0.0+unknown" if the file is missing so the
+# /health/version endpoint is always reachable even on broken checkouts.
+_MAESTRO_VERSION_FILE = Path(__file__).resolve().parent.parent / "VERSION"
+
+
+def _load_maestro_version() -> str:
+    try:
+        return _MAESTRO_VERSION_FILE.read_text(encoding="utf-8").strip() or "0.0.0+unknown"
+    except OSError:
+        return "0.0.0+unknown"
+
+
+MAESTRO_VERSION = _load_maestro_version()
+
+api = FastAPI(title="Maestro API", version=MAESTRO_VERSION)
+
+
+@api.get("/health/version", include_in_schema=False)
+def _health_version() -> JSONResponse:
+    """Lightweight endpoint used by the version-aware bootstrapper
+    (start_local.sh) to detect stale builds. Returns the Maestro release
+    version declared in the top-level VERSION file. Safe to hit from the
+    browser — no side effects, no auth required (mirrors Directo's
+    /api/version contract)."""
+    return JSONResponse({"name": "maestro", "version": MAESTRO_VERSION})
+
 
 # Upload size caps — enforced in upload handlers. Tuned for real-world
 # media the app actually ingests; anything larger is almost certainly

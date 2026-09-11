@@ -3,12 +3,21 @@
 #
 # Sobe o backend FastAPI/Uvicorn direto, usando o venv já criado em app/env/.
 #
+# O launcher é "version-aware" (padrão herdado do Directo start.sh): antes de
+# subir um backend novo, prova a porta. Se já houver um Maestro respondendo,
+# compara a versão reportada por /health/version com a versão declarada no
+# arquivo VERSION na raiz do repo. Se bater, reusa. Se diferir (ou o holder
+# não responder versão), mata e sobe fresh. Se a porta estiver ocupada por
+# um processo que não responde ao probe (ex: outro app), falha com
+# mensagem específica em vez de subir e dar bind error.
+#
 # Uso:
 #   ./start_local.sh                  # porta padrão 7860, log em .launcher.log
 #   ./start_local.sh --port 7865      # porta custom
 #   ./start_local.sh --compile        # passa --compile para launch.py (kernel fusion)
 #   ./start_local.sh --share          # liga 0.0.0.0 (LAN) em vez de 127.0.0.1
 #   ./start_local.sh --no-build       # pula verificação de UI build
+#   ./start_local.sh --force          # ignora detecção de stale build; sempre reinicia
 
 set -euo pipefail
 
@@ -17,12 +26,14 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 APP_DIR="$SCRIPT_DIR/app"
 PIDFILE="$APP_DIR/.launcher.pid"
 LOGFILE="$APP_DIR/.launcher.log"
+VERSION_FILE="$SCRIPT_DIR/VERSION"
 
 # Defaults
 PORT="7860"
 COMPILE_FLAG=""
 BIND_HOST="127.0.0.1"
 SKIP_BUILD=0
+FORCE_RESTART=0
 
 # Parse args
 while [[ $# -gt 0 ]]; do
@@ -41,8 +52,10 @@ while [[ $# -gt 0 ]]; do
     --compile)     COMPILE_FLAG="--compile"; shift ;;
     --share)       BIND_HOST="0.0.0.0"; shift ;;
     --no-build)    SKIP_BUILD=1; shift ;;
+    --force)       FORCE_RESTART=1; shift ;;
     -h|--help)
       sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+      echo "  --force             ignora stale build; sempre reinicia" >&2
       exit 0 ;;
     *)
       echo "Argumento desconhecido: $1" >&2
@@ -50,7 +63,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "[start_local] Maestro launcher (standalone) — porta $PORT ($BIND_HOST)"
+# Declared Maestro version (from VERSION file). If missing, fall back to
+# "0.0.0+unknown" so the comparison still works (any running build that
+# reports a real version will look "newer" than unknown and force restart).
+EXPECTED_VERSION="0.0.0+unknown"
+if [[ -f "$VERSION_FILE" ]]; then
+  EXPECTED_VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+  [[ -z "$EXPECTED_VERSION" ]] && EXPECTED_VERSION="0.0.0+unknown"
+fi
+
+echo "[start_local] Maestro launcher (standalone) — porta $PORT ($BIND_HOST); versão esperada: $EXPECTED_VERSION"
 
 # --- 1. Detect venv ---
 VENV=""
@@ -97,27 +119,95 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
   fi
 fi
 
-# --- 4. Se já tem lock, mata anterior ---
+# --- 4. ensure_service (version-aware, padrão Directo) ---
+#
+# Antes de qualquer decisão sobre "subir novo backend", prova quem está na
+# porta. Três casos:
+#   A) Porta livre → segue direto para §6.
+#   B) Porta ocupada por Maestro respondendo, mesma versão → reusa e sai.
+#      (mensagem "(skipped) — already running vX.Y.Z").
+#   C) Porta ocupada por Maestro com versão diferente (ou holder não-Maestro)
+#      → mata holder e segue para §6. Salvo se --force foi passado, então
+#      já pulamos para §6 sem tentar reusar.
+#   D) Porta ocupada por processo que não responde → ERRO fail-fast.
+
+probe_url="http://127.0.0.1:${PORT}/"
+version_url="http://127.0.0.1:${PORT}/health/version"
+
+probe_running_version() {
+  # Returns the version string reported by /health/version, or empty
+  # string if unreachable / not Maestro / not JSON. Uses python3 (not
+  # python) to be predictable across distros — some systems have only
+  # python3 on PATH; some have a python shim without the json module.
+  local body
+  body=$(curl --noproxy '*' --fail -sS --max-time 2 "$version_url" 2>/dev/null || true)
+  if [[ -z "$body" ]]; then
+    return 0
+  fi
+  python3 -c 'import json,sys; print(json.load(sys.stdin).get("version",""))' <<<"$body" 2>/dev/null || true
+}
+
+probe_index_alive() {
+  # Lightweight index probe — returns 0 if a Maestro (any version) is up.
+  curl --noproxy '*' --fail -sS -o /dev/null --max-time 1 "$probe_url" 2>/dev/null
+}
+
+if [[ "$FORCE_RESTART" -eq 1 ]]; then
+  echo "[start_local] --force ativo; pulando probe e indo matar holder da porta"
+else
+  if probe_index_alive; then
+    RUNNING_VERSION="$(probe_running_version || true)"
+    if [[ -n "$RUNNING_VERSION" && "$RUNNING_VERSION" == "$EXPECTED_VERSION" ]]; then
+      echo "[start_local] (skipped) — Maestro v${RUNNING_VERSION} já está rodando na porta ${PORT}"
+      echo "[start_local] Para reiniciar: ./start_local.sh --force"
+      echo "[start_local] Para parar: ./stop_local.sh"
+      exit 0
+    fi
+    if [[ -n "$RUNNING_VERSION" ]]; then
+      echo "[start_local] Stale build detectado: porta ${PORT} tem Maestro v${RUNNING_VERSION}, esperado v${EXPECTED_VERSION}"
+    else
+      echo "[start_local] Holder na porta ${PORT} não responde /health/version; tratando como stale"
+    fi
+    # Stale → cair no kill abaixo.
+  fi
+fi
+
+# --- 5. Mata holder da porta (se houver) ---
+kill_holder_of_port() {
+  if command -v ss >/dev/null 2>&1; then
+    local holder
+    holder=$(ss -ltnp 2>/dev/null | awk -v p=":$PORT" '$4 ~ p {print $0}' | grep -oP 'pid=\K[0-9]+' | head -1 || true)
+    if [[ -n "${holder:-}" ]]; then
+      echo "[start_local] Porta $PORT ocupada por PID $holder — matando"
+      kill "$holder" 2>/dev/null || true
+      sleep 2
+      kill -9 "$holder" 2>/dev/null || true
+      return 0
+    fi
+  fi
+  return 1
+}
+
+# Se pidfile existe e está vivo, mata. Senão tenta detectar holder via ss.
 if [[ -f "$PIDFILE" ]]; then
   OLD_PID=$(cat "$PIDFILE" 2>/dev/null || true)
   if [[ -n "${OLD_PID:-}" ]] && kill -0 "$OLD_PID" 2>/dev/null; then
-    echo "[start_local] PID $OLD_PID ainda vivo — matando..."
+    echo "[start_local] PID antigo $OLD_PID ainda vivo — matando"
     kill "$OLD_PID" 2>/dev/null || true
     sleep 2
     kill -9 "$OLD_PID" 2>/dev/null || true
   fi
   rm -f "$PIDFILE"
+else
+  kill_holder_of_port || true
 fi
 
-# --- 5. Limpa qualquer holder fantasma da porta ---
-if command -v ss >/dev/null 2>&1; then
-  HOLDER=$(ss -ltnp 2>/dev/null | awk -v p=":$PORT" '$4 ~ p {print $0}' | grep -oP 'pid=\K[0-9]+' | head -1 || true)
-  if [[ -n "${HOLDER:-}" ]]; then
-    echo "[start_local] Porta $PORT ocupada por PID $HOLDER — matando"
-    kill "$HOLDER" 2>/dev/null || true
-    sleep 2
-    kill -9 "$HOLDER" 2>/dev/null || true
-  fi
+# Fail-fast: se ainda houver holder sobrevivente que não responde ao probe,
+# abortar antes de subir (evita bind error e mensagem confusa depois).
+if probe_index_alive; then
+  echo "[start_local] ERRO: porta ${PORT} ainda ocupada por processo que não conseguimos matar." >&2
+  echo "             Verifique com: ss -ltnp 'sport = :${PORT}'" >&2
+  exit 6
 fi
 
 # --- 6. Sobe o backend ---
@@ -165,11 +255,12 @@ fi
 # --- 8. Resumo ---
 echo ""
 echo "============================================================"
-echo "  Maestro está rodando!"
+echo "  Maestro está rodando! (v${EXPECTED_VERSION})"
 echo ""
 echo "  UI (React):  $URL"
 echo "  UI clássica: ${URL}classic/"
 echo "  API docs:    ${URL}docs"
+echo "  Health:      ${URL}health/version"
 echo ""
 echo "  PID:   $BACKEND_PID  (pidfile: $PIDFILE)"
 echo "  Log:   $LOGFILE"
