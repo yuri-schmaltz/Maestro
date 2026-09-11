@@ -2806,3 +2806,118 @@ export async function editPipelineTiming(pid: string, slots: import('../lib/dire
     throw new Error(body.detail || 'Unable to edit scene timing')
   }
 }
+
+// --- Style Bibles (Director v2 character/environment anchors) ---
+// Pattern lifted from directo_studio M1. The backend stores Bibles
+// as JSON (or YAML when PyYAML is installed) files under
+// app/settings/style_bibles/. The UI lists them, opens one for
+// editing, creates new ones, and deletes by id.
+
+export interface StyleBibleSummary {
+  id: string
+  title: string
+  description: string
+  author: string
+  tags: string[]
+  characters_count: number
+  environments_count: number
+  loras_count: number
+  global_style: string
+  global_negative: string
+}
+
+export interface CharacterAnchor {
+  id: string
+  name: string
+  physical_description: string
+  wardrobe: string
+  color_palette: string[]
+}
+
+export interface EnvironmentAnchor {
+  id: string
+  name: string
+  description: string
+  lighting: string
+  color_palette: string[]
+}
+
+export interface LoraConfig {
+  name: string
+  file_path: string
+  weight: number
+  weight_min: number
+  weight_max: number
+  notes: string
+}
+
+export interface BibleMetadata {
+  id: string
+  title: string
+  description: string
+  author: string
+  created_at: string
+  updated_at: string
+  tags: string[]
+}
+
+export interface StyleBible {
+  metadata: BibleMetadata
+  characters: Record<string, CharacterAnchor>
+  environments: Record<string, EnvironmentAnchor>
+  loras: Record<string, LoraConfig>
+  global_style: string
+  global_negative: string
+}
+
+export async function fetchStyleBibles(): Promise<{ bibles: StyleBibleSummary[] }> {
+  const res = await fetch(`${BASE}/api/v1/style-bibles`)
+  if (!res.ok) throw new Error(`Failed to fetch Style Bibles (${res.status})`)
+  return res.json()
+}
+
+export async function fetchStyleBible(id: string): Promise<StyleBible> {
+  const res = await fetch(`${BASE}/api/v1/style-bibles/${encodeURIComponent(id)}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({} as { detail?: string }))
+    throw new Error(body.detail || `Failed to fetch Style Bible (${res.status})`)
+  }
+  return res.json()
+}
+
+export async function createStyleBible(bible: StyleBible): Promise<{ id: string; path: string }> {
+  const res = await fetch(`${BASE}/api/v1/style-bibles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bible),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({} as { detail?: string }))
+    throw new Error(body.detail || `Failed to create Style Bible (${res.status})`)
+  }
+  return res.json()
+}
+
+export async function updateStyleBible(id: string, bible: StyleBible): Promise<{ id: string; path: string }> {
+  const res = await fetch(`${BASE}/api/v1/style-bibles/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bible),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({} as { detail?: string }))
+    throw new Error(body.detail || `Failed to update Style Bible (${res.status})`)
+  }
+  return res.json()
+}
+
+export async function deleteStyleBible(id: string): Promise<{ deleted: string }> {
+  const res = await fetch(`${BASE}/api/v1/style-bibles/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({} as { detail?: string }))
+    throw new Error(body.detail || `Failed to delete Style Bible (${res.status})`)
+  }
+  return res.json()
+}
