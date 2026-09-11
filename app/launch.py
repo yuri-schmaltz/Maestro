@@ -28748,32 +28748,31 @@ async def editor_export(request: Request):
 
 
 # ============================================================================
-# Mount Gradio classic UI at /classic
+# Classic UI removed
 # ============================================================================
-
-# Bare /classic 404s (the Gradio submount only answers under /classic/).
-# Registered BEFORE the mount so the exact path wins routing; everything
-# under /classic/ still reaches Gradio.
-@api.get("/classic", include_in_schema=False)
-def _classic_redirect():
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/classic/")
-
-
-try:
-    import gradio as gr
-    from shared.utils.plugins import WAN2GPApplication
-    # create_ui() references a global `app` (WAN2GPApplication) for plugin support
-    wgp.app = WAN2GPApplication()
-    _demo = wgp.create_ui()
-    api = gr.mount_gradio_app(
-        api, _demo, path="/classic",
-        allowed_paths=[wgp.save_path, wgp.image_save_path, "icons"],
-    )
-    print("[Maestro] Gradio classic UI mounted at /classic")
-except Exception as e:
-    print(f"[Maestro] WARNING: Could not mount Gradio UI at /classic: {e}")
-    traceback.print_exc()
+# The Gradio classic UI used to be mounted here at /classic. It was the
+# pre-React WanGP-style interface that the React UI is meant to replace.
+# Removing it: (a) cuts the startup cost (no more Gradio mount + WanGP
+# plugin instantiation), (b) frees the /classic route so a future
+# surface can use it, and (c) keeps the message bundle small. If you
+# still need the classic surface, restore the block below and the
+# matching line in start_local.sh's summary.
+#
+# Old block (kept for reference, commented out — gradio + WanGPApplication
+# are heavy imports and aren't worth paying the cost for an unused path):
+#
+#     @api.get("/classic", include_in_schema=False)
+#     def _classic_redirect():
+#         from fastapi.responses import RedirectResponse
+#         return RedirectResponse(url="/classic/")
+#     try:
+#         import gradio as gr
+#         from shared.utils.plugins import WAN2GPApplication
+#         wgp.app = WAN2GPApplication()
+#         _demo = wgp.create_ui()
+#         api = gr.mount_gradio_app(api, _demo, path="/classic", allowed_paths=[...])
+#     except Exception as e:
+#         traceback.print_exc()
 
 
 # ============================================================================
@@ -28886,8 +28885,9 @@ if __name__ == "__main__":
 
     print(f"\n{'='*50}")
     print(f"  Maestro UI:    http://{display_host}:{port}/")
-    # Trailing slash required: the Gradio submount 404s the bare path.
-    print(f"  Classic UI:    http://{display_host}:{port}/classic/")
+    # The Classic UI entry used to live here too — the Gradio mount was
+    # removed earlier, so the `/classic` route now 404s. Keep the banner
+    # clean so users don't try to open a URL that no longer exists.
     print(f"  API docs:      http://{display_host}:{port}/docs")
     if host == "0.0.0.0":
         print(f"  (Bound to {host} — LAN-accessible via this machine's IP)")

@@ -8,7 +8,6 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': 'http://127.0.0.1:7860',
-      '/classic': 'http://127.0.0.1:7860',
     },
   },
   // Strip console.* and debugger statements from the production bundle.

@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { FolderOpen, Clapperboard, Film, Images, SlidersHorizontal, Lock, ListVideo, LayoutDashboard } from 'lucide-react'
-import { MaestroBrand } from '../AppModeNavigation'
 import { useStore } from '../../stores/useStore'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../../lib/promptEnhancementActivity'
 import type { AppSection } from '../../types'
@@ -67,7 +66,6 @@ export function ApplicationHeader() {
   const select = (id: AppSection) => navigate(id)
   return (
     <header className="application-header" data-testid="application-header">
-      <div className="application-brand"><MaestroBrand /></div>
       <nav className="application-navigation" aria-label="Main navigation">
         <div role="tablist" aria-label="Application sections" className="application-tabs">
           {sections.map(({ id, label, icon: Icon, showCount }, index) => {

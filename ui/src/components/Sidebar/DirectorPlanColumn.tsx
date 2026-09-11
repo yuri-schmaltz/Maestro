@@ -35,7 +35,9 @@ import {
   ImageGenView,
   VideoPromptsReview,
   LlmLogStage,
+  AnalysisSummary,
 } from './DirectorChat'
+import { DirectorTimelineIconButton } from './DirectorTimelineEditor'
 
 const STEP_ORDER = ['upload', 'analyze', 'structure', 'style', 'plan', 'review', 'generate_images', 'plan_video', 'review_video'] as const
 type DirectorStep = typeof STEP_ORDER[number]
@@ -78,6 +80,15 @@ export function DirectorPlanColumn() {
   // local bias slider state (mirrors DirectorChat)
   const [localBias, setLocalBias] = useState<number | null>(null)
   const sliderRef = useRef<number | null>(null)
+  // expansion state for the analysis-details panel that now lives
+  // inside the clip-structure card.
+  const [showAnalysisDetails, setShowAnalysisDetails] = useState(false)
+
+  // analysis snapshot used by both the inline "Analysis complete" badge
+  // and the speaker-sample aggregation. Hoisted up here so it can be
+  // referenced inside the clip-structure section above without
+  // violating the temporal dead zone.
+  const analysis = useStore(s => s.directorAnalysis)
 
   // style / scene description
   const sceneDescription = useStore(s => s.directorSceneDescription)
@@ -167,7 +178,6 @@ export function DirectorPlanColumn() {
   }
 
   // speaker samples (recomputed from analysis lyrics)
-  const analysis = useStore(s => s.directorAnalysis)
   const speakerSamples = useMemo<Record<string, string[]>>(() => {
     const out: Record<string, string[]> = {}
     const lyrics = analysis?.lyrics
@@ -191,14 +201,15 @@ export function DirectorPlanColumn() {
   )
 
   if (!showPlanSurfaces) {
+    // The three skill-specific messages (audio upload, dialogue upload,
+    // story description) used to live here. The user asked to collapse
+    // them into a single generic placeholder while the column is empty
+    // — the actual call-to-action for picking a skill lives in the
+    // chat column on the left, so repeating it here is redundant.
     return (
       <div className="h-full flex items-center justify-center p-6 text-center">
         <p className="text-xs text-text-muted leading-relaxed">
-          {isStoryPath
-            ? 'Submit a story description to start planning scenes.'
-            : isShortFilm
-              ? 'Upload dialogue audio to start scene planning.'
-              : 'Upload a track to start clip planning.'}
+          Planning controls will appear here.
         </p>
       </div>
     )
@@ -210,14 +221,37 @@ export function DirectorPlanColumn() {
           the story path (no audio → no clip boundary detection). */}
       {!isStoryPath && (atStep('structure') || pastStep('structure')) && (
         <section className="bg-bg-secondary rounded-lg p-3 border border-border space-y-2">
-          <header className="flex items-center justify-between">
+          <header className="flex items-center justify-between gap-2">
             <h3 className="text-xs text-text-muted uppercase tracking-wider">
               {isShortFilm ? 'Scene structure' : 'Clip structure'}
             </h3>
-            <span className="text-2xs text-text-muted">
-              {plannedClips.length} {isShortFilm ? 'scenes' : 'clips'} · {formatTotalDuration(totalClipDuration)}
-            </span>
+            {/* Top-right cluster: clip count + duration lives beside the
+                compact wizard icon that opens the timeline editor. The
+                legacy "Edit scene timing" full-width button was removed
+                from below the structure preview — moving the trigger
+                here keeps the affordance discoverable without taking a
+                whole row of vertical space, and the magic-wand icon
+                signals "tweak layout" without a verbose label. */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-2xs text-text-muted">
+                {plannedClips.length} {isShortFilm ? 'scenes' : 'clips'} · {formatTotalDuration(totalClipDuration)}
+              </span>
+              <DirectorTimelineIconButton />
+            </div>
           </header>
+          {/* "Analysis complete" badge used to live in the left chat
+              column as a system bubble; the user asked to consolidate
+              it (plus the "Edit scene timing" button below) into the
+              clip-structure card so the planning surface is the single
+              source of truth for the post-analyze view. */}
+          {analysis && pastStep('analyze') && (
+            <AnalysisSummary
+              analysis={analysis}
+              showDetails={showAnalysisDetails}
+              setShowDetails={setShowAnalysisDetails}
+              isShortFilm={isShortFilm}
+            />
+          )}
           <StructureView
             plannedClips={plannedClips}
             energyBias={energyBias}
@@ -232,6 +266,10 @@ export function DirectorPlanColumn() {
             isActive={atStep('structure')}
             isShortFilm={isShortFilm}
           />
+          {/* The "Edit scene timing" button used to render here as a
+              full-width row below the structure preview. The user asked
+              to relocate it to the top-right of the card as a compact
+              wizard icon — see the header block above. */}
         </section>
       )}
 

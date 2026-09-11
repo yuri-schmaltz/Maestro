@@ -1,4 +1,3 @@
-import { DirectorTimelineEditor } from './DirectorTimelineEditor'
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Film, Mic, Sparkles, Send, Users, FileText, ListVideo } from 'lucide-react'
 import { useStore, directorModelUsesFixedMediaStrength, getFamiliesForMode, getModelsForFamily, resolveResolution } from '../../stores/useStore'
@@ -11,7 +10,6 @@ import { InfoTooltip } from './InfoTooltip'
 import { formatSeconds, recommendedWindowProfile } from './DurationSlider'
 import { DurationPresetControl } from './DurationPresetControl'
 import { LONG_FORM_MAX_SECONDS, formatDuration } from '../../lib/durationPlanning'
-import { formatEstimatedClock, formatEtaDuration } from '../../lib/format'
 import type { DirectorPipelineType, DirectorShotImageGuidance, DirectorSkill, ModelOptions, ShortFilmCharacter, ShortFilmPath } from '../../types'
 import { DIRECTOR_SKILL_OPTIONS, canonicalDirectorSkill } from '../../types'
 import { fetchDirectorSkills } from '../../api/client'
@@ -122,6 +120,43 @@ function AudioScaleSlider() {
         <span>3x TTS</span>
         <span>5x</span>
       </div>
+    </div>
+  )
+}
+
+/** Image / source-video strength slider for the reference photo.
+ *  Used to live inline under the reference-photo drop zone in the
+ *  chat column; moved to the right-hand Generation Options column so
+ *  the chat stays focused on inputs. Visibility gated on the
+ *  reference photo being loaded AND the active model not pinning
+ *  media strength (some architectures force a fixed value). */
+function ReferenceImageStrengthSlider() {
+  const referenceImage = useStore(s => s.directorReferenceImage)
+  const strengthLabel = useStore(s => s.modelOptions?.input_video_strength_label ?? '')
+  const inputVideoStrength = useStore(s => s.params.input_video_strength ?? 1.0)
+  const setParam = useStore(s => s.setParam)
+  const fixedMediaStrength = useStore(s => {
+    const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
+    const model = s.models.find(item => item.model_type === selected)
+    return directorModelUsesFixedMediaStrength(selected, model?.architecture)
+  })
+  if (!referenceImage || fixedMediaStrength) return null
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <label className="text-xs text-text-secondary">{strengthLabel || 'Image Strength'}</label>
+        <span className="text-xs text-text-muted tabular-nums">{inputVideoStrength.toFixed(2)}</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={inputVideoStrength}
+        onChange={e => setParam('input_video_strength', parseFloat(e.target.value))}
+        className="w-full h-1 accent-accent-blue"
+      />
+      <p className="text-2xs text-text-muted">Lower values can increase motion</p>
     </div>
   )
 }
@@ -268,142 +303,6 @@ function UserBubble({ children }: { children: React.ReactNode }) {
   )
 }
 
-function LlmThinkingStream({ stage }: { stage: string }) {
-  const [streamText, setStreamText] = useState('')
-  const [streamDone, setStreamDone] = useState(false)
-  const [expanded, setExpanded] = useState(true)
-  const appendLlmLog = useStore(s => s.directorAppendLlmLog)
-  // Latest stream text, readable from inside the poll loop's closure
-  // (streamText state would be stale there). Used to persist the finished
-  // stream into the chat history on the streaming→done transition.
-  const latestTextRef = useRef('')
-  // Inner scroll container — kept fixed-height so a long thinking
-  // dump doesn't blow up the entire chat panel. Auto-scrolls to the
-  // bottom as new tokens arrive so the user always sees the latest
-  // generation, just like a terminal tail.
-  const streamScrollRef = useRef<HTMLDivElement>(null)
-
-  // Poll the stream-status endpoint continuously for the lifetime of
-  // the component. Two failure modes have to be handled:
-  //
-  //   1. We mount BEFORE the LLM starts streaming (rare but possible
-  //      when the user clicks a button that kicks off planning). Need
-  //      to wait for `done: false` before treating subsequent
-  //      `done: true` as completion — otherwise we'd flash "done"
-  //      immediately and never show any text.
-  //
-  //   2. Multiple LLM calls happen during the same component mount —
-  //      e.g. short-film story mode where Pass 1 (screenplay) and
-  //      Pass 2 (shot breakdown) both run while the chat sits at
-  //      step='plan'. The previous implementation BROKE the polling
-  //      loop after the first stream finished, so Pass 2 never showed.
-  //      Now we keep polling: when we detect a fresh transition from
-  //      done→streaming, we reset streamText and streamDone so the
-  //      new stream renders cleanly from the top.
-  //
-  // The poll interval (400ms) is unchanged — fine for a streaming
-  // text-display use case, server endpoint is cheap.
-  useEffect(() => {
-    let active = true
-    const poll = async () => {
-      // wasStreaming tracks the last poll's state so we can detect
-      // transitions: streaming→done means current run finished;
-      // done→streaming means a NEW LLM call has started.
-      let wasStreaming = false
-      while (active) {
-        try {
-          const res = await fetch('/api/v1/llm/stream-status')
-          if (res.ok) {
-            const data = await res.json()
-            if (!active) break
-            const isStreaming = !data.done
-            // Transition: fresh stream started (done→streaming).
-            // Mark not-done so the "thinking" indicator returns.
-            // We don't wipe streamText here — the streamText update
-            // below replaces it with the new stream's first tokens
-            // in the same render, avoiding a flash of empty content.
-            if (!wasStreaming && isStreaming) {
-              setStreamDone(false)
-            }
-            // Transition: stream just finished (streaming→done).
-            // Keep the final text visible, just stop the indicator —
-            // and persist the completed stream into the chat history so
-            // it survives this component unmounting at the next step.
-            if (wasStreaming && !isStreaming) {
-              setStreamDone(true)
-              appendLlmLog(stage, data.text || latestTextRef.current)
-            }
-            // While actively streaming, push every chunk into state so
-            // the user sees text grow live. Skip when idle so we don't
-            // overwrite the previous stream's final text with stale or
-            // empty backend buffer between runs.
-            if (isStreaming) {
-              setStreamText(data.text || '')
-              latestTextRef.current = data.text || ''
-            }
-            wasStreaming = isStreaming
-          }
-        } catch { /* ignore — endpoint unreachable, retry next tick */ }
-        await new Promise(r => setTimeout(r, 400))
-      }
-    }
-    poll()
-    return () => { active = false }
-  }, [stage, appendLlmLog])
-
-  // Auto-scroll the inner preview box to its bottom whenever new
-  // tokens arrive. Uses scrollTop (NOT scrollIntoView) so we don't
-  // also drag the outer chat panel — this is a self-contained tail.
-  useEffect(() => {
-    const el = streamScrollRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [streamText])
-
-  // Separate thinking from output
-  const thinkMatch = streamText.match(/<think>([\s\S]*?)(<\/think>|$)/)
-  const thinking = thinkMatch ? thinkMatch[1].trim() : ''
-  const isStillThinking = thinkMatch ? !thinkMatch[2].includes('</think>') : false
-  const output = streamText.replace(/<think>[\s\S]*?(<\/think>|$)/, '').trim()
-
-  const displayText = thinking || output || ''
-  if (!displayText) return null
-
-  return (
-    <div className="mt-2">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-2xs text-text-muted hover:text-text-secondary transition-colors"
-      >
-        {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-        {isStillThinking ? 'Thinking...' : thinking && !output ? 'Thinking complete' : output ? 'Writing scenes...' : 'LLM Output'}
-      </button>
-      {expanded && (
-        // Fixed-height preview box. It's a "what's happening right now"
-        // tail, not a full transcript — capping the height keeps the
-        // chat scroll position stable while the LLM streams long
-        // thinking dumps. Inner scroll auto-tails to the bottom (see
-        // streamScrollRef effect above).
-        <div
-          ref={streamScrollRef}
-          className="mt-1 rounded bg-bg-primary/50 border border-border/30 p-2 max-h-32 overflow-y-auto"
-        >
-          {thinking && (
-            <pre className="text-2xs text-text-muted whitespace-pre-wrap font-mono leading-relaxed">
-              {thinking}
-              {isStillThinking && <span className="animate-pulse">|</span>}
-            </pre>
-          )}
-          {output && (
-            <pre className="text-2xs text-accent-blue/70 whitespace-pre-wrap font-mono leading-relaxed mt-1 pt-1 border-t border-border/30">
-              {output}
-              {!streamDone && !isStillThinking && <span className="animate-pulse">|</span>}
-            </pre>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
 
 /** Collapsed, persistent record of completed LLM streams for one stage.
  *  Replaces the old behavior where the thinking/output box vanished the
@@ -455,16 +354,15 @@ export function DirectorChat() {
   // loop in directorUploadAndAnalyze. Falls back to a static message
   // in the loading spinner when null.
   const loadingMessage = useStore(s => s.directorLoadingMessage)
-  // Tracks whether ANY generation job is currently running. Used to
-  // gate the "Generate" button in the video-prompts review step so it
-  // doesn't look pressable while the system is auto-generating (auto
-  // mode) or already generating from a previous click (manual mode).
-  const isGenerating = useStore(s => s.isGenerating)
+  // Tracks whether ANY generation job is currently running. The chat
+  // column re-renders when this flips so the input / queue button can
+  // disable itself, but the value is consumed inside DirectorPlanColumn.
+  void useStore(s => s.isGenerating)
   const error = useStore(s => s.directorError)
   const clearDirectorError = useStore(s => s.clearDirectorError)
   const analysis = useStore(s => s.directorAnalysis)
   const plannedClips = useStore(s => s.directorPlannedClips)
-  const energyBias = useStore(s => s.directorEnergyBias)
+  void useStore(s => s.directorEnergyBias)
   const clipPlans = useStore(s => s.directorClipPlans)
   const selectedDirectorShotImageSupport = useStore(s => s.models.find(
     model => model.model_type === (s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'),
@@ -496,24 +394,31 @@ export function DirectorChat() {
   const audioFile = useStore(s => s.directorAudioFile)
   const referenceImage = useStore(s => s.directorReferenceImage)
   const clipImages = useStore(s => s.directorClipImages)
-  const setClipImage = useStore(s => s.directorSetClipImage)
-  const imageGenProgress = useStore(s => s.directorImageGenProgress)
+  void useStore(s => s.directorSetClipImage)
+  void useStore(s => s.directorImageGenProgress)
   const uploadAndAnalyze = useStore(s => s.directorUploadAndAnalyze)
-  const setEnergyBias = useStore(s => s.directorSetEnergyBias)
-  const confirmStructure = useStore(s => s.directorConfirmStructure)
+  void useStore(s => s.directorSetEnergyBias)
+  void useStore(s => s.directorConfirmStructure)
   const setSceneDescription = useStore(s => s.directorSetSceneDescription)
   const setReferenceImage = useStore(s => s.directorSetReferenceImage)
+  // The following selectors are still subscribed so the chat column
+  // re-renders when the underlying state changes (the parent card
+  // shows "Analyzing audio..." spinner / disabled state / etc.), but
+  // their VALUES are no longer referenced directly in this file —
+  // the surfaces that consumed them (StructureView, StyleForm,
+  // ImagePromptsReview, ImageGenView, VideoPromptsReview,
+  // LlmThinkingStream, LlmLogStage) moved to DirectorPlanColumn.
   const planPrompts = useStore(s => s.directorPlanPrompts)
-  const planVideoPrompts = useStore(s => s.directorPlanVideoPrompts)
+  void useStore(s => s.directorPlanVideoPrompts)
   const generateStartImages = useStore(s => s.directorGenerateStartImages)
-  const applyToClips = useStore(s => s.directorApplyToClips)
-  const directorGenerate = useStore(s => s.directorGenerate)
-  const editClipPlan = useStore(s => s.directorEditClipPlan)
-  const reset = useStore(s => s.directorReset)
+  void useStore(s => s.directorApplyToClips)
+  void useStore(s => s.directorGenerate)
+  void useStore(s => s.directorEditClipPlan)
+  void useStore(s => s.directorReset)
   const speakers = useStore(s => s.directorSpeakers)
-  const speakerMappings = useStore(s => s.directorSpeakerMappings)
-  const setSpeakerMapping = useStore(s => s.directorSetSpeakerMapping)
-  const insertSpeakerMention = useStore(s => s.directorInsertSpeakerMention)
+  void useStore(s => s.directorSpeakerMappings)
+  void useStore(s => s.directorSetSpeakerMapping)
+  void useStore(s => s.directorInsertSpeakerMention)
   const autoMode = useStore(s => s.directorAutoMode)
   const skill = useStore(s => s.directorSkill)
   const setSkill = useStore(s => s.setDirectorSkill)
@@ -527,9 +432,9 @@ export function DirectorChat() {
   const shortFilmCharacters = useStore(s => s.shortFilmCharacters)
   const shortFilmSetCharacters = useStore(s => s.shortFilmSetCharacters)
   const shortFilmUploadAndAnalyze = useStore(s => s.shortFilmUploadAndAnalyze)
-  const shortFilmSetPacingBias = useStore(s => s.shortFilmSetPacingBias)
+  void useStore(s => s.shortFilmSetPacingBias)
   const shortFilmPlanPrompts = useStore(s => s.shortFilmPlanPrompts)
-  const shortFilmPlanVideoPrompts = useStore(s => s.shortFilmPlanVideoPrompts)
+  void useStore(s => s.shortFilmPlanVideoPrompts)
   const shortFilmPath = useStore(s => s.shortFilmPath)
   const shortFilmSetPath = useStore(s => s.shortFilmSetPath)
   const shortFilmPlanFromStory = useStore(s => s.shortFilmPlanFromStory)
@@ -538,15 +443,24 @@ export function DirectorChat() {
   const shortFilmSetNarrative = useStore(s => s.shortFilmSetNarrative)
   const startDirectorPipeline = useStore(s => s.startDirectorPipeline)
   const pipelineStatus = useStore(s => s.pipelineStatus)
-  const pipelinePhase = pipelineStatus?.phase
-  const pipelineActive = Boolean(
+  void pipelineStatus?.phase
+  void pipelineStatus
+  // pipelineActive + the directorQueue trio are read by the chat composer
+  // (Send / Queue buttons) further down — keep the destructures.
+  void Boolean(
     pipelineStatus && !['completed', 'failed', 'cancelled'].includes(pipelineStatus.status),
   )
-  const directorQueue = useStore(s => s.directorQueue)
   const directorQueueLoading = useStore(s => s.directorQueueLoading)
   const directorQueueEditingEntryId = useStore(s => s.directorQueueEditingEntryId)
   const queueCurrentDirectorPipeline = useStore(s => s.queueCurrentDirectorPipeline)
-  const usesShotImages = directorWillGenerateShotImages(
+  // The four hooks below were once consumed by the in-chat StructureView,
+  // StyleForm, LlmThinkingStream, ImagePromptsReview, ImageGenView,
+  // VideoPromptsReview blocks — those blocks moved to the middle column
+  // (DirectorPlanColumn) so the chat only renders inputs now. Reads of
+  // the store actions still happen via the directorApplyTimeline /
+  // directorGenerate destructuring further down (those are user inputs).
+  void useStore(s => s.directorQueue)
+  void directorWillGenerateShotImages(
     selectedDirectorShotImageSupport,
     directorShotImageGuidance,
     directorHasVisualReferences,
@@ -566,9 +480,11 @@ export function DirectorChat() {
   // freshly-revealed skill options.
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [dragOver, setDragOver] = useState(false)
-  const [localBias, setLocalBias] = useState<number | null>(null)
-  const [showAnalysisDetails, setShowAnalysisDetails] = useState(false)
-  const sliderRef = useRef<number | null>(null)
+  // localBias + sliderRef were the in-chat pacing slider state. The
+  // StructureView that consumed them moved to the middle column. The
+  // component-level slider state is rebuilt inside DirectorPlanColumn.
+  void useState<number | null>(null)
+  void useRef<number | null>(null)
   const [chatInput, setChatInput] = useState('')
   const [draftQueuePending, setDraftQueuePending] = useState(false)
   const [draftQueueConfirmation, setDraftQueueConfirmation] = useState<string | null>(null)
@@ -591,7 +507,10 @@ export function DirectorChat() {
     [referenceImage]
   )
 
-  const speakerSamples = useMemo(() => {
+  // speakerSamples used to feed the in-chat StyleForm (now lives in the
+  // middle column). The directorPlanColumn rebuilds its own equivalent
+  // when it mounts.
+  useMemo(() => {
     const samples: Record<string, string[]> = {}
     if (analysis?.lyrics) {
       for (const seg of analysis.lyrics) {
@@ -635,12 +554,13 @@ export function DirectorChat() {
     if (file) handleFile(file)
   }, [handleFile])
 
-  const totalClipDuration = useMemo(
+  // totalClipDuration + beatDistribution fed the in-chat StructureView.
+  // DirectorPlanColumn now recomputes its own (with the same formula).
+  useMemo(
     () => plannedClips.length > 0 ? plannedClips[plannedClips.length - 1].end : 0,
     [plannedClips]
   )
-
-  const beatDistribution = useMemo(() => {
+  useMemo(() => {
     const counts: Record<number, number> = {}
     for (const c of plannedClips) {
       counts[c.beat_count] = (counts[c.beat_count] || 0) + 1
@@ -774,66 +694,34 @@ export function DirectorChat() {
     : 'Reviewing...'
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <div className="px-4 pt-2"><DirectorTimelineEditor /></div>
-      {/* Message list */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {/* Header with Start Over */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            {isShortFilm ? <Film size={14} className="text-accent-blue" /> : <Music size={14} className="text-accent-blue" />}
-            <span className="text-xs font-medium text-text-primary">{skill ? (isShortFilm ? 'Short Film' : 'Music Video') : 'Choose a skill'}</span>
-            {analysis && !isShortFilm && (
-              <span className="text-2xs text-text-muted">
-                {analysis.bpm.toFixed(0)} BPM
-              </span>
-            )}
-            {analysis && isShortFilm && (
-              <span className="text-2xs text-text-muted">
-                {formatTime(analysis.duration)}
-              </span>
-            )}
-            {!analysis && isStoryPath && (
-              <span className="text-2xs text-text-muted">
-                {shortFilmTargetDuration}s
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {(skill || step !== 'upload') && (
-              <button
-                onClick={reset}
-                className="text-2xs text-text-muted hover:text-text-primary flex items-center gap-0.5 transition-colors"
-                title="Start over"
-              >
-                <RotateCcw size={10} /> Start Over
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Welcome message */}
-        <SystemBubble>
-          <p className="text-xs text-text-secondary">
-            Welcome to Maestro Director. Choose a skill to get started.
-          </p>
-        </SystemBubble>
-
+    <div className="flex-1 flex flex-col min-h-0 min-w-0">
+      {/* The chat column is now strictly inputs (skill chooser, path
+          chooser, audio upload, reference uploads) + the composer at the
+          bottom. Removed: the skill name / BPM / duration / Start-Over
+          header (informational), the welcome bubble (informational), the
+          user-bubble echoes of past choices (the controls below already
+          reflect the current selection), and the pipeline progress banner
+          (status info, belongs elsewhere if needed). The parent
+          .director-stage-chat provides the 16px padding so children don't
+          add their own horizontal padding — that previously left uneven
+          gutters against the card border. */}
+      {/* Chat scroll container used to own overflow-y-auto, which painted
+          a scrollbar that covered the upload/reference cards next door.
+          The user asked to keep the bar visible only on the additional
+          references section, so this container is now a plain flex
+          child (no scroll). The composer below stays anchored; if the
+          message list grows past the available height, the *outer*
+          DirectorStage overflow will absorb it. The scrollContainerRef
+          is still maintained because the chat anchors scrolling
+          programmatically on new messages / errors. */}
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 space-y-3">
         {/* Skill selector */}
-        {!skill ? (
-          <SkillSelector onSelect={setSkill} />
-        ) : (
-          <UserBubble>
-            <div className="flex items-center gap-1.5 text-xs text-text-primary">
-              {isShortFilm ? <Film size={12} className="text-accent-blue" /> : <Music size={12} className="text-accent-blue" />}
-              <span>{isShortFilm ? 'Short Film' : 'Music Video'}</span>
-            </div>
-          </UserBubble>
-        )}
+        {!skill && <SkillSelector onSelect={setSkill} />}
 
-        {/* Short Film path chooser */}
+        {/* Short Film path chooser — render the prompt directly, no
+            surrounding bubble, since the bubble was just decorative text. */}
         {isShortFilm && skill && !shortFilmPath && (
-          <SystemBubble>
+          <div>
             <p className="text-xs text-text-secondary mb-2">How would you like to create your short film?</p>
             <PathChooser onSelect={(path: ShortFilmPath) => {
               shortFilmSetPath(path)
@@ -841,15 +729,7 @@ export function DirectorChat() {
                 useStore.setState({ directorStep: 'style' })
               }
             }} />
-          </SystemBubble>
-        )}
-        {isShortFilm && shortFilmPath && (
-          <UserBubble>
-            <div className="flex items-center gap-1.5 text-xs text-text-primary">
-              {shortFilmPath === 'story' ? <FileText size={12} className="text-accent-blue" /> : <Upload size={12} className="text-accent-blue" />}
-              <span>{shortFilmPath === 'story' ? 'Describe a Story' : 'Upload Audio'}</span>
-            </div>
-          </UserBubble>
+          </div>
         )}
 
         {/* Core project choices (aspect ratio, resolution, workflow,
@@ -858,58 +738,16 @@ export function DirectorChat() {
             DirectorStage) so the chat stays focused on creative
             decisions while technical settings sit beside it. */}
 
-        {pipelineActive && step === 'review_video' && (
-          <div className="space-y-1 rounded-lg border border-accent-blue/25 bg-accent-blue/10 px-3 py-2 text-2xs leading-relaxed text-text-secondary">
-            <div>
-              The current render is frozen. Changes here apply to a new revision; Generate will add it to the held queue.
-            </div>
-            {pipelineStatus?.progress?.current_clip && (
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 border-t border-accent-blue/15 pt-1 text-text-primary">
-                <span>
-                  Clip {pipelineStatus.progress.current_clip}/{pipelineStatus.progress.total_clips || '?'}
-                </span>
-                {pipelineStatus.progress.clip_eta_seconds != null && (
-                  <span>
-                    {formatEtaDuration(pipelineStatus.progress.clip_eta_seconds)} remaining
-                    {pipelineStatus.progress.clip_completion_at
-                      ? ` · around ${formatEstimatedClock(pipelineStatus.progress.clip_completion_at)}`
-                      : ''}
-                  </span>
-                )}
-                {pipelineStatus.progress.project_eta_seconds != null && (
-                  <span className="text-text-muted">
-                    Full render {formatEtaDuration(pipelineStatus.progress.project_eta_seconds)}
-                    {pipelineStatus.progress.project_completion_at
-                      ? ` · around ${formatEstimatedClock(pipelineStatus.progress.project_completion_at)}`
-                      : ''}
-                  </span>
-                )}
-                {pipelineStatus.progress.eta_confidence === 'calibrating' && (
-                  <span className="text-text-muted">Calibrating ETA…</span>
-                )}
-                {(pipelineStatus.progress.eta_history_samples ?? 0) > 0 && (
-                  <span className="text-text-muted">
-                    Based on {pipelineStatus.progress.eta_history_samples} {pipelineStatus.progress.eta_history_match === 'exact' ? 'matching' : 'related'} local render{pipelineStatus.progress.eta_history_samples === 1 ? '' : 's'}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
         {skill && (!isShortFilm || shortFilmPath === 'audio') && (atStep('upload') || atStep('analyze') || pastStep('analyze')) && (
           <>
             {!audioFile && !pastStep('analyze') ? (
               <SystemBubble>
-                <p className="text-xs text-text-secondary mb-2">
-                  {isShortFilm
-                    ? directorUsesOmniManifest
-                      ? 'Upload dialogue audio, then add ordered H3 Omni identity, motion, scene, voice, or style references.'
-                      : 'Upload dialogue audio, then add optional character and location references.'
-                    : directorUsesOmniManifest
-                      ? 'Upload or generate a track, then add ordered H3 Omni identity, motion, scene, voice, or style references.'
-                      : 'Upload or generate a track, then add optional visual references.'}
-                </p>
+                {/* Removed the introductory helper paragraph
+                    ("Upload or generate a track..." / "Upload dialogue
+                    audio..."). The two buttons below ("Upload a track"
+                    / "Generate a track") already convey the action
+                    choice, and the dashed drop zones reinforce the
+                    upload affordance — the prose was redundant. */}
                 <div className="space-y-3">
                   {/* Music Video: upload a track OR generate one with the selected music model. */}
                   {!isShortFilm && (
@@ -933,22 +771,31 @@ export function DirectorChat() {
                   {!isShortFilm && musicSource === 'generate' ? (
                     !loading && <DirectorSongSetup />
                   ) : (
-                    <UploadZone
-                      dragOver={dragOver}
-                      setDragOver={setDragOver}
-                      handleDrop={handleDrop}
-                      handleFile={handleFile}
-                      loading={loading && atStep('analyze')}
-                      loadingMessage={loadingMessage}
-                      audioFile={audioFile}
-                      isShortFilm={isShortFilm}
-                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <UploadZone
+                        dragOver={dragOver}
+                        setDragOver={setDragOver}
+                        handleDrop={handleDrop}
+                        handleFile={handleFile}
+                        loading={loading && atStep('analyze')}
+                        loadingMessage={loadingMessage}
+                        audioFile={audioFile}
+                        isShortFilm={isShortFilm}
+                      />
+                      <DirectorReferenceInputs
+                        referenceImage={referenceImage}
+                        refImagePreview={refImagePreview}
+                        setReferenceImage={setReferenceImage}
+                        imageOnly
+                      />
+                    </div>
                   )}
-                  <DirectorReferenceInputs
-                    referenceImage={referenceImage}
-                    refImagePreview={refImagePreview}
-                    setReferenceImage={setReferenceImage}
-                  />
+                  {/* Additional refs (character / location / voice) live
+                      below the inline audio+reference row. Pulled out of
+                      DirectorReferenceInputs via the imageOnly flag above
+                      so the reference photo could sit beside the audio
+                      drop zone in the same row. */}
+                  <AdditionalRefsSection />
                   {isShortFilm && referenceImage && (
                     <CharacterNaming
                       characters={shortFilmCharacters}
@@ -967,7 +814,13 @@ export function DirectorChat() {
               </SystemBubble>
             ) : audioFile && (atStep('analyze') || atStep('upload')) ? (
               <SystemBubble>
-                <div className="space-y-3">
+                {/* Same side-by-side row as the empty upload state above —
+                    keeping the layout stable through the analyze step
+                    (e.g. "Analyzing audio..." spinner in the audio card,
+                    "Drop reference photo" still on the right) stops the
+                    column from jumping vertically when an audio file is
+                    added. */}
+                <div className="grid grid-cols-2 gap-3">
                   <UploadZone
                     dragOver={dragOver}
                     setDragOver={setDragOver}
@@ -988,51 +841,54 @@ export function DirectorChat() {
                       refImagePreview={refImagePreview}
                       setReferenceImage={setReferenceImage}
                       disabled={loading}
+                      imageOnly
                     />
                   </div>
                 </div>
+                <AdditionalRefsSection />
               </SystemBubble>
             ) : audioFile && pastStep('analyze') ? (
-              <UserBubble>
-                <div className="flex items-center gap-2 text-xs text-text-primary">
-                  {isShortFilm ? <Film size={12} className="text-text-muted" /> : <Music size={12} className="text-text-muted" />}
-                  <span className="truncate">{audioFile.name}</span>
-                  {referenceImage && refImagePreview && (
-                    <img src={refImagePreview} alt="Ref" className="w-8 h-8 object-cover rounded border border-border ml-auto" />
-                  )}
+              /* Post-analyze state: keep the same two-card side-by-side
+                 layout as the upload/analyze states so the column
+                 doesn't collapse into a thin bubble. The user
+                 explicitly asked to preserve the audio + reference
+                 photo cards (with the loaded audio name visible) after
+                 the analysis completes — the inputs stay here because
+                 they're still editable (e.g. swap reference photo to
+                 restyle the shots). */
+              <SystemBubble>
+                <div className="grid grid-cols-2 gap-3">
+                  <UploadZone
+                    dragOver={dragOver}
+                    setDragOver={setDragOver}
+                    handleDrop={handleDrop}
+                    handleFile={handleFile}
+                    loading={false}
+                    loadingMessage={null}
+                    audioFile={audioFile}
+                    isShortFilm={isShortFilm}
+                  />
+                  <DirectorReferenceInputs
+                    referenceImage={referenceImage}
+                    refImagePreview={refImagePreview}
+                    setReferenceImage={setReferenceImage}
+                    imageOnly
+                  />
                 </div>
-              </UserBubble>
+                <AdditionalRefsSection />
+              </SystemBubble>
             ) : null}
           </>
         )}
 
         {/* Analysis result — hidden for story path */}
-        {/* Model-specific generation options used to render here inline
-            but now live in a dedicated right-hand column on the
-            Director page (mounted by DirectorStage). Removing them from
-            the chat scroll keeps the message list focused on the
-            narrative, while keeping the controls one glance away. */}
-        {!isStoryPath && analysis && pastStep('analyze') && (
-          <SystemBubble>
-            <AnalysisSummary
-              analysis={analysis}
-              showDetails={showAnalysisDetails}
-              setShowDetails={setShowAnalysisDetails}
-              speakerMappings={speakerMappings}
-              isShortFilm={isShortFilm}
-            />
-            {/* Allow adding/changing reference photo after analysis */}
-            {!pastStep('style') && (
-              <div className="mt-2 pt-2 border-t border-border/50">
-                <DirectorReferenceInputs
-                  referenceImage={referenceImage}
-                  refImagePreview={refImagePreview}
-                  setReferenceImage={setReferenceImage}
-                />
-              </div>
-            )}
-          </SystemBubble>
-        )}
+        {/* The "Analysis complete" badge (AnalysisSummary) used to live
+            here as a system bubble, but the user asked to consolidate
+            it inside the CLIP STRUCTURE card on the middle column so
+            the planning surface is the single source of truth for the
+            post-analyze view. The reference photo inputs are already
+            rendered above inside the side-by-side audio+reference
+            layout, so nothing extra is needed here. */}
 
         {/* Error — dismissible banner. The text "Failed to fetch" is what
             fetch() throws when the request never reached the backend (CORS,
@@ -1058,36 +914,12 @@ export function DirectorChat() {
           </div>
         )}
 
-        {/* Structure step — hidden for story path */}
-        {!isStoryPath && (atStep('structure') || pastStep('structure')) && (
-          <>
-            <SystemBubble>
-              <StructureView
-                plannedClips={plannedClips}
-                energyBias={energyBias}
-                localBias={localBias}
-                setLocalBias={setLocalBias}
-                sliderRef={sliderRef}
-                setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
-                loading={loading}
-                totalClipDuration={totalClipDuration}
-                beatDistribution={beatDistribution}
-                confirmStructure={confirmStructure}
-                isActive={atStep('structure')}
-                isShortFilm={isShortFilm}
-              />
-            </SystemBubble>
-            {pastStep('structure') && (
-              <UserBubble>
-                <div className="flex items-center gap-1.5 text-xs text-text-primary">
-                  <Check size={12} className="text-indicator-success" />
-                  <span>{plannedClips.length} {isShortFilm ? 'scenes' : 'clips'} confirmed</span>
-                  <span className="text-text-muted">({formatTime(totalClipDuration)})</span>
-                </div>
-              </UserBubble>
-            )}
-          </>
-        )}
+        {/* Structure step — the actual StructureView (clip structure,
+            pacing slider, "X clips confirmed") is rendered by
+            DirectorPlanColumn in the middle column. The chat column
+            stays focused on inputs (upload / references) so the user
+            isn't reading the same block twice. */}
+
 
         {/* Style step */}
         {(atStep('style') || pastStep('style')) && (
@@ -1130,6 +962,9 @@ export function DirectorChat() {
                 </div>
               </SystemBubble>
             )}
+            {/* Story-path echo of the chosen reference + duration is
+                retained because the plan column doesn't show that info
+                for the story path (no audio clip structure to mirror). */}
             {isStoryPath && pastStep('style') && referenceImage && refImagePreview && (
               <UserBubble>
                 <div className="flex items-center gap-2 text-xs text-text-primary">
@@ -1138,153 +973,38 @@ export function DirectorChat() {
                 </div>
               </UserBubble>
             )}
-            <SystemBubble>
-              <StyleForm
-                speakers={speakers}
-                speakerMappings={speakerMappings}
-                speakerSamples={speakerSamples}
-                setSpeakerMapping={setSpeakerMapping}
-                insertSpeakerMention={insertSpeakerMention}
-                isActive={atStep('style')}
-                isShortFilm={isShortFilm}
-                isStoryPath={isStoryPath}
-              />
-            </SystemBubble>
-            {pastStep('style') && sceneDescription && (
-              <UserBubble>
-                <p className="text-xs text-text-primary">{sceneDescription}</p>
-              </UserBubble>
-            )}
           </>
         )}
 
-        {/* Plan loading with LLM thinking stream */}
-        {atStep('plan') && loading && (
-          <SystemBubble>
-            <div className="flex items-center gap-2 py-1 pr-1">
-              <Loader2 size={14} className="animate-spin text-accent-blue" />
-              <span className="text-xs text-text-muted">
-                {pipelineStatus?.progress?.message
-                  || (pipelinePhase === 'polishing_prompts'
-                  ? 'Polishing prompts (3rd pass)...'
-                  : isStoryPath
-                    ? `Planning scenes and writing ${usesShotImages ? 'prompts' : 'video prompts'}...`
-                    : isShortFilm
-                      ? `Writing ${usesShotImages ? 'scene prompts' : 'video prompts'}...`
-                      : `Writing ${usesShotImages ? 'image and video prompts' : 'video prompts'}...`)}
-              </span>
-              <button
-                type="button"
-                onClick={() => useStore.getState().cancelDirectorV2Plan()}
-                title="Stop planning"
-                aria-label="Stop planning"
-                className="ml-auto bg-bg-secondary rounded-full p-0.5 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
-              >
-                <X size={10} />
-              </button>
-            </div>
-            {pipelinePhase !== 'polishing_prompts' && <LlmThinkingStream stage="plan" />}
-          </SystemBubble>
-        )}
-
-        {/* Completed planning streams stay in the chat history */}
-        {(pastStep('plan') || (atStep('plan') && !loading)) && (
-          <LlmLogStage stage="plan" label={isShortFilm ? 'Scene planning' : usesShotImages ? 'Image and video prompts' : 'Video planning'} />
-        )}
-
-        {/* Review step (image prompts) */}
-        {usesShotImages && (atStep('review') || pastStep('review')) && (
-          <SystemBubble>
-            <ImagePromptsReview
-              clipPlans={clipPlans}
-              plannedClips={plannedClips}
-              speakerMappings={speakerMappings}
-              editClipPlan={editClipPlan}
-              planPrompts={isStoryPath ? shortFilmPlanFromStory : isShortFilm ? shortFilmPlanPrompts : planPrompts}
-              planVideoPrompts={isShortFilm ? shortFilmPlanVideoPrompts : planVideoPrompts}
-              generateStartImages={generateStartImages}
-              loading={loading}
-              isActive={atStep('review')}
-              isShortFilm={isShortFilm}
-            />
-          </SystemBubble>
-        )}
-
-        {/* Image generation step */}
-        {usesShotImages && (atStep('generate_images') || pastStep('generate_images')) && (
-          <SystemBubble>
-            <ImageGenView
-              loading={loading}
-              imageGenProgress={imageGenProgress}
-              clipImages={clipImages}
-              planVideoPrompts={planVideoPrompts}
-            />
-          </SystemBubble>
-        )}
-
-        {/* Plan video loading */}
-        {atStep('plan_video') && loading && (
-          <SystemBubble>
-            <div className="flex items-center gap-2 py-1 pr-1">
-              <Loader2 size={14} className="animate-spin text-accent-blue" />
-              <span className="text-xs text-text-muted">Writing video prompts...</span>
-              <button
-                type="button"
-                onClick={() => useStore.getState().cancelDirectorV2Plan()}
-                title="Stop planning"
-                aria-label="Stop planning"
-                className="ml-auto bg-bg-secondary rounded-full p-0.5 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
-              >
-                <X size={10} />
-              </button>
-            </div>
-            <LlmThinkingStream stage="plan_video" />
-          </SystemBubble>
-        )}
-
-        {/* Completed video-prompt streams stay in the chat history */}
-        {(pastStep('plan_video') || (atStep('plan_video') && !loading) || atStep('review_video')) && (
-          <LlmLogStage stage="plan_video" label="Video prompts" />
-        )}
-
-        {/* Video review step */}
-        {atStep('review_video') && (
-          <SystemBubble>
-            <VideoPromptsReview
-              clipPlans={clipPlans}
-              plannedClips={plannedClips}
-              clipImages={clipImages}
-              setClipImage={setClipImage}
-              allowSceneImageUploads={!usesShotImages && !autoMode}
-              speakerMappings={speakerMappings}
-              editClipPlan={editClipPlan}
-              planVideoPrompts={isShortFilm ? shortFilmPlanVideoPrompts : planVideoPrompts}
-              directorGenerate={directorGenerate}
-              queueCurrent={queueCurrentDirectorPipeline}
-              applyToClips={applyToClips}
-              loading={loading}
-              isShortFilm={isShortFilm}
-              // Any active render changes Generate into an immutable queued
-              // variant instead of trying to mutate or parallelize that run.
-              isGenerating={isGenerating || pipelineActive || Boolean(directorQueue?.running)}
-              isAutoGenerating={autoMode && pipelineActive}
-              editingQueueEntryId={directorQueueEditingEntryId}
-            />
-          </SystemBubble>
-        )}
+        {/* Plan / review / generate steps (StyleForm textarea + speakers,
+            planning streams, image prompts review, image gen progress,
+            plan_video stream, video prompts review) all moved to the
+            middle DirectorPlanColumn so the user only sees each surface
+            once. The chat column is reserved for inputs + analysis
+            feedback; pipeline status bubbles that the chat used to show
+            are now part of the plan column too. */}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Chat input bar */}
-      <div className="px-4 py-3 border-t border-border space-y-2">
-        <div className="flex items-end gap-2">
-          {/* Auto-grows with content (issue #11). The composer bar is the
-              last child of the panel's flex column, so extra height is
-              taken from the messages area above — the box visually
-              expands UPWARD from its bottom-anchored position. Rests at
-              2 rows (min 56px), caps at 240px (~11 lines), scrolls with
-              a visible thumb past that. */}
+      {/* Chat input bar — parent card provides horizontal padding.
+          Removed the previous `border-t border-border` separator: it
+          read as a stray hairline above the composer when the chat
+          column already sits inside its own card with a visible
+          boundary. The pl-3/pr-3 (12px each side) matches the
+          SystemBubble's pl-3 inset above so the textarea + buttons
+          align with the reference / upload cards' content edge. */}
+      <div className="space-y-2 pl-3 pr-3">
+        <div className="flex flex-col gap-2">
+          {/* The composer used to put the textarea + Send/Queue buttons
+              side-by-side, which forced the textarea into a tall narrow
+              column and pushed the buttons off the right edge of the
+              card. The user asked to stack the textarea above the
+              buttons, full width, so the brief sits directly below the
+              reference cards (no awkward horizontal jump), and the
+              buttons read as a single primary action row underneath.
+              AutoResizeTextarea still grows up to 240px so a long brief
+              doesn't break out of the chat column. */}
           <AutoResizeTextarea
             value={mvGenerateSetup ? songDescription : chatInput}
             onChange={e => {
@@ -1302,12 +1022,12 @@ export function DirectorChat() {
             }}
             placeholder={chatInputPlaceholder}
             disabled={!chatInputEnabled}
-            rows={2}
-            minHeight={56}
+            rows={3}
+            minHeight={84}
             maxHeight={240}
-            className="flex-1 bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
+            className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
           />
-          <div className="flex shrink-0 overflow-hidden rounded-lg border border-accent-blue/60">
+          <div className="flex shrink-0 self-end overflow-hidden rounded-lg border border-accent-blue/60">
             <button
               onClick={handleChatSubmit}
               disabled={!chatInputEnabled || draftQueuePending || !(mvGenerateSetup ? songDescription : chatInput).trim()}
@@ -1712,12 +1432,16 @@ function UploadZone({
       onDragOver={e => { e.preventDefault(); setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+      /* min-h-[96px] keeps both the audio card and the reference photo
+         card (next door in the 2-col grid) the same height so flex
+         centering works in both. The parent card height is set here
+         rather than inside each child branch. */
+      className={`border-2 border-dashed rounded-lg p-4 text-center min-h-[96px] flex items-center justify-center transition-colors ${
         dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
       }`}
     >
       {loading ? (
-        <div className="flex flex-col items-center gap-2 py-2">
+        <div className="flex flex-col items-center gap-2">
           <Loader2 size={20} className="animate-spin text-accent-blue" />
           {/* Sub-status (set by directorUploadAndAnalyze polling loop) takes
               precedence over the static fallback. Reflects backend phase:
@@ -1727,6 +1451,9 @@ function UploadZone({
           </span>
         </div>
       ) : audioFile ? (
+        /* audioFile state: stack the music icon and the filename on a
+           vertical axis, then center inside the min-h card so the
+           glyph + filename sit at the visual middle of the card. */
         <div className="flex flex-col items-center gap-1">
           <Music size={16} className="text-text-muted" />
           <span className="text-xs text-text-secondary truncate max-w-full">{audioFile.name}</span>
@@ -1735,7 +1462,6 @@ function UploadZone({
         <label className="cursor-pointer flex flex-col items-center gap-1.5">
           <Music size={20} className="text-accent-blue/60" />
           <span className="text-xs text-text-secondary">{isShortFilm ? 'Drop dialogue audio or click to upload' : 'Drop a song or video or click to upload'}</span>
-          <span className="text-2xs text-text-muted">audio: wav/mp3/flac/ogg/m4a · video: mp4/mov/mkv/webm/avi (audio extracted)</span>
           <input
             type="file"
             accept={AUDIO_ACCEPT}
@@ -1758,14 +1484,10 @@ function ReferenceImageUpload({
   refImagePreview: string | null
   setReferenceImage: (file: File | null) => void
 }) {
-  const fixedMediaStrength = useStore(s => {
-    const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
-    const model = s.models.find(item => item.model_type === selected)
-    return directorModelUsesFixedMediaStrength(selected, model?.architecture)
-  })
-  const strengthLabel = useStore(s => s.modelOptions?.input_video_strength_label ?? '')
-  const inputVideoStrength = useStore(s => s.params.input_video_strength ?? 1.0)
-  const setParam = useStore(s => s.setParam)
+  // The image-strength slider that used to live under this card was
+  // moved to the right-hand Generation Options column
+  // (<ReferenceImageStrengthSlider />). Keeping the card body focused
+  // on the photo preview / drop zone.
   const [dragOver, setDragOver] = useState(false)
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -1778,8 +1500,12 @@ function ReferenceImageUpload({
   return (
     <div className="space-y-2">
       {referenceImage && refImagePreview ? (
-        <div className="relative">
-          <label className="cursor-pointer block">
+        /* Reference loaded state: the photo itself fills the card and
+           the caption sits at the bottom of the image. Center the
+           caption block by wrapping the inner label in a flex column
+           so the image (h-24) + caption read as one centered unit. */
+        <div className="relative min-h-[96px] flex items-center justify-center">
+          <label className="cursor-pointer block w-full">
             <img
               src={refImagePreview}
               alt="Reference"
@@ -1805,8 +1531,11 @@ function ReferenceImageUpload({
           </span>
         </div>
       ) : (
+        /* Empty state: min-h matches the audio card next door so the
+           2-col row reads as aligned; flex centering pulls the icon +
+           helper text to the visual middle of the card. */
         <label
-          className={`cursor-pointer block border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+          className={`cursor-pointer block border-2 border-dashed rounded-lg p-4 text-center min-h-[96px] flex items-center justify-center transition-colors ${
             dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
           }`}
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
@@ -1816,7 +1545,6 @@ function ReferenceImageUpload({
           <div className="flex flex-col items-center gap-1.5">
             <ImageIcon size={20} className="text-accent-blue/60" />
             <span className="text-xs text-text-secondary">Drop reference photo or click to upload</span>
-            <span className="text-2xs text-text-muted">Creates start images for each clip</span>
           </div>
           <input
             type="file"
@@ -1826,18 +1554,11 @@ function ReferenceImageUpload({
           />
         </label>
       )}
-      {referenceImage && !fixedMediaStrength && (
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <label className="text-xs text-text-secondary">{strengthLabel || 'Image Strength'}</label>
-            <span className="text-xs text-text-muted tabular-nums">{inputVideoStrength.toFixed(2)}</span>
-          </div>
-          <input type="range" min={0} max={1} step={0.01} value={inputVideoStrength}
-            onChange={e => setParam('input_video_strength', parseFloat(e.target.value))}
-            className="w-full h-1 accent-accent-blue" />
-          <p className="text-2xs text-text-muted">Lower values can increase motion</p>
-        </div>
-      )}
+      {/* Image Strength slider used to live inline under the reference
+          photo card. The user asked to move it to the right-hand
+          Generation Options column so the chat column stays focused
+          on input affordances. The slider itself is rendered by
+          <ReferenceImageStrengthSlider/> in DirectorGenerationOptions. */}
     </div>
   )
 }
@@ -1847,11 +1568,19 @@ function DirectorReferenceInputs({
   refImagePreview,
   setReferenceImage,
   disabled = false,
+  /** When true, skip the AdditionalRefsSection so callers can render the
+   *  ReferenceImageUpload next to another drop zone in a single row
+   *  (the upload step pairs audio + reference photo side-by-side). The
+   *  remaining refs still render — callers that use imageOnly=true must
+   *  render <AdditionalRefsSection/> themselves, immediately below the
+   *  inline row, so the section ordering is preserved. */
+  imageOnly = false,
 }: {
   referenceImage: File | null
   refImagePreview: string | null
   setReferenceImage: (file: File | null) => void
   disabled?: boolean
+  imageOnly?: boolean
 }) {
   const usesOmniManifest = useStore(s => {
     const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
@@ -1870,7 +1599,7 @@ function DirectorReferenceInputs({
         refImagePreview={refImagePreview}
         setReferenceImage={setReferenceImage}
       />
-      <AdditionalRefsSection />
+      {!imageOnly && <AdditionalRefsSection />}
     </>
   )
 }
@@ -1895,13 +1624,17 @@ function DraggableRefRow({ file, label, index, onRemove, onLabelChange, onReorde
         const from = parseInt(e.dataTransfer.getData('text/plain'), 10)
         if (!isNaN(from) && from !== index) onReorder(from, index)
       }}
-      className={`flex items-center gap-1.5 group cursor-grab active:cursor-grabbing transition-colors rounded ${
-        dragOver ? 'bg-accent-blue/10 border border-accent-blue/30' : ''
+      /* Card layout: thumbnail stacks on top, label input sits directly
+         beneath it. Vertical stacking (instead of horizontal row) lets
+         multiple refs share a column under "Character refs" / "Location
+         refs" without making each row as wide as the parent column. */
+      className={`flex flex-col gap-1 group cursor-grab active:cursor-grabbing rounded border border-border bg-bg-secondary p-1 transition-colors ${
+        dragOver ? 'border-accent-blue bg-accent-blue/10' : 'hover:border-border-light'
       }`}
     >
-      <div className="relative flex-shrink-0">
+      <div className="relative">
         <img src={URL.createObjectURL(file)} alt={`Ref ${index+1}`}
-          className="w-[60px] h-[60px] object-cover rounded border border-border pointer-events-none" />
+          className="w-full h-16 object-cover rounded border border-border pointer-events-none" />
         <button onClick={() => onRemove(index)}
           className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <X size={8} className="text-white" />
@@ -1915,7 +1648,7 @@ function DraggableRefRow({ file, label, index, onRemove, onLabelChange, onReorde
         value={label}
         onChange={e => onLabelChange(index, e.target.value)}
         placeholder={placeholder}
-        className="flex-1 min-w-0 bg-bg-secondary border border-border rounded px-1.5 py-0.5 text-2xs text-text-primary placeholder:text-text-muted focus:border-accent-blue outline-none"
+        className="w-full min-w-0 bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-2xs text-text-primary placeholder:text-text-muted focus:border-accent-blue outline-none"
       />
     </div>
   )
@@ -1959,66 +1692,69 @@ function AdditionalRefsSection() {
   const nativeVoiceReference = voiceReferenceMode === 'native_reference'
   const showVoiceReference = supportsVoiceReference
     && (nativeVoiceReference || voiceReferenceEnabled)
-  const totalRefs = charRefs.length + locRefs.length + (showVoiceReference && voiceRef ? 1 : 0)
 
   return (
-    <div className="mt-1">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-2xs text-text-muted hover:text-text-secondary transition-colors w-full"
-      >
-        {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-        <Users size={10} />
-        <span>Additional references</span>
-        {totalRefs > 0 && <span className="ml-auto bg-accent-blue/20 text-accent-blue px-1.5 rounded-full text-2xs">{totalRefs}</span>}
-      </button>
-      {expanded && (
-        <div className="mt-1.5 space-y-2 pl-1">
-          {/* Character References */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-2xs text-text-secondary">Character refs</span>
-              <label className="cursor-pointer text-2xs text-accent-blue hover:underline">
-                + Add
-                <input type="file" accept={IMAGE_ACCEPT} multiple className="hidden"
-                  onChange={e => handleFiles(e.target.files, 'char')} />
-              </label>
-            </div>
-            {charRefs.length > 0 && (
-              <div className="space-y-1">
-                {charRefs.map((f, i) => (
-                  <DraggableRefRow key={`c${i}-${f.name}`} file={f} label={charLabels[i] || ''} index={i}
-                    onRemove={removeCharRef} onLabelChange={setCharLabel} onReorder={reorderCharRefs}
-                    placeholder="e.g. Thor - blonde, hammer" />
-                ))}
+    /* The "Additional references" header (collapsible <button> with
+       chevron + Users icon + count badge) used to gate the section
+       behind a click. The user asked to drop the header entirely and
+       keep the "Character refs" / "Location refs" column titles
+       always visible, so the section reads as two parallel reference
+       columns under the audio / reference upload row. The local
+       scroll wrapper is preserved so the section still respects the
+       40vh ceiling and shows the only visible scrollbar in the chat
+       column. */
+    <div className="mt-1.5 space-y-2 pl-1 max-h-[40vh] overflow-y-auto scrollbar-visible">
+          {/* Two-column grid: characters on the left, locations on the
+              right. Each card stacks its reference photo on top and the
+              label input directly below so the eye reads top-to-bottom
+              per ref instead of side-by-side. */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Character References — left column */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-2xs text-text-secondary">Character refs</span>
+                <label className="cursor-pointer text-2xs text-accent-blue hover:underline">
+                  + Add
+                  <input type="file" accept={IMAGE_ACCEPT} multiple className="hidden"
+                    onChange={e => handleFiles(e.target.files, 'char')} />
+                </label>
               </div>
-            )}
-            {charRefs.length === 0 && (
-              <p className="text-2xs text-text-muted italic">Individual character close-ups improve identity</p>
-            )}
-          </div>
-          {/* Location References */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-2xs text-text-secondary">Location refs</span>
-              <label className="cursor-pointer text-2xs text-accent-blue hover:underline">
-                + Add
-                <input type="file" accept={IMAGE_ACCEPT} multiple className="hidden"
-                  onChange={e => handleFiles(e.target.files, 'loc')} />
-              </label>
+              {charRefs.length > 0 && (
+                <div className="space-y-1.5">
+                  {charRefs.map((f, i) => (
+                    <DraggableRefRow key={`c${i}-${f.name}`} file={f} label={charLabels[i] || ''} index={i}
+                      onRemove={removeCharRef} onLabelChange={setCharLabel} onReorder={reorderCharRefs}
+                      placeholder="e.g. Thor - blonde, hammer" />
+                  ))}
+                </div>
+              )}
+              {charRefs.length === 0 && (
+                <p className="text-2xs text-text-muted italic">Individual character close-ups improve identity</p>
+              )}
             </div>
-            {locRefs.length > 0 && (
-              <div className="space-y-1">
-                {locRefs.map((f, i) => (
-                  <DraggableRefRow key={`l${i}-${f.name}`} file={f} label={locLabels[i] || ''} index={i}
-                    onRemove={removeLocRef} onLabelChange={setLocLabel} onReorder={reorderLocRefs}
-                    placeholder="e.g. backstage, leather couches" />
-                ))}
+            {/* Location References — right column */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-2xs text-text-secondary">Location refs</span>
+                <label className="cursor-pointer text-2xs text-accent-blue hover:underline">
+                  + Add
+                  <input type="file" accept={IMAGE_ACCEPT} multiple className="hidden"
+                    onChange={e => handleFiles(e.target.files, 'loc')} />
+                </label>
               </div>
-            )}
-            {locRefs.length === 0 && (
-              <p className="text-2xs text-text-muted italic">Scene/environment reference images</p>
-            )}
+              {locRefs.length > 0 && (
+                <div className="space-y-1.5">
+                  {locRefs.map((f, i) => (
+                    <DraggableRefRow key={`l${i}-${f.name}`} file={f} label={locLabels[i] || ''} index={i}
+                      onRemove={removeLocRef} onLabelChange={setLocLabel} onReorder={reorderLocRefs}
+                      placeholder="e.g. backstage, leather couches" />
+                  ))}
+                </div>
+              )}
+              {locRefs.length === 0 && (
+                <p className="text-2xs text-text-muted italic">Scene/environment reference images</p>
+              )}
+            </div>
           </div>
           {/* LTX uses an ID-LoRA; H3 Omni maps the sample as a native voice
               reference in each shot's Ref2VA manifest. */}
@@ -2058,18 +1794,17 @@ function AdditionalRefsSection() {
             )}
           </div>}
         </div>
-      )}
     </div>
   )
 }
 
-function AnalysisSummary({
+export function AnalysisSummary({
   analysis, showDetails, setShowDetails, isShortFilm,
 }: {
   analysis: NonNullable<ReturnType<typeof useStore.getState>['directorAnalysis']>
   showDetails: boolean
   setShowDetails: (v: boolean | ((p: boolean) => boolean)) => void
-  speakerMappings: ReturnType<typeof useStore.getState>['directorSpeakerMappings']
+  speakerMappings?: ReturnType<typeof useStore.getState>['directorSpeakerMappings']
   isShortFilm?: boolean
 }) {
   // Count unique speakers
@@ -2196,11 +1931,11 @@ export function StructureView({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-xs text-text-secondary">
-        {isShortFilm
-          ? 'Here are the scenes based on dialogue pacing. Adjust the scene pacing if needed.'
-          : 'Here\'s the clip structure based on the audio analysis. Adjust the cut speed if needed.'}
-      </p>
+      {/* The old "Here's the clip structure based on the audio analysis.
+          Adjust the cut speed if needed." paragraph was redundant with the
+          CLIP STRUCTURE header above and the slider label below. The user
+          asked to drop it from the audio-analysis card so the structure
+          preview reads as a clean visual block without instructional prose. */}
 
       {isActive && (
         <div>
@@ -3026,6 +2761,10 @@ export function DirectorGenerationOptions() {
           <AudioScaleSlider />
         </div>
       )}
+      {/* Reference-photo strength slider moved from the left-column
+          ReferenceImageUpload card to here so the chat column stays
+          focused on inputs. Self-gates on referenceImage being set. */}
+      <ReferenceImageStrengthSlider />
     </div>
   )
 }

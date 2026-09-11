@@ -112,7 +112,7 @@ export function DirectorStage({ embedded = false }: DirectorStageProps) {
         </section>
         <aside className="director-stage-options" aria-label="Director setup & generation options">
           <DirectorSetupPanel locked={setupLocked} />
-          <div className="pt-3 mt-3 border-t border-border/50">
+          <div className="pt-3 border-t border-border/50">
             <DirectorGenerationOptions />
           </div>
         </aside>

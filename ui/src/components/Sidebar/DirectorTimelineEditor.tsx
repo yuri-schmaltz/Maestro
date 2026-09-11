@@ -1,19 +1,64 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Wand2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { editDirectorTimeline, type SceneSlot, type TimelineEdit } from '../../lib/directorTimeline'
 
-export function DirectorTimelineEditor() {
+/** Shared hook for the timeline editor button + dialog. Both the
+ *  full-width "Edit scene timing" button (legacy layout) and the
+ *  compact icon button (header of the CLIP STRUCTURE card) drive the
+ *  same dialog. Keeping the open-state here means a future "Open
+ *  editor from elsewhere" trigger (e.g. a keyboard shortcut) only
+ *  needs to flip this boolean. */
+function useTimelineEditor() {
   const clips = useStore(s => s.directorPlannedClips)
   const loading = useStore(s => s.directorLoading)
   const status = useStore(s => s.pipelineStatus?.status)
   const [open, setOpen] = useState(false)
-  if (!clips.length) return null
   const active = ['queued', 'running'].includes(status || '')
+  const disabled = (loading && status !== 'paused') || active
+  const disabledReason = active
+    ? 'Stop the active production before changing its scene structure.'
+    : 'Split, resize or merge scenes before generation'
+  return {
+    clips,
+    open,
+    setOpen,
+    disabled,
+    disabledReason,
+  }
+}
+
+export function DirectorTimelineEditor() {
+  const { clips, open, setOpen, disabled, disabledReason } = useTimelineEditor()
+  if (!clips.length) return null
   return <>
-    <button className="w-full rounded border border-accent-blue p-2 text-xs text-accent-blue" disabled={(loading && status !== 'paused') || active}
-      title={active ? 'Stop the active production before changing its scene structure.' : 'Split, resize or merge scenes before generation'}
+    <button className="w-full rounded border border-accent-blue p-2 text-xs text-accent-blue" disabled={disabled}
+      title={disabledReason}
       onClick={() => setOpen(true)}>Edit scene timing · {clips.length} scenes</button>
+    {open && createPortal(<TimelineDialog close={() => setOpen(false)} />, document.body)}
+  </>
+}
+
+/** Compact square icon-only variant of the timeline editor trigger.
+ *  Lives in the top-right of the CLIP STRUCTURE card next to the
+ *  "N clips · 2:33" counter. Renders a magic-wand glyph to evoke the
+ *  "tweak the scene layout" affordance without consuming the row with
+ *  the verbose label. */
+export function DirectorTimelineIconButton() {
+  const { clips, open, setOpen, disabled, disabledReason } = useTimelineEditor()
+  if (!clips.length) return null
+  return <>
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      disabled={disabled}
+      title={disabledReason}
+      aria-label={`Edit scene timing · ${clips.length} scenes`}
+      className="inline-flex items-center justify-center h-6 w-6 rounded border border-accent-blue/70 text-accent-blue hover:bg-accent-blue/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+    >
+      <Wand2 size={12} />
+    </button>
     {open && createPortal(<TimelineDialog close={() => setOpen(false)} />, document.body)}
   </>
 }

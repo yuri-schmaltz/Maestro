@@ -17,6 +17,7 @@
 #   ./start_local.sh --compile        # passa --compile para launch.py (kernel fusion)
 #   ./start_local.sh --share          # liga 0.0.0.0 (LAN) em vez de 127.0.0.1
 #   ./start_local.sh --no-build       # pula verificação de UI build
+#   ./start_local.sh --no-open        # não abre o navegador automaticamente
 #   ./start_local.sh --force          # ignora detecção de stale build; sempre reinicia
 
 set -euo pipefail
@@ -34,6 +35,7 @@ COMPILE_FLAG=""
 BIND_HOST="127.0.0.1"
 SKIP_BUILD=0
 FORCE_RESTART=0
+AUTO_OPEN=1   # open the browser on the default handler unless --no-open
 
 # Parse args
 while [[ $# -gt 0 ]]; do
@@ -53,9 +55,11 @@ while [[ $# -gt 0 ]]; do
     --share)       BIND_HOST="0.0.0.0"; shift ;;
     --no-build)    SKIP_BUILD=1; shift ;;
     --force)       FORCE_RESTART=1; shift ;;
+    --no-open)     AUTO_OPEN=0; shift ;;
     -h|--help)
       sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
       echo "  --force             ignora stale build; sempre reinicia" >&2
+      echo "  --no-open           não abre o navegador automaticamente" >&2
       exit 0 ;;
     *)
       echo "Argumento desconhecido: $1" >&2
@@ -270,7 +274,6 @@ echo "============================================================"
 echo "  Maestro está rodando! (v${EXPECTED_VERSION})"
 echo ""
 echo "  UI (React):  $URL"
-echo "  UI clássica: ${URL}classic/"
 echo "  API docs:    ${URL}docs"
 echo "  Health:      ${URL}health/version"
 echo ""
@@ -280,3 +283,31 @@ echo ""
 echo "  Pare com:  ./stop_local.sh"
 echo "  Acompanhe: tail -f $LOGFILE"
 echo "============================================================"
+
+# --- 9. Auto-open the browser (opt-out via --no-open) ---
+#
+# Launches the system default browser pointed at the local UI. We only
+# do this when:
+#   - AUTO_OPEN is still 1 (user didn't pass --no-open)
+#   - the bind host is loopback (127.0.0.1 / localhost) — opening a
+#     remote URL when --share binds 0.0.0.0 would surprise the operator
+#     by pointing their browser at the LAN IP they may not want to use.
+#   - we have a TTY-ish session OR the platform's `open` command is
+#     available — under `nohup` from a cron job we shouldn't try.
+#
+# Failure is non-fatal: if no opener is found, just print a hint.
+if (( AUTO_OPEN == 1 )) && [[ "$BIND_HOST" == "127.0.0.1" || "$BIND_HOST" == "localhost" ]]; then
+  if [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] || [[ "$(uname -s)" == "Darwin" ]]; then
+    case "$(uname -s)" in
+      Darwin)  open "$URL" >/dev/null 2>&1 || echo "[start_local] Não consegui abrir o navegador; acesse $URL manualmente." ;;
+      Linux)   command -v xdg-open >/dev/null 2>&1 && xdg-open "$URL" >/dev/null 2>&1 \
+                || command -v gio      >/dev/null 2>&1 && gio open "$URL" >/dev/null 2>&1 \
+                || echo "[start_local] AVISO: instale xdg-utils (xdg-open) para auto-abrir o navegador, ou acesse $URL." ;;
+      MINGW*|MSYS*|CYGWIN*) cmd.exe /c start "" "$URL" >/dev/null 2>&1 \
+                || echo "[start_local] Não consegui abrir o navegador; acesse $URL manualmente." ;;
+      *)       echo "[start_local] OS não reconhecido; acesse $URL manualmente." ;;
+    esac
+  else
+    echo "[start_local] Sem sessão gráfica detectada; acesse $URL manualmente."
+  fi
+fi
