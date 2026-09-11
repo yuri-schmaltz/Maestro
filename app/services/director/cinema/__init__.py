@@ -104,19 +104,31 @@ def evaluate_shot(*, scene_goal: str = "", environment: str = "", lighting: str 
 
     hits: list[CinemaRuleHit] = []
 
-    # 2. Anachronism: does the wardrobe / props list contain anything
-    #    that contradicts the detected era?
+    # 2. Anachronism: does the wardrobe / props list / environment
+    #    description contain anything that contradicts the detected
+    #    era? Environment is the noisiest signal (mixed cues) so the
+    #    check_anachronism function scopes it as a last-resort hit.
     anachronisms = check_anachronism(
         era=era,
         wardrobe=wardrobe,
         props=tuple(props),
+        environment=environment,
     )
     for hit in anachronisms:
+        # Map anachronism scope → ShotPlan field name. The dashboard
+        # shows the field in the warning row, so it has to be the
+        # ShotPlan field that triggered the violation, not the
+        # internal scope name.
+        scope_to_field = {
+            "wardrobe": "wardrobe",
+            "props": "props",
+            "environment": "environment",
+        }
         hits.append(CinemaRuleHit(
-            rule_id=f"anachronism.{hit.prop}",
+            rule_id=f"anachronism.{hit.category}",
             severity=Severity.WARNING,
             message=hit.reason,
-            field="wardrobe" if hit.scope == "wardrobe" else "props",
+            field=scope_to_field.get(hit.scope, hit.scope),
             suggestion=hit.suggestion,
         ))
 

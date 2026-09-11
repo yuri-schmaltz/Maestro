@@ -129,6 +129,39 @@ class AnachronismTests(unittest.TestCase):
         self.assertEqual(len(hits), 1)
         self.assertEqual(hits[0].scope, "props")
 
+    def test_environment_is_scanned_as_last_resort(self):
+        # Environment is the noisiest signal (mixed cues), so it is
+        # the last-resort scope: wardrobe hits win, then props hits,
+        # then environment hits. Verify environment-only anachronism
+        # is caught (medieval scene_goal, cyberpunk setting).
+        hits = check_anachronism(
+            era=Era.MEDIEVAL,
+            wardrobe="simple wool tunic",
+            props=(),
+            environment="a dark neon cyberpunk city",
+        )
+        # Two patterns match: cyberpunk (future-tech env) and neon
+        # (modern urban env). Both are MEDIEVAL anachronisms. We
+        # assert the count and the scope, not the exact patterns,
+        # so the test survives pattern-list refactors.
+        env_hits = [h for h in hits if h.scope == "environment"]
+        self.assertGreaterEqual(len(env_hits), 1)
+
+    def test_environment_is_overridden_by_wardrobe_hit(self):
+        # When wardrobe already flags the SAME keyword as the
+        # environment, environment is not consulted (avoids
+        # triple-emit for the same signal). Different keywords in
+        # different scopes are still independent hits.
+        hits = check_anachronism(
+            era=Era.MEDIEVAL,
+            wardrobe="carries a smartphone",
+            environment="a smartphone-lit alley",
+        )
+        # Only the wardrobe hit should fire — the same pattern
+        # (smartphone) doesn't re-emit from environment.
+        self.assertEqual(len(hits), 1)
+        self.assertEqual(hits[0].scope, "wardrobe")
+
 
 class LightingConsistencyTests(unittest.TestCase):
     def test_low_key_and_blown_out_contradicts(self):

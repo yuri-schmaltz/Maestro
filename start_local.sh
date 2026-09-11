@@ -119,6 +119,18 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
   fi
 fi
 
+# --- 3.5. fix_llama_symlinks (idempotente, < 50ms) ---
+#
+# O bundle de llama.cpp em app/ckpts/llm/bin/ vem sem os SONAME
+# symlinks (libllama-common.so.0 etc.) que o ld.so procura. Sem eles
+# o llama-server child process morre com "code 127" e o Director
+# perde o caminho de LLM (Gemma 4) — sintoma silencioso, hard to
+# spot. O script fix_llama_symlinks.sh cria os symlinks faltantes
+# e é seguro rodar todo startup (cria só o que falta).
+if [[ -x "$APP_DIR/scripts/fix_llama_symlinks.sh" ]]; then
+  "$APP_DIR/scripts/fix_llama_symlinks.sh" || echo "[start_local] AVISO: fix_llama_symlinks falhou (não fatal — backend sobe sem LLM advisor)" >&2
+fi
+
 # --- 4. ensure_service (version-aware, padrão Directo) ---
 #
 # Antes de qualquer decisão sobre "subir novo backend", prova quem está na
