@@ -921,7 +921,13 @@ input[type="range"]::-webkit-slider-thumb {
 @media(max-width:480px) {
  .application-header { padding:10px 10px 0; }
  .application-navigation { width:100%; }
- .application-tabs { gap:1px; justify-content:center; }
+ /* Fill the full width with evenly-sized tabs instead of centering a
+    fixed-width strip. The base rule already sets flex:1 1 0 on each
+    .application-tab and width:100% on .application-tabs, so removing
+    justify-content:center is enough — the items will stretch to fill
+    the row. Keep gap:1px so adjacent labels don't crowd on narrow
+    screens. */
+ .application-tabs { gap:1px; }
  .application-tab { flex-direction:column; gap:5px; min-height:48px; padding:6px 9px; font-size: var(--text-2xs); }
  .section-container { padding:24px 16px; }
  .section-heading { align-items:flex-start; flex-direction:column; gap:16px; margin-bottom:24px; }

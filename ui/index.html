@@ -16,7 +16,7 @@
          script below and by applyTheme() on switch. -->
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#0a0a0a" />
-    <title>Maestro</title>
+    <title>Maestro v2.0.1</title>
   </head>
   <body spellcheck="true">
     <div id="root"></div>
@@ -90,5 +90,25 @@
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Keep the document title in sync with the brand shown in the
+      // header (logo + name + version). The header pulls the version
+      // from /system_config at runtime; we mirror that into the tab
+      // title so the browser tab matches what the user sees on the
+      // page. Falls back to the static title if the fetch fails.
+      (function () {
+        var titleEl = document.querySelector('title');
+        if (!titleEl) return;
+        var baseTitle = titleEl.textContent;
+        fetch('/api/v1/system-config').then(function (r) { return r.ok ? r.json() : null; })
+          .catch(function () { return null; })
+          .then(function (cfg) {
+            var v = cfg && cfg.app_version;
+            if (typeof v === 'string' && v.length) {
+              titleEl.textContent = 'Maestro v' + v;
+            }
+          });
+      })();
+    </script>
   </body>
 </html>

@@ -1947,6 +1947,7 @@ interface AppState {
    *  "Analyzing audio..." in the UI when null. */
   directorLoadingMessage: string | null
   directorError: string | null
+  clearDirectorError: () => void
   directorReferenceImage: File | null
   directorReferenceImagePath: string | null
   /** Ordered mixed-media references used by H3 Omni Director projects. */
@@ -9841,6 +9842,7 @@ export const useStore = create<AppState>((set, get) => ({
   directorLoading: false,
   directorLoadingMessage: null,
   directorError: null,
+  clearDirectorError: () => set({ directorError: null }),
   directorReferenceImage: null,
   directorReferenceImagePath: null,
   directorH3References: [],

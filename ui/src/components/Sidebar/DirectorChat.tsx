@@ -461,6 +461,7 @@ export function DirectorChat() {
   // mode) or already generating from a previous click (manual mode).
   const isGenerating = useStore(s => s.isGenerating)
   const error = useStore(s => s.directorError)
+  const clearDirectorError = useStore(s => s.clearDirectorError)
   const analysis = useStore(s => s.directorAnalysis)
   const plannedClips = useStore(s => s.directorPlannedClips)
   const energyBias = useStore(s => s.directorEnergyBias)
@@ -1033,10 +1034,27 @@ export function DirectorChat() {
           </SystemBubble>
         )}
 
-        {/* Error */}
+        {/* Error — dismissible banner. The text "Failed to fetch" is what
+            fetch() throws when the request never reached the backend (CORS,
+            backend down, network blip). We surface that as a friendlier hint
+            so the user has something actionable to copy/paste instead of a
+            raw browser error string. */}
         {error && (
-          <div className="text-xs text-red-400 bg-red-500/10 rounded px-2 py-1.5 border border-red-500/20">
-            {error}
+          <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/10 rounded px-2 py-1.5 border border-red-500/20" role="alert">
+            <span className="flex-1">
+              {error === 'Failed to fetch'
+                ? 'Could not reach the Maestro backend. Check that start_local.sh is still running and try again.'
+                : error}
+            </span>
+            <button
+              type="button"
+              onClick={clearDirectorError}
+              aria-label="Dismiss error"
+              title="Dismiss"
+              className="shrink-0 -mr-1 -mt-0.5 px-1 leading-none text-red-400 hover:text-red-200 transition-colors"
+            >
+              ×
+            </button>
           </div>
         )}
 

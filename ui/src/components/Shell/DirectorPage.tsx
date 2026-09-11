@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { Clapperboard, SlidersHorizontal, Images, LayoutDashboard } from 'lucide-react'
+import { Clapperboard, SlidersHorizontal, Images } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { DirectorStage } from '../Stages/DirectorStage'
 import { Sidebar } from '../Sidebar/Sidebar'
 import { MainContent } from '../MainContent/MainContent'
-import { DirectorDashboard } from '../DirectorDashboard/DirectorDashboard'
 
 /**
  * Director page — single screen, full-height layout.
@@ -28,30 +27,12 @@ export function DirectorPage() {
   const stage = useStore(s => s.workspaceStage)
   const openPlanning = useStore(s => s.openDirectorStage)
   const openStudio = useStore(s => s.closeDirectorStage)
-  const workspace = useStore(s => s.activeWorkspace)
-  const dashboardOpen = useStore(s => s.dashboardOpen)
-  const setDashboardOpen = useStore(s => s.setDashboardOpen)
   const [showPreview, setShowPreview] = useState(false)
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="section-toolbar">
-        <div className="min-w-0">
-          <h1 className="text-sm font-semibold">Director</h1>
-          <p className="max-w-48 truncate text-xs text-text-muted">{workspace}</p>
-        </div>
         <div className="flex items-center gap-3">
-          {stage === 'director' && (
-            <button
-              onClick={() => setDashboardOpen(!dashboardOpen)}
-              aria-pressed={dashboardOpen}
-              title={dashboardOpen ? 'Hide dashboard' : 'Show dashboard'}
-              className={`shell-icon-button ${dashboardOpen ? 'is-active' : ''}`}
-              aria-label={dashboardOpen ? 'Hide dashboard' : 'Show dashboard'}
-            >
-              <LayoutDashboard size={15} />
-            </button>
-          )}
           <div className="shell-segmented" role="group" aria-label="Director workflow">
             <button aria-pressed={stage === 'director'} onClick={openPlanning}>
               <Clapperboard size={14} />Planning
@@ -73,15 +54,10 @@ export function DirectorPage() {
       </div>
 
       {stage === 'director' ? (
-        <div className={`director-layout ${dashboardOpen ? 'has-dashboard' : ''}`}>
+        <div className="director-layout">
           <div className="director-stage-pane">
             <DirectorStage />
           </div>
-          {dashboardOpen && (
-            <aside className="director-dashboard-pane" aria-label="Pipeline dashboard">
-              <DirectorDashboard embedded />
-            </aside>
-          )}
         </div>
       ) : (
         <div className="flex min-h-0 flex-1">
