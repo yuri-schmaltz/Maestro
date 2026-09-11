@@ -133,5 +133,22 @@ def validate_shot_plan(shot: ShotPlan, plan: Optional[ProductionPlan] = None) ->
                 if not char:
                     warnings.append(f"Subject references unknown character_id: {subj.character_id}")
 
+    # ── Cinema pass (advisory) ──────────────────────────────────
+    # Pattern lifted from directo_studio Phase 3. The cinema pass runs
+    # era detection + anachronism blocking + lighting consistency on
+    # the shot's textual fields. Hits are appended as warnings only —
+    # the pass never blocks the pipeline (a deliberately anachronistic
+    # short film is a valid creative choice). The operator sees the
+    # warnings in the DirectorDashboard and decides whether to revise.
+    try:
+        from ..cinema.integration import run_cinema_pass
+        cinema_result = run_cinema_pass(shot, plan)
+        warnings.extend(cinema_result.warnings)
+    except Exception as exc:  # pragma: no cover — defensive
+        # Cinema pass is best-effort. A failure here must never break
+        # the planner pipeline. We log the failure as a warning so
+        # operators can see it in the dashboard.
+        warnings.append(f"cinema pass failed: {exc!r}")
+
     is_valid = len(errors) == 0
     return ValidationResult(valid=is_valid, errors=errors, warnings=warnings, auto_fixes=auto_fixes)
