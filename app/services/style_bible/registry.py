@@ -28,8 +28,13 @@ from .anchors import StyleBible
 
 # Default storage location: app/settings/style_bibles/, next to the
 # other settings files. BIBLE_DEFAULT_DIR is exported so tests can
-# point it at a tempdir.
-APP_ROOT = Path(__file__).resolve().parents[3]  # .../app/services/style_bible/registry.py -> app/
+# point it at a tempdir. We resolve APP_ROOT by walking up from this
+# file: registry.py lives in app/services/style_bible/, so
+# parents[2] is `app/` and parents[3] is the repo root. We want the
+# Bible directory to live INSIDE app/settings/ alongside web_push.json
+# and friends — that's `app/settings/style_bibles`, which is
+# APP_ROOT + 'settings/style_bibles' where APP_ROOT is parents[2].
+APP_ROOT = Path(__file__).resolve().parents[2]  # .../app/services/style_bible/registry.py -> app/
 BIBLE_DEFAULT_DIR = APP_ROOT / "settings" / "style_bibles"
 
 # Format literals. ``json`` is the default and always available;

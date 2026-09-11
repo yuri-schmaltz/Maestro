@@ -6171,7 +6171,7 @@ def list_style_bibles():
     the UI can render a compact list without round-tripping every
     Bible. The full Bible (with every anchor) is fetched on demand
     via GET /api/v1/style-bibles/{id}."""
-    from app.services.style_bible import list_bibles
+    from services.style_bible import list_bibles
     out = []
     for bible in list_bibles():
         out.append({
@@ -6195,7 +6195,7 @@ def get_style_bible(bible_id: str):
     characters + environments + loras + global style/negative). The
     body matches the storage shape 1:1 so the UI can edit any field
     and PUT it back without translation."""
-    from app.services.style_bible import load_bible
+    from services.style_bible import load_bible
     try:
         bible = load_bible(bible_id)
     except FileNotFoundError as exc:
@@ -6212,7 +6212,7 @@ async def put_style_bible(bible_id: str, request: Request):
     + environments + loras + global_style + global_negative. We
     validate the path id matches the body's metadata.id (a Bible
     stored as X cannot be PUT to /Y)."""
-    from app.services.style_bible import StyleBible, save_bible
+    from services.style_bible import StyleBible, save_bible
     body = await request.json()
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="JSON object required")
@@ -6240,8 +6240,8 @@ async def create_style_bible(request: Request):
     """Create a new Style Bible. The body must include metadata.id.
     Returns 409 if a Bible with the same id already exists (use
     PUT to update)."""
-    from app.services.style_bible import StyleBible, save_bible
-    from app.services.style_bible.registry import BIBLE_DEFAULT_DIR
+    from services.style_bible import StyleBible, save_bible
+    from services.style_bible.registry import BIBLE_DEFAULT_DIR
     body = await request.json()
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="JSON object required")
@@ -6271,7 +6271,7 @@ async def create_style_bible(request: Request):
 def delete_style_bible(bible_id: str):
     """Delete a Style Bible by id. Returns 404 if no such Bible.
     Refuses to delete reserved ids (starting with underscore)."""
-    from app.services.style_bible import delete_bible
+    from services.style_bible import delete_bible
     try:
         removed = delete_bible(bible_id)
     except ValueError as exc:
@@ -6299,7 +6299,7 @@ async def build_style_bible_prompt(bible_id: str, request: Request):
         "negative_prompt": str = ""
       }
     """
-    from app.services.style_bible import (
+    from services.style_bible import (
         PromptBuilder,
         load_bible,
     )
