@@ -9839,6 +9839,15 @@ def delete_pipeline_endpoint(pid: str):
     return result
 
 
+# ── Director Skills Catalog ───────────────────────────────────────────────
+
+@api.get("/api/v1/director/skills")
+async def director_skills():
+    """Expose the Director skill catalog from a single registry."""
+    from services.director.registry import list_skills
+    return {"skills": list_skills()}
+
+
 # ── Director V2 Planning ─────────────────────────────────────────────────
 
 @api.post("/api/v1/director/v2/plan")

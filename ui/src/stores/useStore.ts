@@ -2,6 +2,7 @@ import type { SceneSlot } from '../lib/directorTimeline'
 import { create } from 'zustand'
 import { reorderWindowPrompts } from '../lib/reorderWindowPrompts'
 import { reviewSnapshot } from '../lib/reviewSnapshot'
+import { canonicalDirectorSkill } from '../types'
 import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection } from '../types'
 import * as api from '../api/client'
 import { applyThemePrefs, getStoredPrefs, type FamilyId, type ThemeMode, type ThemePrefs } from '../lib/theme'
@@ -9956,7 +9957,8 @@ export const useStore = create<AppState>((set, get) => ({
     return { directorLlmLog: [...s.directorLlmLog, { stage, text: t }] }
   }),
   setDirectorSkill: (skill) => {
-    set({ directorSkill: skill })
+    const normalized = canonicalDirectorSkill(skill)
+    set({ directorSkill: normalized })
     const state = get()
     const selectedVideoModel = state.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
     const selectedVideoDefinition = state.models.find(
@@ -9982,7 +9984,7 @@ export const useStore = create<AppState>((set, get) => ({
     // Director pipeline reads when building video_params for the
     // submission. Without this routing the slider would show 0.7 but
     // the pipeline would still send 1.0.
-    if (skill === 'music_video') {
+    if (normalized === 'music_video') {
       const current = get().params.input_video_strength
       if (current == null || current === 1.0) {
         get().setParam('input_video_strength', 0.7)

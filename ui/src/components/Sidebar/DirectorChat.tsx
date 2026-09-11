@@ -13,6 +13,8 @@ import { DurationPresetControl } from './DurationPresetControl'
 import { LONG_FORM_MAX_SECONDS, formatDuration } from '../../lib/durationPlanning'
 import { formatEstimatedClock, formatEtaDuration } from '../../lib/format'
 import type { DirectorPipelineType, DirectorShotImageGuidance, DirectorSkill, ModelOptions, ShortFilmCharacter, ShortFilmPath } from '../../types'
+import { DIRECTOR_SKILL_OPTIONS, canonicalDirectorSkill } from '../../types'
+import { fetchDirectorSkills } from '../../api/client'
 
 // AUDIO_ACCEPT lists both audio formats AND video formats. When a video
 // file is uploaded, the backend's /api/v1/upload-audio endpoint extracts
@@ -1589,36 +1591,63 @@ export function DirectorSetupPanel({ locked }: { locked: boolean }) {
 }
 
 function SkillSelector({ onSelect }: { onSelect: (skill: DirectorSkill) => void }) {
-  const skills = [
-    { id: 'music_video' as DirectorSkill, label: 'Music Video', desc: 'Automated music video from audio', icon: Music, active: true },
-    { id: 'short_film' as DirectorSkill, label: 'Short Film', desc: 'Dialogue-driven scenes from audio', icon: Film, active: true },
-    { id: 'music_video' as DirectorSkill, label: 'Video Podcast', desc: 'Coming Soon', icon: Mic, active: false },
-    { id: 'music_video' as DirectorSkill, label: 'Viral Video', desc: 'Coming Soon', icon: Sparkles, active: false },
-  ]
+  const [skills, setSkills] = useState(DIRECTOR_SKILL_OPTIONS)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchDirectorSkills()
+      .then((next) => {
+        if (!cancelled && next.length) {
+          setSkills(next.map(entry => ({
+            id: canonicalDirectorSkill(entry.id) as DirectorSkill,
+            label: entry.label,
+            desc: entry.desc || 'Director skill',
+            icon: (entry.icon as 'music' | 'film' | 'podcast' | 'viral') || 'music',
+            active: Boolean(entry.active),
+          })))
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSkills(DIRECTOR_SKILL_OPTIONS)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  const skillIcons = {
+    music: Music,
+    film: Film,
+    podcast: Mic,
+    viral: Sparkles,
+    sparkles: Sparkles,
+  } as const
 
   return (
     <div className="grid grid-cols-2 gap-2">
-      {skills.map((s) => (
-        <button
-          key={s.label}
-          onClick={() => s.active && onSelect(s.id)}
-          disabled={!s.active}
-          className={`relative p-3 rounded-lg border text-left transition-all ${
-            s.active
-              ? 'border-accent-blue/30 bg-bg-tertiary/50 hover:border-accent-blue hover:bg-accent-blue/5 cursor-pointer'
-              : 'border-border/30 bg-bg-tertiary/20 opacity-50 cursor-not-allowed'
-          }`}
-        >
-          <s.icon size={16} className={s.active ? 'text-accent-blue mb-1.5' : 'text-text-muted mb-1.5'} />
-          <div className="text-xs font-medium text-text-primary">{s.label}</div>
-          <div className="text-2xs text-text-muted mt-0.5">{s.desc}</div>
-          {!s.active && (
-            <span className="absolute top-1.5 right-1.5 text-2xs bg-bg-hover text-text-muted px-1.5 py-0.5 rounded-full">
-              Soon
-            </span>
-          )}
-        </button>
-      ))}
+      {skills.map((s) => {
+        const Icon = (skillIcons as Record<string, typeof Music>)[s.icon] || Music
+        const skillId = canonicalDirectorSkill(s.id)
+        return (
+          <button
+            key={s.id}
+            onClick={() => s.active && onSelect(skillId)}
+            disabled={!s.active}
+            className={`relative p-3 rounded-lg border text-left transition-all ${
+              s.active
+                ? 'border-accent-blue/30 bg-bg-tertiary/50 hover:border-accent-blue hover:bg-accent-blue/5 cursor-pointer'
+                : 'border-border/30 bg-bg-tertiary/20 opacity-50 cursor-not-allowed'
+            }`}
+          >
+            <Icon size={16} className={s.active ? 'text-accent-blue mb-1.5' : 'text-text-muted mb-1.5'} />
+            <div className="text-xs font-medium text-text-primary">{s.label}</div>
+            <div className="text-2xs text-text-muted mt-0.5">{s.desc}</div>
+            {!s.active && (
+              <span className="absolute top-1.5 right-1.5 text-2xs bg-bg-hover text-text-muted px-1.5 py-0.5 rounded-full">
+                Soon
+              </span>
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }

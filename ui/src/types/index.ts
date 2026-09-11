@@ -1454,7 +1454,32 @@ export interface DirectorImageGenProgress {
  *    - podcast (legacy alias, kept for saved-state compatibility),
  *      video_podcast (the user-facing label), viral_video
  */
-export type DirectorSkill = 'music_video' | 'short_film' | 'podcast' | 'video_podcast' | 'viral_video'
+export type DirectorSkill = 'music_video' | 'short_film' | 'podcast' | 'video_podcast' | 'viral_video' | 'demo_skill'
+
+export const DIRECTOR_SKILL_OPTIONS: Array<{
+  id: DirectorSkill
+  label: string
+  desc: string
+  icon: 'music' | 'film' | 'podcast' | 'viral' | 'sparkles' | string
+  active: boolean
+}> = [
+  { id: 'music_video', label: 'Music Video', desc: 'Automated music video from audio', icon: 'music', active: true },
+  { id: 'short_film', label: 'Short Film', desc: 'Dialogue-driven scenes from audio', icon: 'film', active: true },
+  { id: 'podcast', label: 'Video Podcast', desc: 'Coming Soon', icon: 'podcast', active: false },
+  { id: 'viral_video', label: 'Viral Video', desc: 'Coming Soon', icon: 'viral', active: false },
+  { id: 'demo_skill', label: 'Demo Skill', desc: 'Validation planner for importable skills', icon: 'sparkles', active: true },
+] as const
+
+export function canonicalDirectorSkill(skill: string | null | undefined): DirectorSkill {
+  if (skill === 'video_podcast') return 'podcast'
+  if (skill === 'podcast_video') return 'podcast'
+  if (skill === 'demo_skill') return 'demo_skill'
+  if (skill === 'music_video' || skill === 'short_film' || skill === 'podcast' || skill === 'viral_video') {
+    return skill
+  }
+  return 'music_video'
+}
+
 export type ShortFilmPath = 'audio' | 'story'
 
 export interface ShortFilmCharacter {

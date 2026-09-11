@@ -17,8 +17,8 @@ import os
 import threading
 from typing import Optional, Any
 
-from .schema import ProductionPlan, ShotPlan, RenderedPrompts
-from .planners import MusicVideoPlanner, ShortFilmPlanner, PodcastPlanner, ViralVideoPlanner
+from .schema import ProductionPlan, ShotPlan, RenderedPrompts, canonical_skill_type
+from .registry import get_skill_planner_class, list_skill_types
 from .renderers import (
     LtxT2VRenderer, LtxI2VRenderer, LtxA2VRenderer,
     LtxRetakeRenderer, LtxExtendRenderer, ImageGenRenderer,
@@ -60,10 +60,8 @@ DEFAULT_FLAGS = DirectorFlags()
 # ── Planner Registry ────────────────────────────────────────────────
 
 _PLANNER_MAP = {
-    "music_video": MusicVideoPlanner,
-    "short_film": ShortFilmPlanner,
-    "podcast": PodcastPlanner,
-    "viral_video": ViralVideoPlanner,
+    skill_type: get_skill_planner_class(skill_type)
+    for skill_type in list_skill_types()
 }
 
 # ── Renderer Registry ───────────────────────────────────────────────
@@ -151,6 +149,7 @@ class DirectorOrchestrator:
         Returns:
             ProductionPlan with normalized ShotPlan objects.
         """
+        skill_type = canonical_skill_type(skill_type)
         planner_cls = _PLANNER_MAP.get(skill_type)
         if not planner_cls:
             raise ValueError(f"Unknown skill type: {skill_type}. Available: {list(_PLANNER_MAP.keys())}")

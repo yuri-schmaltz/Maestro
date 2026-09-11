@@ -122,6 +122,22 @@ export async function fetchModelVisibility(): Promise<ModelVisibilitySettings> {
   return res.json()
 }
 
+export interface DirectorSkillOption {
+  id: string
+  label: string
+  desc: string
+  icon: 'music' | 'film' | 'podcast' | 'viral' | string
+  active: boolean
+  aliases?: string[]
+}
+
+export async function fetchDirectorSkills(): Promise<DirectorSkillOption[]> {
+  const res = await fetch(`${BASE}/api/v1/director/skills`)
+  if (!res.ok) throw new Error('Failed to fetch Director skills')
+  const data = await res.json()
+  return Array.isArray(data?.skills) ? data.skills : []
+}
+
 export async function updateModelVisibility(params: {
   enabled_models: string[]
   initialized_mature_models: string[]

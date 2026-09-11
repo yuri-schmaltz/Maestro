@@ -260,6 +260,24 @@ class AudioPlan:
 # ── ShotPlan — the core unit ─────────────────────────────────────────
 
 VALID_SKILL_TYPES = {"music_video", "short_film", "podcast", "viral_video"}
+DIRECTOR_SKILL_ALIASES = {
+    "video_podcast": "podcast",
+    "podcast_video": "podcast",
+}
+DIRECTOR_SKILL_CATALOG = {
+    "music_video": {"label": "Music Video", "desc": "Automated music video from audio", "icon": "music", "active": True},
+    "short_film": {"label": "Short Film", "desc": "Dialogue-driven scenes from audio", "icon": "film", "active": True},
+    "podcast": {"label": "Video Podcast", "desc": "Coming Soon", "icon": "podcast", "active": False},
+    "viral_video": {"label": "Viral Video", "desc": "Coming Soon", "icon": "viral", "active": False},
+    "demo_skill": {"label": "Demo Skill", "desc": "Validation planner for importable skills", "icon": "film", "active": True},
+}
+DIRECTOR_SKILL_ORDER = ["music_video", "short_film", "podcast", "viral_video", "demo_skill"]
+
+
+def canonical_skill_type(skill_type: str) -> str:
+    return DIRECTOR_SKILL_ALIASES.get(skill_type, skill_type)
+
+
 VALID_SOURCE_MODES = {"t2v", "i2v", "a2v", "retake", "extend"}
 VALID_IMAGE_STRATEGIES = {"reference_edit", "reference_inspired", "fresh_generation", "none"}
 VALID_CONTINUITY_STRATEGIES = {"independent", "continuous", "extend_previous"}
