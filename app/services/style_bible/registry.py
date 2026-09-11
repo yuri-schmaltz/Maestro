@@ -63,14 +63,19 @@ def yaml_import_error() -> Optional[str]:
     return _yaml_import_error
 
 
-def list_bibles(directory: Path = BIBLE_DEFAULT_DIR) -> list[StyleBible]:
+def list_bibles(directory: Optional[Path] = None) -> list[StyleBible]:
     """Return all Bibles in `directory`, sorted by metadata.title.
 
-    Globs for both .json and (if PyYAML is installed) .yaml/.yml.
-    Files that fail to parse (corrupt JSON/YAML, missing fields) are
+    When `directory` is None, falls back to BIBLE_DEFAULT_DIR at
+    call time (so tests that monkey-patch the module-level
+    BIBLE_DEFAULT_DIR after import still see the new value). Globs
+    for both .json and (if PyYAML is installed) .yaml/.yml. Files
+    that fail to parse (corrupt JSON/YAML, missing fields) are
     silently skipped — we never want a corrupt file to break the
     whole registry. The user's ability to fix it (delete the file,
     re-save the Bible) is preserved."""
+    if directory is None:
+        directory = BIBLE_DEFAULT_DIR
     _ensure_dir(directory)
     bibles: list[StyleBible] = []
     patterns = ["*.json"]
@@ -97,9 +102,11 @@ def list_bibles(directory: Path = BIBLE_DEFAULT_DIR) -> list[StyleBible]:
     return bibles
 
 
-def load_bible(bible_id: str, directory: Path = BIBLE_DEFAULT_DIR) -> StyleBible:
+def load_bible(bible_id: str, directory: Optional[Path] = None) -> StyleBible:
     """Load a Bible by id. Raises FileNotFoundError if missing, ValueError
     if the file is corrupt."""
+    if directory is None:
+        directory = BIBLE_DEFAULT_DIR
     path = _path_for(bible_id, directory)
     if not path.is_file():
         raise FileNotFoundError(f"Style Bible not found: {bible_id} (looked at {path})")
@@ -129,7 +136,7 @@ def load_bible_from_path(path: Path) -> StyleBible:
 
 def save_bible(
     bible: StyleBible,
-    directory: Path = BIBLE_DEFAULT_DIR,
+    directory: Optional[Path] = None,
     *,
     overwrite: bool = True,
     fmt: Format = "json",
@@ -145,6 +152,8 @@ def save_bible(
     is .json. Mixed-format directories are fine (list_bibles picks
     up both). YAML requires PyYAML — calling with fmt='yaml' when
     PyYAML is missing raises ImportError."""
+    if directory is None:
+        directory = BIBLE_DEFAULT_DIR
     if not bible.metadata.id:
         raise ValueError("StyleBible.metadata.id is required to save")
     if fmt not in ("json", "yaml"):
@@ -173,12 +182,14 @@ def save_bible(
     return target
 
 
-def delete_bible(bible_id: str, directory: Path = BIBLE_DEFAULT_DIR) -> bool:
+def delete_bible(bible_id: str, directory: Optional[Path] = None) -> bool:
     """Delete the file backing `bible_id` (any supported extension).
 
     Returns True if a file was removed, False if no such file existed.
     Refuses to delete a Bible whose id starts with a leading underscore
     (reserved ids like __default__)."""
+    if directory is None:
+        directory = BIBLE_DEFAULT_DIR
     if bible_id.startswith("_"):
         raise ValueError(f"Refusing to delete reserved Bible id: {bible_id!r}")
     removed = False

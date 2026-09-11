@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maestro"
+version = "2.0.1"
+description = "Maestro — local creative AI studio, director, and video editor (fork of Blizaine/Maestro)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "WanGP Non-Commercial Evaluation License 1.1" }
+authors = [
+    { name = "Blizaine", email = "noreply@example.invalid" },
+]
+keywords = [
+    "video-generation",
+    "image-generation",
+    "audio-generation",
+    "ai-director",
+    "wan2gp",
+    "maestro",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Intended Audience :: End Users/Desktop",
+    "License :: Other/Proprietary License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Multimedia :: Graphics",
+]
+
+# The maestro console script is the only entry point declared here.
+# It points at maestro_cli.py (at the repo root) instead of app.cli
+# directly, because pip-generated console scripts do
+# `from <module> import <attr>` and `app.cli` isn't importable without
+# the repo root on sys.path. maestro_cli.py is a 30-line shim that
+# adds the repo root to sys.path and then delegates to app.cli.main.
+# See maestro_cli.py for the rationale.
+[project.scripts]
+maestro = "maestro_cli:main"
+
+# Maestro is a fork of Blizaine/Maestro and inherits the upstream
+# WanGP Non-Commercial Evaluation License 1.1. Commercial use of the
+# SOFTWARE ITSELF (not the outputs you generate with it) requires a
+# separate commercial license from the WanGP licensor. See LICENSE.
+# The package is installable with `pip install -e .` from the repo
+# root; the heavy model stack (torch, diffusers, transformers, mmgp,
+# etc.) is NOT declared as a runtime dependency here because it is
+# managed by app/setup.py + app/env/ on first launch. The CLI does
+# not need any of those — it uses only click + the local file system.
+[project.optional-dependencies]
+# PyYAML enables Style Bible YAML serialization (the default is JSON,
+# which works without any extra dependency). Install with
+# `pip install -e .[yaml]`.
+yaml = ["PyYAML>=6.0"]
+
+[tool.setuptools]
+# maestro_cli is the pip console-script shim — a single module at the
+# repo root that adds the repo to sys.path and delegates to app.cli.
+# We list it dynamically (py_modules is not allowed in static
+# tool.setuptools config in newer setuptools). We deliberately do
+# NOT add app/ to the package list: it contains 15k+ LOC of model
+# code, vendored code, and is mixed license.
+packages = ["maestro_cli"]
