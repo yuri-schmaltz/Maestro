@@ -27,7 +27,6 @@
 
 import { useStore } from '../../stores/useStore'
 import { useMemo, useState, useRef } from 'react'
-import { Redo2, Undo2 } from 'lucide-react'
 import {
   StructureView,
   StyleForm,
@@ -91,7 +90,11 @@ export function DirectorPlanColumn() {
   const analysis = useStore(s => s.directorAnalysis)
 
   // style / scene description
-  const sceneDescription = useStore(s => s.directorSceneDescription)
+  // The directorSceneDescription state is still tracked (the
+  // composer textarea on the left binds to it), but we no longer
+  // re-render it as a read-only confirmation in this column. The
+  // left composer is the single source of truth for the brief.
+  void useStore(s => s.directorSceneDescription)
   const speakers = useStore(s => s.directorSpeakers)
   const speakerMappings = useStore(s => s.directorSpeakerMappings)
   const setSpeakerMapping = useStore(s => s.directorSetSpeakerMapping)
@@ -147,34 +150,20 @@ export function DirectorPlanColumn() {
   const directorQueueEditingEntryId = useStore(s => s.directorQueueEditingEntryId)
   const queueCurrentDirectorPipeline = useStore(s => s.queueCurrentDirectorPipeline)
 
-  const planHistory = useRef<Array<{
-    index: number
-    field: 'video_prompt' | 'image_prompt'
-    previous: string
-    next: string
-  }>>([])
-  const [historyCursor, setHistoryCursor] = useState(-1)
-  const [historyLength, setHistoryLength] = useState(0)
+  // The undo/redo history (planHistory ref + historyCursor/length state
+  // + undoPlanEdit/redoPlanEdit handlers + the "Prompt edits" Undo/Redo
+  // row below the planning cards) used to live here. The row has been
+  // removed — the Image Prompts / Video Prompts cards now own their own
+  // textareas and rely on the underlying editClipPlan store action for
+  // persistence, which means there is no UI affordance for the history
+  // any more. editPlanWithHistory is now a thin wrapper kept around so
+  // the existing call sites in ImagePromptsReview / VideoPromptsReview
+  // don't need to be touched; it preserves the no-op guard against
+  // setting the same value twice.
   const editPlanWithHistory = (index: number, field: 'video_prompt' | 'image_prompt', value: string) => {
     const current = useStore.getState().directorClipPlans[index]?.[field] || ''
     if (current === value) return
-    planHistory.current = planHistory.current.slice(0, historyCursor + 1)
-    planHistory.current.push({ index, field, previous: current, next: value })
-    setHistoryCursor(planHistory.current.length - 1)
-    setHistoryLength(planHistory.current.length)
     editClipPlan(index, field, value)
-  }
-  const undoPlanEdit = () => {
-    const change = planHistory.current[historyCursor]
-    if (!change) return
-    editClipPlan(change.index, change.field, change.previous)
-    setHistoryCursor(cursor => cursor - 1)
-  }
-  const redoPlanEdit = () => {
-    const change = planHistory.current[historyCursor + 1]
-    if (!change) return
-    editClipPlan(change.index, change.field, change.next)
-    setHistoryCursor(cursor => cursor + 1)
   }
 
   // speaker samples (recomputed from analysis lyrics)
@@ -216,28 +205,29 @@ export function DirectorPlanColumn() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-3 space-y-3" data-testid="director-plan-column">
+    /* Wrapper padding: p-4 (16px) matches the inner padding of the
+       sections below so the first/last cards sit at the same inset
+       as the cards stacked underneath them. The outer
+       .director-stage-plan card adds another 20px on top, so the
+       visible inset is 36px from the column's rounded border —
+       generous enough to let the cards breathe without wasting
+       vertical real estate. */
+    <div className="h-full overflow-y-auto p-4 space-y-3" data-testid="director-plan-column">
       {/* 1) Structure — clip structure with pacing slider. Skipped for
           the story path (no audio → no clip boundary detection). */}
       {!isStoryPath && (atStep('structure') || pastStep('structure')) && (
-        <section className="bg-bg-secondary rounded-lg p-3 border border-border space-y-2">
+        <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
           <header className="flex items-center justify-between gap-2">
             <h3 className="text-xs text-text-muted uppercase tracking-wider">
               {isShortFilm ? 'Scene structure' : 'Clip structure'}
             </h3>
-            {/* Top-right cluster: clip count + duration lives beside the
-                compact wizard icon that opens the timeline editor. The
-                legacy "Edit scene timing" full-width button was removed
-                from below the structure preview — moving the trigger
-                here keeps the affordance discoverable without taking a
-                whole row of vertical space, and the magic-wand icon
-                signals "tweak layout" without a verbose label. */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-2xs text-text-muted">
-                {plannedClips.length} {isShortFilm ? 'scenes' : 'clips'} · {formatTotalDuration(totalClipDuration)}
-              </span>
-              <DirectorTimelineIconButton />
-            </div>
+            {/* Top-right cluster: only the compact wizard icon that
+                opens the timeline editor. The "N clips · 2:33" counter
+                used to live here, but the same numbers are now embedded
+                inside the structure preview row (the user prefers a
+                clean header) so the wizard icon stands alone as the
+                affordance. */}
+            <DirectorTimelineIconButton />
           </header>
           {/* "Analysis complete" badge used to live in the left chat
               column as a system bubble; the user asked to consolidate
@@ -276,8 +266,8 @@ export function DirectorPlanColumn() {
       {/* 2) Style / scene description — the user's creative brief,
           rendered as a read-only confirmation of what was submitted. */}
       {(atStep('style') || pastStep('style')) && (
-        <section className="bg-bg-secondary rounded-lg p-3 border border-border space-y-2">
-          <header className="flex items-center justify-between">
+        <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
+          <header className="flex items-center justify-between gap-2">
             <h3 className="text-xs text-text-muted uppercase tracking-wider">Scene description</h3>
             {isShortFilm && (
               <span className="text-2xs text-text-muted">
@@ -295,11 +285,15 @@ export function DirectorPlanColumn() {
             isShortFilm={isShortFilm}
             isStoryPath={isStoryPath}
           />
-          {pastStep('style') && sceneDescription && (
-            <div className="bg-bg-tertiary rounded-lg p-2 border border-border/50">
-              <p className="text-xs text-text-primary whitespace-pre-wrap">{sceneDescription}</p>
-            </div>
-          )}
+          {/* The read-only confirmation of the scene description used to
+              render here as a separate paragraph block, but the same
+              text is already visible in the left-column composer
+              textarea. Duplicating it here wasted a huge amount of
+              vertical space in the center column — space that the
+              Image Prompts / Video Prompts planning cards need once
+              planning starts. Removed; the StyleForm's "Scene
+              description submitted. Planning shots..." message is
+              enough confirmation that the brief was received. */}
           {isStoryPath && referenceImage && (
             <div className="flex items-center gap-2 text-2xs text-text-muted">
               <span>Reference attached · {shortFilmCharacters.length} characters</span>
@@ -308,24 +302,12 @@ export function DirectorPlanColumn() {
         </section>
       )}
 
-      {(clipPlans.length > 0 || plannedClips.length > 0) && (
-        <div className="flex items-center justify-end gap-1">
-          <span className="mr-auto text-2xs text-text-muted">Prompt edits</span>
-          <button type="button" onClick={undoPlanEdit} disabled={historyCursor < 0} className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary disabled:opacity-30" title="Undo prompt edit">
-            <Undo2 size={12} />
-          </button>
-          <button type="button" onClick={redoPlanEdit} disabled={historyCursor >= historyLength - 1} className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary disabled:opacity-30" title="Redo prompt edit">
-            <Redo2 size={12} />
-          </button>
-        </div>
-      )}
-
       {/* 3) Plan loading + log — the first LLM pass writes
           image_prompt per clip. The collapsible log stays in the chat
           history once complete; we re-render it here so the user can
           read the full reasoning without scrolling back through chat. */}
       {(pastStep('plan') || (atStep('plan') && !loading)) && (
-        <section className="bg-bg-secondary rounded-lg p-3 border border-border space-y-2">
+        <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
           <h3 className="text-xs text-text-muted uppercase tracking-wider">
             {isShortFilm ? 'Scene planning' : usesShotImages ? 'Image and video prompts' : 'Video planning'}
           </h3>
@@ -340,7 +322,7 @@ export function DirectorPlanColumn() {
           image_prompt textarea. The user can re-roll the whole batch or
           move to image generation. */}
       {usesShotImages && (atStep('review') || pastStep('review')) && (
-        <section className="bg-bg-secondary rounded-lg p-3 border border-border space-y-2">
+        <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
           <h3 className="text-xs text-text-muted uppercase tracking-wider">Start image prompts</h3>
           <ImagePromptsReview
             clipPlans={clipPlans}
@@ -361,7 +343,7 @@ export function DirectorPlanColumn() {
           back from the image model. Each card is tagged with the clip
           index so the user can mentally pair it with the prompt above. */}
       {usesShotImages && (atStep('generate_images') || pastStep('generate_images')) && (
-        <section className="bg-bg-secondary rounded-lg p-3 border border-border space-y-2">
+        <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
           <h3 className="text-xs text-text-muted uppercase tracking-wider">Generated images</h3>
           <ImageGenView
             loading={loading}
@@ -375,7 +357,7 @@ export function DirectorPlanColumn() {
       {/* 6) Plan video log — second LLM pass that writes video_prompt
           per clip. Same collapsible history as the image-prompt log. */}
       {(pastStep('plan_video') || (atStep('plan_video') && !loading) || atStep('review_video')) && (
-        <section className="bg-bg-secondary rounded-lg p-3 border border-border space-y-2">
+        <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
           <h3 className="text-xs text-text-muted uppercase tracking-wider">Video prompts</h3>
           <LlmLogStage stage="plan_video" label="Video prompts" />
         </section>
@@ -384,7 +366,7 @@ export function DirectorPlanColumn() {
       {/* 7) Video prompts review — final per-clip editing surface
           before the user clicks Generate. */}
       {atStep('review_video') && (
-        <section className="bg-bg-secondary rounded-lg p-3 border border-border space-y-2">
+        <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
           <h3 className="text-xs text-text-muted uppercase tracking-wider">Video prompts per clip</h3>
           <VideoPromptsReview
             clipPlans={clipPlans}
@@ -410,11 +392,7 @@ export function DirectorPlanColumn() {
   )
 }
 
-/**
- * Format seconds → mm:ss for the clip structure header.
- */
-function formatTotalDuration(s: number): string {
-  const m = Math.floor(s / 60)
-  const sec = Math.floor(s % 60)
-  return `${m}:${sec.toString().padStart(2, '0')}`
-}
+/* formatTotalDuration used to power the "N clips · 2:33" counter in
+ * the clip-structure header. Removed: the header now just shows the
+ * section title + wizard icon, and the same numbers live inside the
+ * <StructureView/> preview row. */

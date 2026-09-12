@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { ApplicationHeader } from './components/Shell/ApplicationHeader'
 import { ProjectsPage } from './components/Shell/ProjectsPage'
 import { QueuePage } from './components/Shell/QueuePage'
-import { DirectorPage } from './components/Shell/DirectorPage'
+import { DirectorPage, DirectorStageToggle } from './components/Shell/DirectorPage'
 import { HardwareStatusBar } from './components/Sidebar/HardwareStatusBar'
 import { MainContent } from './components/MainContent/MainContent'
 import { SettingsDrawer } from './components/SettingsDrawer/SettingsDrawer'
@@ -62,7 +62,12 @@ function App() {
         {section === 'medias' && <MainContent />}
         {section === 'configurations' && <SettingsDrawer />}
       </div>
-      <HardwareStatusBar />
+      {/* The Director Planning/Studio toggle lives in the bottom
+          status bar's leftSlot instead of a section toolbar above the
+          workspace — that move gives the workspace the full vertical
+          height back. Other tabs leave leftSlot unset so the original
+          "N items" cell renders alone. */}
+      <HardwareStatusBar leftSlot={section === 'director' ? <DirectorStageToggle /> : undefined} />
       <LoraBrowser />
       <DirectorDashboard />
       <StorageDashboard />

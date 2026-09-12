@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { reorderWindowPrompts } from '../lib/reorderWindowPrompts'
 import { reviewSnapshot } from '../lib/reviewSnapshot'
 import { canonicalDirectorSkill } from '../types'
-import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection } from '../types'
+import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection, ProjectSetupDefaults, Workspace } from '../types'
 import * as api from '../api/client'
 import { applyThemePrefs, getStoredPrefs, type FamilyId, type ThemeMode, type ThemePrefs } from '../lib/theme'
 import {
@@ -1827,7 +1827,7 @@ interface AppState {
   selectModel: (modelType: string) => void
 
   // Workspaces
-  workspaces: Array<{ name: string; path: string; file_count?: number }>
+  workspaces: Workspace[]
   activeWorkspace: string
   /** Gallery is showing the virtual "Uploads" view (browse-only — the
    *  server-side active workspace, and where generations save, is
@@ -1837,6 +1837,32 @@ interface AppState {
   switchWorkspace: (name: string) => Promise<void>
   createWorkspace: (name: string) => Promise<void>
   deleteWorkspace: (name: string) => Promise<void>
+
+  /**
+   * ProjectSetup for the active workspace — the project-level choices
+   * (aspect ratio, resolution, models, workflow flags, audio defaults,
+   * default LoRAs, advanced) that every generation in this project
+   * starts from. Hydrated on `switchWorkspace` so the Director
+   * planning UI and the Studio controls share the same source of
+   * truth: open a project and you get your defaults back.
+   *
+   * `null` before the first workspace switch completes (avoids showing
+   * stale defaults from the previous project during the network hop)
+   * or for the implicit "default" workspace, which holds no setup.
+   */
+  activeWorkspaceSetup: ProjectSetupDefaults | null
+  /** True while a loadWorkspaceSetup call is in flight. */
+  activeWorkspaceSetupLoading: boolean
+  loadWorkspaceSetup: (name: string) => Promise<void>
+  /** Replace the active workspace's setup and persist via PUT. Pass
+   *  the FULL setup payload — partial updates would race with later
+   *  edits and corrupt per-field changes (a long-standing bug from
+   *  the previous per-pipeline model). */
+  saveWorkspaceSetup: (setup: ProjectSetupDefaults) => Promise<void>
+  /** Apply the loaded setup to the Director runtime fields and the
+   *  Studio model selectors. Called on hydration AND on save so the
+   *  editor reflects the user's choices without a workspace hop. */
+  applyWorkspaceSetup: (setup: ProjectSetupDefaults) => void
 
   // Storage Manager overlay
   storageDashboardOpen: boolean
@@ -2068,6 +2094,7 @@ interface AppState {
   directorWriteSong: () => Promise<void>
   directorGenerateTrack: (mode?: 'now' | 'queue') => Promise<void>
   directorAnalyzeAndPlan: (audioPath: string, opts?: { transcribe?: boolean; lyricsHint?: string }) => Promise<void>
+  directorEnsureStructure: () => Promise<Awaited<ReturnType<typeof import('../api/client').planClipStructure>>>
   directorSetEnergyBias: (bias: number) => Promise<void>
   directorConfirmStructure: () => void
   directorSetSceneDescription: (prompt: string) => void
@@ -10304,25 +10331,27 @@ export const useStore = create<AppState>((set, get) => ({
       }))
       set({ directorSpeakers: speakers, directorSpeakerMappings: speakerMappings })
 
-      // Plan beat-aligned clip structure
-      set({ directorLoadingMessage: 'Planning clip structure...' })
-      const structure = await api.planClipStructure({
-        analysis,
-        energy_bias: get().directorEnergyBias,
-        fps: get().modelOptions?.fps ?? 16,
-        frames_steps: get().modelOptions?.frames_steps ?? 4,
-        frames_minimum: get().modelOptions?.frames_minimum ?? 5,
-        // Authoritative: the Director's video model (modelOptions above may
-        // belong to a music model — e.g. ACE-Step after generating a track —
-        // whose fps fallback of 16 used to shrink clips by 16/25).
-        video_model: get().selectedModelPerMode.video || undefined,
-      })
-      // Music Video skips the manual clip-structure review step entirely —
-      // the beat-aligned clips are used as-is. Short Film keeps it.
       const skipStructure = get().directorSkill === 'music_video'
+      // Music Video waits until the visual description is submitted before
+      // materializing the timeline used by the visual planner. Audio
+      // analysis remains available here, but its provisional beat map must
+      // not become the final scene breakdown before the user describes it.
+      if (skipStructure) {
+        set({
+          directorPlannedClips: [],
+          directorStep: 'style',
+          directorLoading: false,
+          directorLoadingMessage: null,
+        })
+        return
+      }
+
+      // Short Film audio keeps the existing manual structure review flow.
+      set({ directorLoadingMessage: 'Planning clip structure...' })
+      const structure = await get().directorEnsureStructure()
       set({
         directorPlannedClips: structure.clips,
-        directorStep: skipStructure ? 'style' : 'structure',
+        directorStep: 'structure',
         directorLoading: false,
         directorLoadingMessage: null,
       })
@@ -10334,6 +10363,26 @@ export const useStore = create<AppState>((set, get) => ({
     } finally {
       stopAnalyzePolling()
     }
+  },
+
+  directorEnsureStructure: async () => {
+    const state = get()
+    if (!state.directorAnalysis) {
+      throw new Error('Analyze the audio before planning its structure.')
+    }
+    const structure = await api.planClipStructure({
+      analysis: state.directorAnalysis,
+      energy_bias: state.directorEnergyBias,
+      fps: state.modelOptions?.fps ?? 16,
+      frames_steps: state.modelOptions?.frames_steps ?? 4,
+      frames_minimum: state.modelOptions?.frames_minimum ?? 5,
+      // Authoritative: the Director's video model (modelOptions above may
+      // belong to a music model — e.g. ACE-Step after generating a track —
+      // whose fps fallback of 16 used to shrink clips by 16/25).
+      video_model: state.selectedModelPerMode.video || undefined,
+    })
+    set({ directorPlannedClips: structure.clips })
+    return structure
   },
 
   // Music Video: write the song (Style + Lyrics) from the description, with
@@ -10608,8 +10657,16 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   directorPlanPrompts: async () => {
-    const { directorPlannedClips, directorSceneDescription, directorAnalysis } = get()
-    if (!directorPlannedClips.length || !directorSceneDescription.trim()) return
+    let { directorPlannedClips, directorSceneDescription, directorAnalysis } = get()
+    if (!directorSceneDescription.trim()) return
+    // Music Video intentionally reaches this action from the style step
+    // without a finalized timeline. Create it only after the visual brief
+    // exists, then pass that timeline into the prompt planner.
+    const shouldPlanStructure = (
+      get().directorSkill === 'music_video'
+      && get().directorStep === 'style'
+      && directorPlannedClips.length === 0
+    )
     // Cancel any in-flight plan before starting a new one — defends against
     // double-clicks and stale aborted controllers from previous attempts.
     _directorV2PlanController?.abort()
@@ -10617,6 +10674,14 @@ export const useStore = create<AppState>((set, get) => ({
     _directorV2PlanController = planController
     set({ directorLoading: true, directorError: null, directorStep: 'plan' })
     try {
+      if (shouldPlanStructure) {
+        set({ directorLoadingMessage: 'Planning clips from the analyzed timeline...' })
+        const structure = await get().directorEnsureStructure()
+        directorPlannedClips = structure.clips
+        directorAnalysis = get().directorAnalysis
+      }
+      if (!directorPlannedClips.length || !directorAnalysis) return
+
       // Upload all reference images
       const { refImagePath, charPaths, locPaths } = await get()._uploadDirectorRefs()
       const { directorCharacterRefLabels: charLabels, directorLocationRefLabels: locLabels } = get()
@@ -11506,7 +11571,73 @@ export const useStore = create<AppState>((set, get) => ({
   // Workspaces
   workspaces: [],
   activeWorkspace: 'default',
+  activeWorkspaceSetup: null,
+  activeWorkspaceSetupLoading: false,
   browsingUploads: false,
+  loadWorkspaceSetup: async (name) => {
+    if (!name || name === 'default') {
+      set({ activeWorkspaceSetup: null, activeWorkspaceSetupLoading: false })
+      return
+    }
+    set({ activeWorkspaceSetupLoading: true })
+    try {
+      const setup = await api.fetchWorkspaceSetup(name)
+      set({ activeWorkspaceSetup: setup, activeWorkspaceSetupLoading: false })
+      get().applyWorkspaceSetup(setup)
+    } catch (error) {
+      console.error('Failed to load workspace setup:', error)
+      set({ activeWorkspaceSetup: null, activeWorkspaceSetupLoading: false })
+    }
+  },
+  saveWorkspaceSetup: async (setup) => {
+    const name = get().activeWorkspace
+    if (!name || name === 'default') {
+      throw new Error('The default workspace cannot hold a custom project setup.')
+    }
+    // Persist to backend first — UI mirrors state on success so a
+    // network failure never desyncs the on-disk copy from what the
+    // user sees in the dialog.
+    const persisted = await api.saveWorkspaceSetup(name, setup)
+    set({ activeWorkspaceSetup: persisted })
+    get().applyWorkspaceSetup(persisted)
+  },
+  applyWorkspaceSetup: (setup) => {
+    // ProjectSetup writes over the Director runtime + Studio model
+    // selectors. Only the fields the setup actually carries get
+    // applied — a `""` model name means the user didn't pick one,
+    // so the Studio's existing default (or last-used) survives.
+    const patch: {
+      directorAspectRatio?: AspectRatio
+      directorResolution?: ResolutionPreset
+      directorSeamless?: boolean
+      directorAutoMode?: boolean
+      directorSkill?: DirectorSkill | null
+      selectedModelPerMode?: Partial<Record<GenerationMode, string>>
+    } = {}
+    if (setup.aspect_ratio) patch.directorAspectRatio = setup.aspect_ratio as AspectRatio
+    if (setup.resolution) patch.directorResolution = setup.resolution as ResolutionPreset
+    if (typeof setup.seamless === 'boolean') patch.directorSeamless = setup.seamless
+    if (typeof setup.auto_mode === 'boolean') patch.directorAutoMode = setup.auto_mode
+    // Director skill: empty string = "let the user pick in Director".
+    // We only stamp a non-empty value; null/empty keeps the chooser
+    // card visible so the user can opt into a different skill on the
+    // next launch without us silently overriding their last pick.
+    if (setup.director_skill && setup.director_skill !== '') {
+      patch.directorSkill = setup.director_skill as DirectorSkill
+    } else if ('director_skill' in setup) {
+      // The field was explicitly cleared. Stamp null so the chooser
+      // appears instead of holding whatever was previously selected.
+      patch.directorSkill = null
+    }
+    // Video + image model choices live in selectedModelPerMode. Empty
+    // string means "no preference" — keep the current selection so
+    // saving from an incomplete form doesn't blank the model.
+    let nextModels: Partial<Record<GenerationMode, string>> | undefined
+    if (setup.video_model) nextModels = { ...(get().selectedModelPerMode || {}), video: setup.video_model }
+    if (setup.image_model) nextModels = { ...(nextModels || get().selectedModelPerMode || {}), image: setup.image_model }
+    if (nextModels) patch.selectedModelPerMode = nextModels
+    if (Object.keys(patch).length > 0) set(patch)
+  },
   loadWorkspaces: async () => {
     try {
       const data = await api.fetchWorkspaces()
@@ -11518,10 +11649,19 @@ export const useStore = create<AppState>((set, get) => ({
       const realWorkspaces = data.workspaces.filter(w => w.name !== 'default')
       const activeIsReal = data.active !== 'default'
       const current = get()
+      const previousActive = current.activeWorkspace
       if (realWorkspaces.length === 0 && !activeIsReal && current.appSection !== 'configurations') {
         set({ workspaces: data.workspaces, activeWorkspace: data.active, appSection: 'projects' })
       } else {
         set({ workspaces: data.workspaces, activeWorkspace: data.active })
+      }
+      // Hydrate the project setup when boot lands on a non-default
+      // workspace (or when the active workspace changed since last
+      // call). Without this, refresh-on-existing-session keeps the
+      // last in-memory defaults — which belong to whatever project
+      // was current at flush, not whatever the server just reported.
+      if (activeIsReal && data.active !== previousActive) {
+        get().loadWorkspaceSetup(data.active)
       }
     } catch (e) {
       console.error('Failed to load workspaces:', e)
@@ -11541,6 +11681,12 @@ export const useStore = create<AppState>((set, get) => ({
       set({ browsingUploads: false, activeWorkspace: name, outputs: [], outputsTotal: 0, selectedOutput: 0, selectedOutputMeta: null })
       get().loadOutputs()
       get().loadWorkspaces()
+      // Hydrate the project setup so the Director/Studio pickers land
+      // on this project's defaults (aspect ratio, resolution, models,
+      // workflow flags). Without this hop the right column opens with
+      // whatever the previous project left behind in state, which is
+      // confusing once projects diverge.
+      get().loadWorkspaceSetup(name)
     } catch (e) {
       console.error('Failed to switch workspace:', e)
     }
@@ -11550,6 +11696,10 @@ export const useStore = create<AppState>((set, get) => ({
       await api.createWorkspace(name)
       await api.setActiveWorkspace(name)
       set({ browsingUploads: false, activeWorkspace: name, outputs: [], outputsTotal: 0, selectedOutput: 0, selectedOutputMeta: null })
+      // New project means no setup.json yet — applyWorkspaceSetup
+      // would no-op against null defaults, so just clear any stale
+      // setup from the prior active project.
+      set({ activeWorkspaceSetup: null })
       get().loadOutputs()
       get().loadWorkspaces()
     } catch (e) {
@@ -13354,6 +13504,26 @@ export const useStore = create<AppState>((set, get) => ({
 
   // ── Director Pipeline (server-side) ──────────────────────────────
   startDirectorPipeline: async (mode = 'now') => {
+    const initialState = get()
+    if (
+      initialState.directorSkill === 'music_video'
+      && initialState.directorSceneDescription.trim()
+      && initialState.directorAnalysis
+      && initialState.directorPlannedClips.length === 0
+    ) {
+      if (mode === 'queue') {
+        set({ directorQueueLoading: true, directorError: null })
+      } else {
+        set({ directorLoading: true, directorError: null })
+      }
+      try {
+        await get().directorEnsureStructure()
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to plan clip structure'
+        set({ directorLoading: false, directorQueueLoading: false, directorError: msg })
+        return
+      }
+    }
     const state = get()
     if (mode === 'queue') {
       set({ directorQueueLoading: true, directorError: null })

@@ -1,7 +1,70 @@
+// Re-export Workspace from the API client so the store and types share
+// a single source of truth. Lives at the top of the barrel file so it
+// stays grouped with the rest of the domain types the store imports.
+export type { Workspace } from '../api/client'
+
 export interface ModelFamily {
   id: string
   label: string
   order: number
+}
+
+/**
+ * ProjectSetup — the technical configuration of a project (workspace).
+ *
+ * Lives in `<workspace>/setup.json` on disk. Hydrated into the store on
+ * `switchWorkspace` so the Director planning UI and the Studio controls
+ * share one source of truth: aspect ratio, resolution, model choices,
+ * workflow flags, audio defaults, default LoRAs, advanced options.
+ *
+ * Items that vary per-take (per pipeline submission) override these
+ * via `director_ui_snapshot` so the immutable open & edit copy stays
+ * untouched. The right column of the Director is now per-take only;
+ * the project-level choices are made once when the project is created
+ * (and editable from the project card "Edit setup" affordance).
+ */
+export interface ProjectSetupDefaults {
+  aspect_ratio?: AspectRatio
+  resolution?: ResolutionPreset
+  seamless?: boolean
+  auto_mode?: boolean
+  video_model?: string
+  image_model?: string
+  music_source?: 'upload' | 'generate'
+  music_model?: string
+  /** Director skill this project uses (music video, short film, demo
+   *  skill, …). Empty string = inherit last-selected. Set when the
+   *  user picks a skill in the New project form so the Director opens
+   *  on the matching upload step instead of the chooser card. */
+  director_skill?: DirectorSkill | ''
+  /** Pre-activated LoRAs applied to every Director run in this project. */
+  default_image_loras?: Record<string, unknown>
+  default_video_loras?: Record<string, unknown>
+  /** Advanced defaults (film grain, spatial up, etc.) — kept loose to
+   *  survive the field-set growing without breaking older setups. */
+  advanced?: Record<string, unknown>
+  /** Free-form version field for forward-compat migrations. Bump when
+   *  breaking the schema — readers should fall back to defaults on
+   *  unknown values. */
+  schema_version?: number
+}
+
+export const PROJECT_SETUP_LATEST_SCHEMA = 1
+
+export const DEFAULT_PROJECT_SETUP: ProjectSetupDefaults = {
+  aspect_ratio: '16:9',
+  resolution: '720p',
+  seamless: false,
+  auto_mode: false,
+  video_model: '',
+  image_model: '',
+  music_source: 'upload',
+  music_model: '',
+  director_skill: '',
+  default_image_loras: {},
+  default_video_loras: {},
+  advanced: {},
+  schema_version: PROJECT_SETUP_LATEST_SCHEMA,
 }
 
 export type DirectorPipelineType = 'music_video' | 'short_film_audio' | 'short_film_story'

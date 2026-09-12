@@ -496,10 +496,20 @@ export async function submitToolRevoice(params: {
 
 // --- Workspaces ---
 
+import type { ProjectSetupDefaults } from '../types'
+
 export interface Workspace {
   name: string
   path: string
   file_count?: number
+  /**
+   * Per-project ProjectSetup returned alongside the list payload so the
+   * project card can render the "16:9 · 720p · LTX-2" chip without a
+   * second round-trip. Defaults are returned for the implicit
+   * "default" workspace and for legacy projects that predate the
+   * project-setup system (no setup.json on disk yet).
+   */
+  setup?: ProjectSetupDefaults
 }
 
 export async function fetchWorkspaces(): Promise<{ workspaces: Workspace[]; active: string }> {
@@ -536,6 +546,36 @@ export async function deleteWorkspace(name: string): Promise<{ switched_to_defau
     throw new Error(err.detail || 'Failed to delete workspace')
   }
   return res.json()
+}
+
+// --- Per-workspace project setup ---
+//
+// ProjectSetup replaces the per-pipeline "Director Setup" sidebar (the
+// 8 controls that used to live on the right column of the Director).
+// The fields the user picks when they CREATE a project become the
+// defaults that every generation in that project starts from. The
+// right column of the Director is now per-take — only the parts that
+// vary between scenes.
+
+export async function fetchWorkspaceSetup(name: string): Promise<ProjectSetupDefaults> {
+  const res = await fetch(`${BASE}/api/v1/workspaces/${encodeURIComponent(name)}/setup`)
+  if (!res.ok) throw new Error('Failed to fetch project setup')
+  const body = await res.json()
+  return (body?.setup ?? {}) as ProjectSetupDefaults
+}
+
+export async function saveWorkspaceSetup(name: string, setup: ProjectSetupDefaults): Promise<ProjectSetupDefaults> {
+  const res = await fetch(`${BASE}/api/v1/workspaces/${encodeURIComponent(name)}/setup`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ setup }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Failed to save project setup' }))
+    throw new Error(err.detail || 'Failed to save project setup')
+  }
+  const body = await res.json()
+  return (body?.setup ?? setup) as ProjectSetupDefaults
 }
 
 // --- Editor projects ---
@@ -2142,9 +2182,17 @@ export async function analyzeAudio(params: {
  *  vs "Transcribing audio..." instead of a single "Analyzing audio..."
  *  message for the entire 1-5 minute first-run wait. Returns empty
  *  step/detail when no analyze is in flight. */
-export async function fetchAudioAnalyzeStatus(): Promise<{ step: string; detail: string }> {
+export async function fetchAudioAnalyzeStatus(): Promise<{
+  step: string
+  detail: string
+  /** Sub-progress numbers (0 when indeterminate). The Director status
+   *  panel uses these to render a precise percentage for the Analyze
+   *  phase instead of an indeterminate sliding bar. */
+  current: number
+  total: number
+}> {
   const res = await fetch(`${BASE}/api/v1/audio/analyze/status`)
-  if (!res.ok) return { step: '', detail: '' }
+  if (!res.ok) return { step: '', detail: '', current: 0, total: 0 }
   return res.json()
 }
 

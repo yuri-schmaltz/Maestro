@@ -195,7 +195,7 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
 
   return (
     <section className={`flex min-h-0 flex-col bg-bg-secondary ${compact ? 'h-full' : 'w-[260px] shrink-0 border-r border-border'}`}>
-      <div className="space-y-2 border-b border-border p-2.5">
+      <div className="space-y-2.5 border-b border-border p-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary">Media</h2>
           <button type="button" onClick={() => void refreshLibrary()} className="rounded p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary" title="Refresh media">

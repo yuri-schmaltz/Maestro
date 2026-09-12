@@ -358,8 +358,25 @@ export function DirectorPanel() {
             </div>
 
             {loading ? (
-              <div className="flex items-center gap-1.5 text-2xs text-text-muted py-1">
+              /* Stop button sits on the right so the spinner + label stay
+                 left-aligned (matches the "Writing image prompts..." /
+                 "Writing video prompts..." overlays elsewhere in this
+                 file — same affordance, same icon). The cancel action
+                 goes through useStore.cancelDirectorV2Plan() which
+                 aborts the in-flight HTTP request AND tells the backend
+                 to short-circuit the worker thread, so the GPU/llama-
+                 server stops generating tokens that no one will read. */
+              <div className="relative flex items-center gap-1.5 text-2xs text-text-muted py-1 pr-5">
                 <Loader2 size={10} className="animate-spin" /> Recalculating...
+                <button
+                  type="button"
+                  onClick={() => useStore.getState().cancelDirectorV2Plan()}
+                  title="Stop recalculating"
+                  aria-label="Stop recalculating"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 bg-bg-secondary rounded-full p-0.5 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
+                >
+                  <X size={10} />
+                </button>
               </div>
             ) : (
               <>

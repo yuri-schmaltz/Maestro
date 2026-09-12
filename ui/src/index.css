@@ -788,7 +788,13 @@ input[type="range"]::-webkit-slider-thumb {
 /* Header is now single-column: the brand block was removed (logo + name
    live in the browser tab title + favicon instead, so the in-app header
    is just the section navigation, full-width). */
-.application-header { display:grid; grid-template-columns:minmax(0,1fr); align-items:center; min-height:64px; flex-shrink:0; padding:10px 16px; gap:0; border-bottom:1px solid var(--color-border); background:var(--color-bg-secondary); z-index:30; }
+/* The header's bottom border was the thin horizontal line that ran
+   across the viewport between the tab row and the active page. The
+   user asked to drop it so the page content butts against the
+   header without a hairline divider. The .application-tabs pill
+   already has its own rounded border, so removing the parent
+   separator doesn't leave any unintended gap. */
+.application-header { display:grid; grid-template-columns:minmax(0,1fr); align-items:center; min-height:64px; flex-shrink:0; padding:10px 16px; gap:0; background:var(--color-bg-secondary); z-index:30; }
 .application-brand { display:none; }
 .application-actions { justify-self:end; display:flex; align-items:center; gap:8px; }
 .application-navigation { min-width:0; width:100%; }
@@ -888,6 +894,11 @@ input[type="range"]::-webkit-slider-thumb {
 .queue-progress-fill { height:100%; border-radius:2px; transition:width .3s ease-out; }
 .queue-progress-fill.is-indeterminate { width:100%; opacity:.5; animation:queue-pulse 1.5s ease-in-out infinite; }
 @keyframes queue-pulse { 0%,100% { opacity:.3; } 50% { opacity:.7; } }
+/* DirectorStatusPanel sub-progress bar — used when the backend hasn't
+ * reported a precise percentage yet (LLM streaming, structure
+ * segmentation, audio upload). A 33%-wide bar slides left↔right so
+ * the user sees *something* moving without a number to trust. */
+@keyframes indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(333%); } }
 /* Director sub-toolbar (Planning/Studio toggle + future actions).
  * padding-left/right (12px) match the .director-layout below it so the
  * Planning/Studio toggle aligns visually with the left edge of the first

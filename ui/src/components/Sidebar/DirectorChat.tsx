@@ -237,6 +237,12 @@ function AutoResizeTextarea({ minHeight, maxHeight, ...props }: React.TextareaHT
   maxHeight?: number
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
+  // Track the overflow decision in state so the inline style below
+  // can react to it. Without this, the merged `overflowY: 'hidden'`
+  // always wins and the textarea's internal scrollbar is hidden even
+  // when the content overflows the cap — the text just disappears
+  // off the bottom edge with no way to reach it.
+  const [overflowing, setOverflowing] = useState(false)
   useEffect(() => {
     const el = ref.current
     if (!el) return
@@ -245,12 +251,21 @@ function AutoResizeTextarea({ minHeight, maxHeight, ...props }: React.TextareaHT
     if (minHeight) h = Math.max(h, minHeight)
     if (maxHeight) h = Math.min(h, maxHeight)
     el.style.height = `${h}px`
-    if (maxHeight) el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
+    const shouldOverflow = maxHeight ? el.scrollHeight > maxHeight : false
+    setOverflowing(shouldOverflow)
+    el.style.overflowY = shouldOverflow ? 'auto' : 'hidden'
   }, [props.value, minHeight, maxHeight])
   // Merge any incoming style with our scrollbar-hiding override.
-  // OUR override comes last so it wins — wheel-capture is the whole
-  // point of the component, can't let a caller silently break it.
-  const mergedStyle: React.CSSProperties = { ...(props.style || {}), overflowY: 'hidden' }
+  // The `overflowY` override is conditional on `overflowing`: when
+  // content fits inside the cap we hide the textarea's own scrollbar
+  // (wheel-capture is the whole point of the component, can't let a
+  // caller silently break it), but when the content overflows the
+  // cap we expose the textarea's internal scroll so the user can
+  // reach the rest of the text. For the chat composer the cap is
+  // intentionally tight (~140px) so a long scene description scrolls
+  // inside the textarea instead of pushing the rest of the chat
+  // column off-screen.
+  const mergedStyle: React.CSSProperties = { ...(props.style || {}), overflowY: overflowing ? 'auto' : 'hidden' }
   return <textarea ref={ref} {...props} style={mergedStyle} />
 }
 
@@ -1024,7 +1039,7 @@ export function DirectorChat() {
             disabled={!chatInputEnabled}
             rows={3}
             minHeight={84}
-            maxHeight={240}
+            maxHeight={140}
             className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
           />
           <div className="flex shrink-0 self-end overflow-hidden rounded-lg border border-accent-blue/60">
@@ -1138,195 +1153,6 @@ function CharacterNaming({
       </span>
     </div>
   )
-}
-
-function DirectorAspectRatioSelector({ disabled = false }: { disabled?: boolean }) {
-  const ratio = useStore(s => s.directorAspectRatio)
-  const setRatio = useStore(s => s.setDirectorAspectRatio)
-  const videoModel = useStore(s => s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1')
-  const supportsUltraWide = videoModel.toLowerCase().startsWith('minimax_h3')
-
-  useEffect(() => {
-    if (!supportsUltraWide && ratio === '21:9') setRatio('16:9')
-  }, [ratio, setRatio, supportsUltraWide])
-
-  const presets = [
-    ...(supportsUltraWide
-      ? [{ value: '21:9' as const, label: '21:9', desc: 'Cinema' }]
-      : []),
-    { value: '16:9' as const, label: '16:9', desc: 'Wide' },
-    { value: '9:16' as const, label: '9:16', desc: 'Portrait' },
-    { value: '1:1' as const, label: '1:1', desc: 'Square' },
-    { value: '4:3' as const, label: '4:3', desc: 'Classic' },
-    { value: '3:4' as const, label: '3:4', desc: 'Tall' },
-  ]
-  return (
-    <div>
-      <label className="text-2xs text-text-muted uppercase tracking-wider mb-1.5 block">Aspect Ratio</label>
-      <div className="flex gap-1.5">
-        {presets.map(p => (
-          <button
-            key={p.value}
-            onClick={() => setRatio(p.value)}
-            disabled={disabled}
-            className={`flex-1 py-1.5 rounded-lg border text-xs transition-all ${
-              ratio === p.value
-                ? 'border-accent-blue bg-accent-blue/10 text-text-primary'
-                : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            <div className="font-medium">{p.label}</div>
-            <div className="text-2xs mt-0.5 opacity-60">{p.desc}</div>
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function DirectorResolutionSelector({ disabled = false }: { disabled?: boolean }) {
-  const resolution = useStore(s => s.directorResolution)
-  const aspectRatio = useStore(s => s.directorAspectRatio)
-  const setResolution = useStore(s => s.setDirectorResolution)
-  const videoModel = useStore(s => s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1')
-  const totalVramGb = useStore(s => s.systemStats?.gpu.vram_total_gb ?? 0)
-  const [options, setOptions] = useState<ModelOptions | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    fetchModelOptions(videoModel)
-      .then(value => { if (!cancelled) setOptions(value) })
-      .catch(() => { if (!cancelled) setOptions(null) })
-    return () => { cancelled = true }
-  }, [videoModel])
-
-  const fallbackOrder = ['480p', '540p', '720p', '1080p'] as const
-  const modelPresetOrder = (options?.resolution_preset_order || []).filter(
-    value => value !== 'auto',
-  )
-  const presetOrder = modelPresetOrder.length > 0
-    ? modelPresetOrder
-    : [...fallbackOrder]
-  const presets = presetOrder.map(value => ({
-    value,
-    label: options?.resolution_presets?.[value]?.label || value,
-  }))
-  const resolvedResolution = resolveResolution(options, resolution, aspectRatio)
-  const recommendation = recommendedWindowProfile(
-    options?.director_memory_policy || options?.sliding_window_memory_policy,
-    resolvedResolution,
-    totalVramGb,
-  )
-  const fps = options?.fps || 24
-  const selectedConfig = options?.resolution_presets?.[resolution]
-  return (
-    <div>
-      <label className="text-2xs text-text-muted uppercase tracking-wider mb-1.5 block">Resolution</label>
-      <div className="flex gap-1.5">
-        {presets.map(p => (
-          <button
-            key={p.value}
-            onClick={() => setResolution(p.value)}
-            disabled={disabled}
-            className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-all ${
-              resolution === p.value
-                ? 'border-accent-blue bg-accent-blue/10 text-text-primary'
-                : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-      <div className="mt-1 text-2xs text-text-muted">
-        {resolvedResolution}
-        {recommendation?.frames != null && totalVramGb > 0 && (
-          <> &middot; Auto max shot {formatSeconds(recommendation.frames / fps)} on {totalVramGb.toFixed(0)} GB</>
-        )}
-      </div>
-      {recommendation?.supported === false && (
-        <div className="mt-1 text-2xs text-amber-400">
-          Auto recommends {recommendation.fallbackResolution || 'a lower resolution'} on this GPU. An Advanced manual shot-length override is experimental.
-        </div>
-      )}
-      {selectedConfig?.hint && (
-        <div className={`mt-1 text-2xs ${selectedConfig.experimental ? 'text-amber-400' : 'text-text-muted'}`}>
-          {selectedConfig.hint}
-        </div>
-      )}
-    </div>
-  )
-}
-
-export function DirectorSetupPanel({ locked }: { locked: boolean }) {
-  const autoMode = useStore(s => s.directorAutoMode)
-  const setAutoMode = useStore(s => s.setDirectorAutoMode)
-  const seamless = useStore(s => s.directorSeamless)
-  const setSeamless = useStore(s => s.setDirectorSeamless)
-  const selectedVideoSupportsSeamless = useStore(s => {
-    const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
-    const model = s.models.find(item => item.model_type === selected)
-    return model?.director
-      ? model.director.video.seamless.compatible === true
-      : true
-  })
-
-  return (
-    <div className="space-y-3">
-      <DirectorAspectRatioSelector disabled={locked} />
-      <DirectorResolutionSelector disabled={locked} />
-
-      <div className="pt-2 border-t border-border/50 space-y-1.5">
-        <span className="text-2xs text-text-muted uppercase tracking-wider block">Workflow</span>
-        <div className="flex items-center gap-4">
-          <label
-            className={`flex items-center gap-1.5 select-none ${
-              locked || !selectedVideoSupportsSeamless
-                ? 'cursor-not-allowed opacity-50'
-                : 'cursor-pointer'
-            }`}
-            title={selectedVideoSupportsSeamless
-              ? 'Render one continuous sliding-window timeline, carrying motion and audio between windows'
-              : 'The selected video model cannot carry a continuous timeline between native windows'}
-          >
-            <input
-              type="checkbox"
-              checked={seamless}
-              disabled={locked || !selectedVideoSupportsSeamless}
-              onChange={e => setSeamless(e.target.checked)}
-              className="accent-accent-blue w-3 h-3"
-            />
-            <span className="text-2xs text-text-secondary">Seamless</span>
-          </label>
-          <label
-            className={`flex items-center gap-1.5 select-none ${locked ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-            title="Skip all review steps and generate automatically"
-          >
-            <input
-              type="checkbox"
-              checked={autoMode}
-              disabled={locked}
-              onChange={e => setAutoMode(e.target.checked)}
-              className="accent-red-500 w-3 h-3"
-            />
-            <span className={`text-2xs ${autoMode ? 'text-red-400' : 'text-text-secondary'}`}>Auto</span>
-          </label>
-        </div>
-      </div>
-
-      <div className="pt-2 border-t border-border/50 space-y-1.5">
-        <span className="text-2xs text-text-muted uppercase tracking-wider block">Models</span>
-        <DirectorModelSelection disabled={locked} />
-      </div>
-
-      {locked && (
-        <p className="text-2xs text-text-muted">
-          Project setup is locked after planning begins.
-        </p>
-      )}
-    </div>
-  )
-}
 
 function SkillSelector({ onSelect }: { onSelect: (skill: DirectorSkill) => void }) {
   const [skills, setSkills] = useState(DIRECTOR_SKILL_OPTIONS)
@@ -1681,7 +1507,6 @@ function AdditionalRefsSection() {
     s.models.find(model => model.model_type === selectedVideoModel)
       ?.director?.voice_reference_mode ?? 'none'
   ))
-  const [expanded, setExpanded] = useState(charRefs.length > 0 || locRefs.length > 0 || voiceRef !== null)
 
   const handleFiles = useCallback((files: FileList | null, type: 'char' | 'loc') => {
     if (!files) return
@@ -1794,7 +1619,6 @@ function AdditionalRefsSection() {
             )}
           </div>}
         </div>
-    </div>
   )
 }
 
@@ -1813,10 +1637,12 @@ export function AnalysisSummary({
   ).size
 
   return (
+    /* The "Analysis complete" / "Transcription complete" header used
+       to render as a static paragraph above the stats toggle. The
+       user asked to drop it because the toggle's own chips
+       (duration, BPM, sections, lyric segments) already convey the
+       same outcome — the prose paragraph was redundant. */
     <div className="space-y-1">
-      <p className="text-xs text-text-secondary mb-1">
-        {isShortFilm ? 'Transcription complete' : 'Analysis complete'}
-      </p>
       <button
         onClick={() => setShowDetails(v => !v)}
         className="flex items-center gap-3 text-xs text-text-muted w-full hover:text-text-secondary transition-colors"
@@ -1986,8 +1812,25 @@ export function StructureView({
         </div>
 
         {loading ? (
-          <div className="flex items-center gap-1.5 text-2xs text-text-muted py-1">
+          /* Stop button sits on the right so the spinner + label stay
+             left-aligned (matches the layout used in DirectorPanel's
+             "Writing image prompts..." / "Writing video prompts..."
+             overlays — same affordance, same icon). The cancel action
+             goes through useStore.cancelDirectorV2Plan() which aborts
+             the in-flight HTTP request AND tells the backend to short-
+             circuit the worker thread, so the GPU/llama-server stops
+             generating tokens that no one will read. */
+          <div className="relative flex items-center gap-1.5 text-2xs text-text-muted py-1 pr-5">
             <Loader2 size={10} className="animate-spin" /> Recalculating...
+            <button
+              type="button"
+              onClick={() => useStore.getState().cancelDirectorV2Plan()}
+              title="Stop recalculating"
+              aria-label="Stop recalculating"
+              className="absolute right-0 top-1/2 -translate-y-1/2 bg-bg-secondary rounded-full p-0.5 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
+            >
+              <X size={10} />
+            </button>
           </div>
         ) : (
           <>
@@ -2492,165 +2335,6 @@ function DirectorAdvancedAccordion() {
 }
 
 /** Compact model picker for Director. Director's automated stages have a
- *  stricter input contract than Studio, so the backend publishes explicit
- *  per-workflow compatibility metadata for this selector to enforce. */
-function DirectorModelPicker({ mode, value, onChange, disabled = false }: {
-  mode: 'image' | 'video'
-  value: string
-  onChange: (modelType: string) => void
-  disabled?: boolean
-}) {
-  const models = useStore(s => s.models)
-  const families = useStore(s => s.families)
-  const enabledModels = useStore(s => s.enabledModels)
-  const nsfwMode = useStore(s => s.servicesConfig?.nsfw_mode ?? false)
-  const directorSkill = useStore(s => s.directorSkill)
-  const shortFilmPath = useStore(s => s.shortFilmPath)
-  const seamless = useStore(s => s.directorSeamless)
-
-  const pipelineType: DirectorPipelineType = directorSkill === 'music_video'
-    ? 'music_video'
-    : shortFilmPath === 'audio'
-      ? 'short_film_audio'
-      : 'short_film_story'
-
-  const groups = useMemo(() =>
-    getFamiliesForMode(mode, families).map(family => ({
-      family,
-      models: getModelsForFamily(family.id, models, mode)
-        .filter(m => enabledModels.has(m.model_type))
-        .filter(m => !m.nsfw_only || nsfwMode)
-        .filter(m => mode === 'image'
-          ? m.director?.image.compatible === true
-          : m.director?.video[pipelineType].compatible === true
-            && (!seamless || m.director?.video.seamless.compatible === true)),
-    })).filter(g => g.models.length > 0),
-  [mode, families, models, enabledModels, nsfwMode, pipelineType, seamless])
-
-  const compatibleModels = useMemo(
-    () => groups.flatMap(group => group.models),
-    [groups],
-  )
-  const noneSelected = mode === 'image' && value === DIRECTOR_IMAGE_MODEL_NONE
-  const known = noneSelected || compatibleModels.some(model => model.model_type === value)
-  const preferredId = mode === 'image' ? 'flux2_klein_9b' : 'ltx2_22B_distilled_1_1'
-  const fallback = compatibleModels.find(model => model.model_type === preferredId)
-    || compatibleModels[0]
-  const selectedValue = known ? value : (fallback?.model_type || '')
-  const selectedModel = compatibleModels.find(model => model.model_type === selectedValue)
-
-  useEffect(() => {
-    if (!disabled && !known && fallback && fallback.model_type !== value) {
-      onChange(fallback.model_type)
-    }
-  }, [disabled, fallback, known, onChange, value])
-
-  const title = mode === 'image'
-    ? 'Choose a compatible image model for generated scene starts, or None to render from prompts and optional manual scene images.'
-    : pipelineType === 'short_film_story'
-      ? 'Only models that can render Director-planned shots with synchronized native audio are shown.'
-      : 'Only models that can follow the uploaded soundtrack or dialogue timeline are shown.'
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-2xs text-text-muted uppercase tracking-wider w-11 shrink-0">
-        {mode === 'image' ? 'Image' : 'Video'}
-      </span>
-      <select
-        value={selectedValue}
-        onChange={e => onChange(e.target.value)}
-        disabled={disabled || (mode === 'video' && compatibleModels.length === 0)}
-        title={title}
-        className="flex-1 min-w-0 bg-bg-tertiary border border-border rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent-blue disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {mode === 'image' && (
-          <option value={DIRECTOR_IMAGE_MODEL_NONE}>None — no generated images</option>
-        )}
-        {compatibleModels.length === 0 && mode === 'video' && (
-          <option value="">No compatible models enabled</option>
-        )}
-        {groups.map(({ family, models: famModels }) => (
-          <optgroup key={family.id} label={family.label}>
-            {famModels.map(m => (
-              <option key={m.model_type} value={m.model_type}>{m.name}</option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-      {selectedModel?.selector_help && (
-        <InfoTooltip
-          text={selectedModel.selector_help}
-          label={`About ${selectedModel.name}`}
-        />
-      )}
-    </div>
-  )
-}
-
-function DirectorModelSelection({ disabled = false }: { disabled?: boolean }) {
-  const imageModel = useStore(s => s.selectedModelPerMode.image || 'flux2_klein_9b')
-  const videoModel = useStore(s => s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1')
-  const shotImageSupport = useStore(s => s.models.find(
-    model => model.model_type === videoModel,
-  )?.director?.shot_image_support)
-  const shotImageGuidance = useStore(s => s.directorShotImageGuidance)
-  const hasVisualReferences = useStore(s => Boolean(
-    s.directorReferenceImage
-    || s.directorReferenceImagePath
-    || s.directorCharacterRefs.length
-    || s.directorCharacterRefPaths.length
-    || s.directorLocationRefs.length
-    || s.directorLocationRefPaths.length
-    || (
-      s.models.find(model => model.model_type === (
-        s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
-      ))?.director?.video_strategy === 'omni_reference'
-      && s.directorH3References.some(
-        reference => reference.type === 'image' || reference.type === 'video',
-      )
-    )
-  ))
-  const selectDirectorImageModel = useStore(s => s.selectDirectorImageModel)
-  const selectDirectorVideoModel = useStore(s => s.selectDirectorVideoModel)
-  const setShotImageGuidance = useStore(s => s.setDirectorShotImageGuidance)
-  const generateShotImages = directorWillGenerateShotImages(
-    shotImageSupport,
-    shotImageGuidance,
-    hasVisualReferences,
-  )
-  const imagePickerValue = generateShotImages
-    ? imageModel
-    : DIRECTOR_IMAGE_MODEL_NONE
-
-  const selectImageWorkflow = (modelType: string) => {
-    if (modelType === DIRECTOR_IMAGE_MODEL_NONE) {
-      setShotImageGuidance('prompt_only')
-      return
-    }
-    selectDirectorImageModel(modelType)
-    // A concrete selection explicitly requests generated scene starts,
-    // including for H3 First / Last where Auto may otherwise choose T2V.
-    setShotImageGuidance('generate')
-  }
-
-  return (
-    <div className="space-y-1">
-      {/* Video comes first because it determines Director compatibility and
-          whether generated scene-start images are useful or required. */}
-      <DirectorModelPicker
-        mode="video"
-        value={videoModel}
-        onChange={selectDirectorVideoModel}
-        disabled={disabled}
-      />
-      <DirectorModelPicker
-        mode="image"
-        value={imagePickerValue}
-        onChange={selectImageWorkflow}
-        disabled={disabled}
-      />
-    </div>
-  )
 }
 
 function DirectorLoraAccordion() {
@@ -2750,10 +2434,16 @@ export function DirectorGenerationOptions() {
   })
 
   return (
-    <div className="space-y-2">
-      <span className="text-2xs text-text-muted uppercase tracking-wider block">
-        Generation Options
-      </span>
+    <div className="space-y-3">
+      {/* Header matches the section header style used in the middle
+          column (CLIP STRUCTURE / Scene description / etc.) so all
+          three columns share the same visual hierarchy: an uppercase
+          tracked h3 introducing a card body. */}
+      <header className="flex items-center justify-between gap-2">
+        <h3 className="text-xs text-text-muted uppercase tracking-wider">
+          Generation Options
+        </h3>
+      </header>
       <DirectorLoraAccordion />
       <DirectorAdvancedAccordion />
       {audioFile && !fixedMediaStrength && (
@@ -2781,6 +2471,11 @@ export function StyleForm({
   isShortFilm?: boolean
   isStoryPath?: boolean
 }) {
+  // Collapsible Speakers Detected block — defaults to open so the
+  // speaker-to-name mapping is visible by default after analysis,
+  // but the user can fold it to focus on the scene textarea when
+  // they only need the chip-name workflow.
+  const [speakersOpen, setSpeakersOpen] = useState(true)
   if (!isActive) {
     return (
       <div className="space-y-2">
@@ -2795,60 +2490,73 @@ export function StyleForm({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-text-secondary">
-        {isStoryPath
-          ? 'Describe the story you want to tell. The AI will plan scenes, write dialogue, and create all prompts.'
-          : isShortFilm
-            ? 'Describe the story setting, mood, and visual style for your short film.'
-            : 'Describe the scene, characters, and visual style.'}
-      </p>
+      {/* The "Describe the scene, characters, and visual style."
+          paragraph was redundant with the SECTION DESCRIPTION header
+          already rendered by DirectorPlanColumn — the user asked to
+          drop it so the card opens directly into the Speaker Mapping
+          / scene textarea inputs. The composer placeholder below
+          ("Describe the scene and characters...") carries the same
+          guidance without duplicating it as a static paragraph. */}
 
       {/* Speaker Mapping — hidden for story path (no audio = no detected speakers) */}
       {!isStoryPath && speakers.length >= 1 && (
         <div>
-          <label className="text-xs text-text-muted uppercase tracking-wider block mb-1">Speakers Detected</label>
-          <div className="space-y-2">
-            {speakerMappings.map((mapping) => (
-              <div key={mapping.speakerId} className="bg-bg-tertiary rounded-lg p-2 space-y-1">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => insertSpeakerMention(mapping.speakerId)}
-                    className="text-2xs px-1.5 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/30 shrink-0 transition-colors"
-                    title={`Insert @${mapping.speakerId} into description`}
-                  >
-                    {mapping.speakerId}
-                  </button>
-                  <input
-                    type="text"
-                    value={mapping.name}
-                    onChange={e => setSpeakerMapping(mapping.speakerId, e.target.value, mapping.role)}
-                    placeholder="e.g. man in green hoodie"
-                    className="flex-1 bg-bg-secondary border border-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors"
-                  />
-                  <select
-                    value={mapping.role}
-                    onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role)}
-                    className="bg-bg-secondary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
-                  >
-                    <option value="">role</option>
-                    {!isShortFilm && <option value="rapping">rapping</option>}
-                    {!isShortFilm && <option value="singing">singing</option>}
-                    <option value="speaking">speaking</option>
-                  </select>
-                </div>
-                {speakerSamples[mapping.speakerId] && (
-                  <div className="text-2xs text-text-muted pl-1 italic">
-                    {speakerSamples[mapping.speakerId].map((line, li) => (
-                      <div key={li} className="truncate">&ldquo;{line}&rdquo;</div>
-                    ))}
+          <button
+            type="button"
+            onClick={() => setSpeakersOpen(v => !v)}
+            aria-expanded={speakersOpen}
+            className="flex items-center gap-1 text-xs text-text-muted uppercase tracking-wider w-full hover:text-text-secondary transition-colors mb-1"
+          >
+            {speakersOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+            <span>Speakers Detected</span>
+            <span className="text-2xs text-text-muted normal-case tracking-normal ml-1">
+              ({speakerMappings.length})
+            </span>
+          </button>
+          {speakersOpen && <>
+            <div className="space-y-2">
+              {speakerMappings.map((mapping) => (
+                <div key={mapping.speakerId} className="bg-bg-tertiary rounded-lg p-2 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => insertSpeakerMention(mapping.speakerId)}
+                      className="text-2xs px-1.5 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/30 shrink-0 transition-colors"
+                      title={`Insert @${mapping.speakerId} into description`}
+                    >
+                      {mapping.speakerId}
+                    </button>
+                    <input
+                      type="text"
+                      value={mapping.name}
+                      onChange={e => setSpeakerMapping(mapping.speakerId, e.target.value, mapping.role)}
+                      placeholder="e.g. man in green hoodie"
+                      className="flex-1 bg-bg-secondary border border-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors"
+                    />
+                    <select
+                      value={mapping.role}
+                      onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role)}
+                      className="bg-bg-secondary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
+                    >
+                      <option value="">role</option>
+                      {!isShortFilm && <option value="rapping">rapping</option>}
+                      {!isShortFilm && <option value="singing">singing</option>}
+                      <option value="speaking">speaking</option>
+                    </select>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-          <span className="text-2xs text-text-muted mt-1 block">
-            Name each speaker so the director knows who to show. Click a chip to insert into description.
-          </span>
+                  {speakerSamples[mapping.speakerId] && (
+                    <div className="text-2xs text-text-muted pl-1 italic">
+                      {speakerSamples[mapping.speakerId].map((line, li) => (
+                        <div key={li} className="truncate">&ldquo;{line}&rdquo;</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <span className="text-2xs text-text-muted mt-1 block">
+              Name each speaker so the director knows who to show. Click a chip to insert into description.
+            </span>
+          </>}
         </div>
       )}
 

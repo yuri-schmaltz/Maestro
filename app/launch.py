@@ -458,6 +458,151 @@ def _workspace_dir(workspace: str = None) -> str:
     return ws_dir
 
 
+def _workspace_setup_path(name: str) -> str | None:
+    """Resolve the absolute path to a workspace's setup.json.
+
+    Returns None for the default workspace (which has no per-project setup
+    — it's the catch-all backwards-compat bucket) or for paths that fail
+    the workspace-name containment check. The directory is *not* created
+    here; callers do that after a name passes the regex validation.
+    """
+    import re
+    if name == "default":
+        return None
+    if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_-]*$', str(name or "")):
+        return None
+    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
+    ws_dir = _safe_join(base, name)
+    if ws_dir is None:
+        return None
+    return os.path.join(ws_dir, "setup.json")
+
+
+# Settings that live per-workspace. Marked optional because legacy
+# workspaces predate the project-setup system; missing keys fall back to
+# the DEFAULT_PROJECT_SETUP shape the front-end ships at build time.
+#
+# The fields here mirror `ProjectSetupDefaults` in
+# `ui/src/types/index.ts`. Keep them aligned: the backend acts as the
+# durable copy and the UI is the source of truth for what the user is
+# editing at the moment.
+_DEFAULT_PROJECT_SETUP = {
+    "aspect_ratio": "16:9",
+    "resolution": "720p",
+    "seamless": False,
+    "auto_mode": False,
+    "video_model": "",
+    "image_model": "",
+    "music_source": "upload",
+    "music_model": "",
+    "director_skill": "",
+    "default_image_loras": {},
+    "default_video_loras": {},
+    "advanced": {},
+    "schema_version": 1,
+}
+
+
+def _load_workspace_setup(name: str) -> dict:
+    """Read <workspace>/setup.json and merge with the schema defaults.
+
+    Returns the defaults when the file is missing, malformed, or the
+    workspace does not exist. The merge is shallow on purpose: missing
+    keys restore the default value instead of disappearing, so an old
+    setup.json grows newer fields without breaking existing reads.
+    """
+    setup_path = _workspace_setup_path(name)
+    if setup_path is None or not os.path.isfile(setup_path):
+        return dict(_DEFAULT_PROJECT_SETUP)
+    try:
+        with open(setup_path, "r", encoding="utf-8") as handle:
+            raw = json.loads(handle.read() or "{}")
+    except (OSError, ValueError):
+        return dict(_DEFAULT_PROJECT_SETUP)
+    if not isinstance(raw, dict):
+        return dict(_DEFAULT_PROJECT_SETUP)
+    merged = dict(_DEFAULT_PROJECT_SETUP)
+    for key, value in raw.items():
+        if key in merged:
+            merged[key] = value
+    return merged
+
+
+def _persist_workspace_setup(name: str, setup: dict) -> dict:
+    """Validate + write setup.json for a workspace. Atomic via temp-file
+    rename so a crashed write never leaves a half-empty file behind.
+
+    Returns the stored setup (post-validation). Raises HTTPException on
+    bad shapes — callers should NOT catch.
+    """
+    import re
+    if name == "default":
+        raise HTTPException(status_code=400, detail="The default workspace cannot hold a custom project setup.")
+    if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_-]*$', str(name or "")):
+        raise HTTPException(status_code=400, detail="Invalid workspace name.")
+    if not isinstance(setup, dict):
+        raise HTTPException(status_code=400, detail="Setup payload must be a JSON object.")
+
+    # Keep only fields we know about — the front-end may add newer
+    # keys before the backend schema bump catches up.
+    sanitized: dict = {}
+    for key in _DEFAULT_PROJECT_SETUP.keys():
+        if key not in setup:
+            continue
+        value = setup[key]
+        if key in {"aspect_ratio", "resolution", "video_model", "image_model", "music_model"}:
+            if value is None or isinstance(value, str):
+                sanitized[key] = value if value is not None else ""
+            else:
+                raise HTTPException(status_code=400, detail=f"{key} must be a string or null.")
+        elif key in {"seamless", "auto_mode"}:
+            if not isinstance(value, bool):
+                raise HTTPException(status_code=400, detail=f"{key} must be a boolean.")
+            sanitized[key] = value
+        elif key == "music_source":
+            if value not in {"upload", "generate"}:
+                raise HTTPException(status_code=400, detail="music_source must be 'upload' or 'generate'.")
+            sanitized[key] = value
+        elif key == "director_skill":
+            # Director skill id (e.g. "music_video", "short_film"). Empty
+            # string means "let the user pick on the Director chooser";
+            # the registry list (services/director/registry.py) is the
+            # canonical source of valid ids, so we only enforce shape
+            # here and let the registry reject unknown values downstream.
+            if value is None or isinstance(value, str):
+                sanitized[key] = value if value is not None else ""
+            else:
+                raise HTTPException(status_code=400, detail="director_skill must be a string or null.")
+        elif key in {"default_image_loras", "default_video_loras", "advanced"}:
+            if value is None or isinstance(value, dict):
+                sanitized[key] = value if value is not None else {}
+            else:
+                raise HTTPException(status_code=400, detail=f"{key} must be an object.")
+        elif key == "schema_version":
+            if not isinstance(value, int):
+                raise HTTPException(status_code=400, detail="schema_version must be an integer.")
+            sanitized[key] = value
+    sanitized.setdefault("schema_version", _DEFAULT_PROJECT_SETUP["schema_version"])
+
+    setup_path = _workspace_setup_path(name)
+    if setup_path is None:
+        raise HTTPException(status_code=400, detail="Invalid workspace path.")
+    os.makedirs(os.path.dirname(setup_path), exist_ok=True)
+    tmp_path = setup_path + ".tmp"
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as handle:
+            json.dump(sanitized, handle, indent=2)
+        os.replace(tmp_path, setup_path)
+    except OSError as exc:
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except OSError:
+            pass
+        raise HTTPException(status_code=500, detail=f"Could not persist setup: {exc}")
+    return sanitized
+
+
 def _workspace_browse_dir(workspace: str) -> str | None:
     """Resolve an existing/legacy workspace name without creating it.
 
@@ -491,14 +636,21 @@ def _workspace_file_count(path: str) -> int:
 
 
 def _list_workspaces() -> list[dict]:
-    """List all workspaces (subdirectories of the base output path + default)."""
+    """List all workspaces (subdirectories of the base output path + default).
+
+    Each entry now also carries its ProjectSetup (default workspace gets
+    the schema defaults; named workspaces get what was last saved in
+    `setup.json`). Surfacing this in the list endpoint lets the project
+    card render the same chip that the Edit setup dialog would show
+    without a second round-trip on first paint.
+    """
     base = wgp.server_config.get("save_path", "outputs")
-    workspaces = [{"name": "default", "path": base, "file_count": _workspace_file_count(base)}]
+    workspaces = [{"name": "default", "path": base, "file_count": _workspace_file_count(base), "setup": _load_workspace_setup("default")}]
     if os.path.isdir(base):
         for name in sorted(os.listdir(base)):
             full = os.path.join(base, name)
             if os.path.isdir(full) and not name.startswith(("_", ".")):
-                workspaces.append({"name": name, "path": full, "file_count": _workspace_file_count(full)})
+                workspaces.append({"name": name, "path": full, "file_count": _workspace_file_count(full), "setup": _load_workspace_setup(name)})
     return workspaces
 
 
@@ -7390,6 +7542,36 @@ async def create_workspace(request: Request):
     return {"status": "ok", "name": name, "path": ws_dir}
 
 
+@api.get("/api/v1/workspaces/{name}/setup")
+def get_workspace_setup(name: str):
+    """Return the ProjectSetup JSON for a workspace.
+
+    Missing file → defaults. Default workspace → defaults. Used by the
+    UI to hydrate the Director selection on `switchWorkspace` so the
+    user starts a session with the same aspect ratio / resolution /
+    models they used last time in this project. Idempotent.
+    """
+    return {"name": name, "setup": _load_workspace_setup(name)}
+
+
+@api.put("/api/v1/workspaces/{name}/setup")
+async def put_workspace_setup(name: str, request: Request):
+    """Update the ProjectSetup for a workspace. Atomic write.
+
+    Shared between the New project dialog (POST then PUT to fill the
+    just-created folder) and the Edit setup affordance on the project
+    card (re-PUT to overwrite). Validation lives in
+    `_persist_workspace_setup` so direct callers (e.g. tests) hit the
+    same error mapping as the HTTP surface.
+    """
+    body = await request.json()
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
+    raw_setup = body.get("setup", body)
+    persisted = _persist_workspace_setup(name, raw_setup)
+    return {"status": "ok", "name": name, "setup": persisted}
+
+
 @api.delete("/api/v1/workspaces/{name}")
 def delete_workspace(name: str):
     """Delete a workspace folder and every asset inside it.
@@ -9296,8 +9478,12 @@ def audio_analyze_status():
     instead of a single "Analyzing audio..." message for the entire
     1-5 minute wait.
 
-    Returns {"step": "<phase>", "detail": "<human-readable message>"}.
-    Both empty when no analyze is in flight.
+    Returns {"step": "<phase>", "detail": "<human-readable message>",
+    "current": <int>, "total": <int>}. current/total are the sub-progress
+    numbers that drive the precise DirectorStatusPanel sub-bar; both are
+    0 when no numbers are available yet (the frontend renders that as
+    an indeterminate sliding bar). Both empty when no analyze is in
+    flight.
     """
     from services.audio_analysis import get_progress
     return get_progress()

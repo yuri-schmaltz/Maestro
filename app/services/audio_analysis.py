@@ -41,22 +41,43 @@ logger = logging.getLogger(__name__)
 # other's status — acceptable since the polling endpoint is meant
 # for the active analyze call.
 _PROGRESS_LOCK = threading.Lock()
-_PROGRESS = {"step": "", "detail": ""}
+# Extended progress dict. The frontend's DirectorStatusPanel renders a
+# precise sub-progress bar that needs {current, total} per phase; the
+# optional fields default to 0/0 so the polling endpoint keeps working
+# for callers that don't (yet) supply numbers. Every _set_progress call
+# site below passes the current/total that best describes the work
+# being done — see the ANLYZE_PHASES table near the top of analyze().
+_PROGRESS = {
+    "step": "",
+    "detail": "",
+    "current": 0,
+    "total": 0,
+}
 
 
-def _set_progress(step: str, detail: str = "") -> None:
-    """Update the shared progress state read by the status polling endpoint."""
+def _set_progress(step: str, detail: str = "", current: int = 0, total: int = 0) -> None:
+    """Update the shared progress state read by the status polling endpoint.
+
+    current/total feed the frontend's sub-progress bar (e.g. "Step 3 / 6").
+    Both default to 0 so existing call sites that don't supply numbers
+    still work; the frontend treats {0,0} as "indeterminate" and shows
+    the same sliding bar it would for any unquantified work.
+    """
     with _PROGRESS_LOCK:
         _PROGRESS["step"] = step
         _PROGRESS["detail"] = detail
+        _PROGRESS["current"] = max(0, int(current or 0))
+        _PROGRESS["total"] = max(0, int(total or 0))
     if step:
-        print(f"[AudioAnalysis][progress] {step}{(': ' + detail) if detail else ''}")
+        suffix = f" ({current}/{total})" if total else ""
+        print(f"[AudioAnalysis][progress] {step}{(': ' + detail) if detail else ''}{suffix}")
 
 
 def get_progress() -> dict:
     """Read the current analyze progress (thread-safe)."""
     with _PROGRESS_LOCK:
-        return {"step": _PROGRESS["step"], "detail": _PROGRESS["detail"]}
+        # Return a copy so callers can't mutate the shared state.
+        return dict(_PROGRESS)
 
 
 # ---------------------------------------------------------------------------
@@ -700,19 +721,19 @@ def analyze(
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
     print(f"[AudioAnalysis] Analyzing: {audio_path}")
-    _set_progress("loading_audio", "Loading audio")
+    _set_progress("loading_audio", "Loading audio", current=1, total=6)
 
     import librosa
     y, sr = _load_audio(audio_path)
     duration = float(librosa.get_duration(y=y, sr=sr))
     original_sr = librosa.get_samplerate(audio_path)
 
-    _set_progress("detecting_beats", "Detecting beats")
+    _set_progress("detecting_beats", "Detecting beats", current=2, total=6)
     bpm, beats = _detect_beats(y, sr)
     downbeats = _detect_downbeats(beats, bpm)
     onset_envelope = _compute_onset_envelope(y, sr)
 
-    _set_progress("identifying_sections", "Identifying sections")
+    _set_progress("identifying_sections", "Identifying sections", current=3, total=6)
     sections = _segment_sections(y, sr, beats, duration)
 
     result = AudioAnalysis(
@@ -744,9 +765,9 @@ def analyze(
                         # Status string says "loading" with the "first use
                         # downloads" hint so users understand a long pause
                         # here means download, not a hang.
-                        _set_progress("loading_vocal_model", "Loading vocal-extraction model (first use downloads ~50MB)")
+                        _set_progress("loading_vocal_model", "Loading vocal-extraction model (first use downloads ~50MB)", current=4, total=6)
                         print("[AudioAnalysis] Extracting vocals for transcription...")
-                        _set_progress("extracting_vocals", "Extracting vocals")
+                        _set_progress("extracting_vocals", "Extracting vocals", current=4, total=6)
                         vocals_path = get_vocals(audio_path, vocals_path)
 
                     transcription_path = vocals_path
@@ -756,16 +777,16 @@ def analyze(
 
             # _transcribe loads Whisper on first call (~300MB download
             # the very first time, cached after).
-            _set_progress("loading_transcription_model", "Loading transcription model (first use downloads ~300MB)")
+            _set_progress("loading_transcription_model", "Loading transcription model (first use downloads ~300MB)", current=5, total=6)
             print("[AudioAnalysis] Running transcription...")
-            _set_progress("transcribing", "Transcribing audio")
+            _set_progress("transcribing", "Transcribing audio", current=5, total=6)
             result.lyrics = _transcribe(transcription_path, lyrics_hint=lyrics_hint)
 
             # Run speaker diarization on the original mix (needs both voices)
             if result.lyrics:
                 # _diarize loads pyannote on first call (~100MB cached).
-                _set_progress("loading_diarization_model", "Loading speaker-diarization model (first use downloads ~30MB)")
-                _set_progress("identifying_speakers", "Identifying speakers")
+                _set_progress("loading_diarization_model", "Loading speaker-diarization model (first use downloads ~30MB)", current=6, total=6)
+                _set_progress("identifying_speakers", "Identifying speakers", current=6, total=6)
                 result.lyrics = _diarize(audio_path, result.lyrics)
                 unload_diarizer()  # Free VRAM immediately
             unload_whisper()  # Free Whisper VRAM before LLM loads
@@ -774,10 +795,10 @@ def analyze(
         except Exception as e:
             print(f"[AudioAnalysis] Transcription failed, continuing without lyrics: {e}")
 
-    _set_progress("finalizing", "Finalizing")
+    _set_progress("finalizing", "Finalizing", current=6, total=6)
     print(f"[AudioAnalysis] Done: {bpm:.1f} BPM, {len(beats)} beats, {len(sections)} sections")
     # Clear progress so subsequent /status polls don't show stale state.
-    _set_progress("", "")
+    _set_progress("", "", current=0, total=0)
     return asdict(result)
 
 
