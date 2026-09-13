@@ -73,7 +73,7 @@ export function ProjectsPage() {
       // mount via the store. Done sequentially so a failed save never
       // strands a project on disk in an unexpected shape.
       await createWorkspace(value)
-      await saveWorkspaceSetup(value, setup)
+      await saveSetupAction(setup)
       setCreating(false); setName('')
       setSetup(DEFAULT_PROJECT_SETUP)
       navigate('director')
@@ -109,6 +109,7 @@ export function ProjectsPage() {
       } else {
         await saveWorkspaceSetup(editing, setup)
       }
+      await useStore.getState().loadWorkspaces()
       setEditing(null)
     }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save project setup.') }

@@ -1,0 +1,241 @@
+# TODO de retomada — Maestro
+
+Revisão: 2026-09-13. Base observada: commit `659907b` e alterações locais.
+
+Este documento compara a análise de 2026-09-12 com as correções e extrações
+feitas posteriormente por outro agente. A rodada anterior deste revisor foi
+somente diagnóstica; as implementações subsequentes pertencem ao outro agente.
+Nesta rodada foram executadas verificações e criado este TODO, sem corrigir
+código de aplicação nem reiniciar a instância existente.
+
+## Execução em andamento — 2026-09-13
+
+Esta seção atualiza o diagnóstico histórico abaixo. O objetivo completo continua
+ativo: esta etapa restaura os gates básicos e corrige parte das integrações;
+não conclui a refatoração Studio/Director/backend nem a validação de produção.
+
+Entregue nesta etapa:
+
+- Build oficial corrigido: ordem do chat, payload de preferências, tipos
+  completos dos slices e terceiro argumento do StateCreator.
+- Lint completo corrigido com exceção restrita ao harness sem HMR.
+- Coleta padrão limitada a `tests`; browser executa dentro de funções;
+  smoke selecionado explicitamente no CI. CI também executa lint e contratos UI.
+- Launcher/stop verificam a identidade do processo antes de encerrá-lo.
+  Porta ocupada por outro processo gera erro claro e preserva o listener.
+  Fallback extrai a porta numérica; `.env.local` preserva entradas alheias;
+  Vite usa `loadEnv`. Sete testes isolados de launcher passaram.
+- Pollings de áudio publicam progresso, sucesso/erro e ignoram respostas de
+  sessões canceladas. Reset invalida a sessão anterior.
+- Cargas/saves de setup ignoram respostas de outro workspace ou request antigo.
+- Advanced hidrata controles reais do Director, em vez de ficar apenas num
+  objeto sem uso. `projectAdvancedDefaults.ts` delimita as chaves aceitas.
+  Overrides por take posteriores e snapshots restaurados prevalecem.
+- `npm run test:store` exercita o store composto: respostas fora de ordem,
+  saves atrasados, ciclo do progresso, LoRAs e construção do pedido real de
+  pipeline, com fetch interceptado antes de qualquer geração.
+
+Advanced atualmente suportado: `image_spatial_upsampling` e
+`video_spatial_upsampling` (`""`, `lanczos1.5`, `lanczos2`),
+`image_film_grain_intensity`, `image_film_grain_saturation`,
+`video_film_grain_intensity`, `video_film_grain_saturation` (0–1),
+`video_self_refiner` (0/1/2), `video_num_inference_steps` (inteiro 1–50) e
+`minimax_h3_turbo_mode` (booleano). Restrições próprias do modelo continuam
+prevalecendo. Chaves desconhecidas não são espalhadas no pedido de geração.
+Valores ausentes de advanced restauram defaults; `music_model: ""` restaura
+`ace_step_v1_5_xl_sft_lm_4b`.
+
+Evidências atuais: build oficial, lint, contratos UI e sete testes de launcher
+aprovados; smoke executado com `-m smoke`: 1 teste e 35 subtests aprovados.
+O teste novo `test_director_opens_without_runtime_errors` passou no Chromium
+com mutações interceptadas; screenshot em `/tmp/maestro-overhaul/director-runtime.png`.
+O teste visual completo ainda falha por esperar controles antigos de hardware
+removidos da aplicação. Atualizar os seletores e fixtures, sem esconder
+regressões reais de revisão de produção, editor ou CRUD.
+
+Próximas ações: modernizar o teste visual completo com todas as mutações
+interceptadas desde o início; verificar salvamento/reabertura e snapshot do
+setup; validar execução de skill local no backend; concluir CI em ambiente
+limpo; seguir as extrações P2. Geração real e exportação ainda não executadas.
+O Vite de teste está em `127.0.0.1:3000`, proxy explícito para `7861`; confirmar
+processos vivos antes de reutilizar. O backend do usuário não foi reiniciado.
+
+## Estado para quem assumir
+
+- O commit `659907b` contém as correções iniciais, o serviço Workspace Setup,
+  o workspace slice e os helpers de Studio/modelos/LoRAs.
+- Antes deste documento, havia modificações em `CHANGELOG.md`, `HANDOFF.md`,
+  `ui/src/stores/useStore.ts` e o arquivo novo não rastreado
+  `ui/src/stores/studioWorkflowSlice.ts`. Preservar esse trabalho.
+- A instância existente ainda escuta em `127.0.0.1:7861`, PID observado
+  `141029`. Um processo ativo não prova que carregou o Python mais recente.
+- Não assumir que o relato de “gauntlet completo aprovado” equivale a uma
+  entrega validada. O build oficial falha no estado revisado.
+- `studioWorkflowSlice` é uma extração real de workflows, mas NÃO é o
+  `studioSlice` completo solicitado no histórico. Seleção de modelos,
+  hidratação, troca de modo, snapshots e efeitos de LoRAs continuam na raiz.
+
+## Melhorias confirmadas por inspeção
+
+- [x] Extração de persistência/validação de setup para
+  `app/services/workspace_setup.py`, com wrappers em `launch.py` e testes próprios.
+- [x] Extração de estado/ações de workspace para `workspaceSlice.ts`.
+- [x] Extração de helpers em `studioPreferences.ts`, `modelCatalog.ts` e
+  `loraState.ts`, e fachadas de seletores por domínio.
+- [x] Preservação de IDs de plugins em `canonicalDirectorSkill`.
+  Ainda falta validar o caminho completo de execução de uma skill local.
+- [x] Inclusão do tipo, estado inicial e setter de `directorAnalyzeProgress`.
+  A alimentação desse estado ainda não foi implementada.
+- [x] Aplicação de origem/modelo de música e chamada de `directorSetLora`
+  a partir do setup; integração de advanced continua incompleta.
+- [x] Restauração do guard e dos testes de gramática JSON ausentes.
+- [x] Redução dos erros de lint em `src`; o lint oficial ainda falha em `ui/tests`.
+
+## P0 — Restaurar build e confiabilidade da validação
+
+- [x] Corrigir a ordem das declarações em `DirectorChat.tsx`.
+  `chatInputEnabled` é lido no array de dependências do `useCallback` na
+  linha 672 e declarado na 675. O acesso acontece durante o render; não é
+  apenas uma captura adiada pelo callback. Aceite: compilar e abrir Director
+  sem erro de variável não inicializada.
+- [x] Alinhar `StudioPreferencePayload.audio_sub_mode` ao tipo da API.
+  O helper usa `string`, mas `StudioPreferenceUpdate` aceita uma união
+  específica. O erro aparece em `useStore.ts:2960`. Usar os tipos de domínio,
+  sem encobrir a incompatibilidade com casts amplos.
+- [x] Dar tipos completos aos slices extraídos, em vez de `Partial<AppState>`.
+  O spread de `studioWorkflowSlice` torna `studioVideoWorkflow` opcional e
+  quebra a construção de `AppState` em `useStore.ts:2971`.
+  Definir explicitamente os campos e ações pertencentes a cada slice.
+- [x] Corrigir a composição de `createWorkspaceSlice`: um `StateCreator`
+  recebe `set`, `get` e a API do store; a chamada atual passa apenas dois
+  argumentos (`useStore.ts:11454`). Manter a assinatura e a composição coerentes.
+- [x] Corrigir o lint de `ui/tests/control-harness.tsx:25` com uma organização
+  ou regra específica apropriada ao harness, sem desabilitar o lint global.
+- [x] Usar `npm run build` como gate, ou `tsc -b` explicitamente.
+  `tsc --noEmit` executado com o `ui/tsconfig.json` atual termina sem verificar
+  os projetos referenciados: `files` é vazio. Nesta revisão,
+  `tsc --noEmit --listFiles` não listou nenhum arquivo. `vite build` sozinho
+  também não substitui a verificação de tipos.
+- [x] Evitar validar retorno por `comando | tail` ou `comando | grep` sem
+  `pipefail`. Capturar o exit code do comando original e guardar o log completo.
+
+Aceite do P0: `npm run build`, `npm run lint` e `npm run test:control`
+terminam com código zero, seguidos de uma verificação visual do Director.
+
+## P1 — Concluir correções funcionais
+
+- [ ] Alimentar `directorAnalyzeProgress` nos dois pollings de análise
+  (`useStore.ts`, aproximadamente linhas 10153 e 11094). Hoje atualizam apenas
+  `directorLoadingMessage`; o setter novo não tem consumidores. Cobrir início,
+  avanço, sucesso, erro e reset, inclusive respostas atrasadas após conclusão.
+- [ ] Aplicar os defaults avançados ao payload efetivo de geração/planning.
+  `directorAdvancedDefaults` é inicializado e recebe `setup.advanced`, mas não
+  é lido por quem cria os pedidos. Definir precedência entre defaults,
+  overrides por take e snapshots de produções salvas; não espalhar chaves
+  arbitrárias diretamente em pedidos sem um contrato explícito.
+- [ ] Validar Project Setup de ponta a ponta: salvar, reabrir, trocar projeto,
+  iniciar planejamento e comparar os parâmetros enviados. Incluir música,
+  LoRAs, opções avançadas e a semântica de valores vazios.
+- [ ] Proteger `loadWorkspaceSetup` contra respostas fora de ordem ao alternar
+  rapidamente entre projetos. Hoje aplica qualquer resposta recebida sem
+  conferir se o workspace continua ativo. Verificar também saves pendentes.
+- [ ] Validar uma skill local desde a listagem até o planner correspondente;
+  a correção do canonicalizador, isoladamente, não comprova todo o fluxo.
+
+## P1 — Corrigir launcher e proxy
+
+- [x] Corrigir a extração da porta em `start_local.sh:281`.
+  Para `Port 7860 was busy — using 7861 instead.`, o pipeline atual com
+  `awk '{print $NF}'` retorna `instead`. Isso gera uma URL inválida e pode
+  levar a timeout/encerramento do backend. Validar número e intervalo.
+- [x] Carregar `.env.local` antes de resolver o proxy em `vite.config.ts`,
+  por exemplo usando a API local `loadEnv` na função de configuração.
+  Reprodução isolada nesta revisão: arquivo com `MAESTRO_BACKEND_PORT=7999`
+  e proxy resolvido ainda como `http://127.0.0.1:7860`.
+- [x] Atualizar a porta efetiva em todos os caminhos de start/reuso relevantes,
+  preservando outras entradas de `.env.local`. Hoje a escrita depende de
+  build ausente ou fallback e substitui o arquivo inteiro.
+- [x] Remover a premissa de que o bundle de produção embute `server.proxy`.
+  O proxy é de desenvolvimento; não exigir rebuild de produção por esse motivo.
+- [x] Não encerrar um processo alheio apenas porque ocupa a porta. Identificar
+  a instância gerenciada e escolher uma porta livre ou falhar claramente.
+- [ ] Testar o ciclo em ambiente isolado com a porta ocupada e um backend falso
+  que anuncie fallback. Confirmar URL, pidfile, processo preservado e proxy;
+  só depois validar o processo real. Não usar projetos do usuário como fixtures.
+
+## P1 — Corrigir testes e CI
+
+- [x] Restringir a coleta padrão a `tests` (`testpaths` ou equivalente).
+  `python -m pytest` na raiz ainda coleta `app/models/.../test_vae.py` e falha
+  por falta de `datasets`. `pytest tests/` é uma verificação diferente.
+- [x] Corrigir o comando smoke do CI para selecionar o marcador `smoke`.
+  O comando atual, `pytest tests/test_smoke_imports.py -v`, resulta em
+  `1 deselected / 0 selected` devido a `addopts`; não executa o teste.
+- [x] Mover o teste de navegador para funções/fixtures. Ele ainda executa
+  Playwright no escopo de módulo, antes da seleção por marcador. Com Playwright
+  instalado, `-m 'not browser'` não impede esses efeitos de coleta.
+- [x] Alinhar documentação de seleção: `--browser` e `--smoke` são citados
+  nos comentários, mas não foram implementados como opções pytest.
+- [ ] Verificar o CI em ambiente limpo: versões Python/dependências e a
+  divergência `pycocotools==0.0.11` no job smoke versus `2.0.11` no guard.
+  O sucesso no venv existente não valida a instalação do workflow.
+- [ ] Criar testes de contrato para os slices e helpers extraídos: troca de
+  workflow, restauração por modo, persistência e LoRAs por fase. O gauntlet
+  atual exercita quatro helpers de timeline/review/plano, não essas extrações.
+
+## P2 — Retomar a refatoração planejada após os gates verdes
+
+- [ ] Completar a fronteira Studio: mapear dependências e extrair seleção de
+  modelos, opções, hidratação, parâmetros, snapshots, troca de modo e efeitos
+  de LoRAs com testes de comportamento entre cada corte. Preservar `useStore`
+  como API pública e evitar inicialização duplicada.
+- [ ] Extrair slices reais do Director; seletores/namespace não equivalem a
+  mover a implementação de ações/estado para um domínio separado.
+- [ ] Extrair grupos backend de modelos/LoRAs, Director/pipeline e mídias,
+  preservando contratos HTTP e comparando rotas antes/depois. A extração do
+  serviço de setup não equivale à divisão desses routers.
+- [ ] Atualizar `HANDOFF.md` e `CHANGELOG.md` para refletir estado comprovado,
+  removendo afirmações de conclusão incompatíveis com os gates atuais.
+- [ ] Validar navegação/responsividade, geração real de imagem/vídeo,
+  exportação e recuperação de erros. Registrar entradas, resultados e limites.
+- [ ] Revisar e registrar as alterações em commits coerentes, incluindo
+  `studioWorkflowSlice.ts`; conferir novamente o working tree antes disso.
+
+## Comandos para repetir a verificação
+
+Resultados observados nesta revisão:
+
+| Verificação | Resultado |
+| --- | --- |
+| `npm run build` | Falhou: cinco diagnósticos TypeScript, quatro causas descritas no P0 |
+| `npm run lint` | Falhou: um erro no harness de testes |
+| `npm run test:control` | Aprovado |
+| `python -m pytest tests/ -q` | 162 passed, 2 skipped, 1 deselected; 31 subtests passed |
+| `python -m pytest` na raiz | Erro de coleta: `datasets` ausente em teste de código de terceiros |
+| Smoke com o comando atual do CI | 1 deselected, 0 selected; não executou o smoke |
+| `verify_clean_repo.py` | Aprovado, 2063 arquivos rastreados auditados |
+| Sintaxe Bash e `git diff --check` | Aprovados |
+| Extração de porta com a mensagem de fallback | Retornou `instead`, em vez de `7861` |
+| Configuração Vite com `.env.local` temporário apontando a 7999 | Proxy permaneceu em 7860 |
+
+Logs desta sessão estão em `/tmp/maestro-review-*.log`; são temporários e
+não devem ser a única evidência da próxima rodada. O guard audita arquivos
+rastreados; seu resultado não cobre automaticamente arquivos ainda untracked.
+
+Executar da raiz, separadamente, preservando os códigos de saída:
+
+```bash
+(cd ui && npm run build)
+(cd ui && npm run lint)
+(cd ui && npm run test:control)
+(cd ui && npm run test:store)
+app/env/bin/python -m pytest tests/ -q
+app/env/bin/python -m pytest tests/test_smoke_imports.py -m smoke -v
+python3 scripts/verify_clean_repo.py
+bash -n start_local.sh stop_local.sh
+git diff --check
+```
+
+O smoke com `-m smoke`, navegador, geração real e exportação não foram
+executados nesta revisão. Não reutilizar como resultado atual os números do
+relato do outro agente sem executar o comando correspondente.

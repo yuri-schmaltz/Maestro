@@ -1,3 +1,4 @@
+import type { StudioPreferenceUpdate } from '../api/client'
 import type { GenerationMode, StudioImageWorkflow, StudioVideoWorkflow } from '../types'
 
 export interface StudioPreferenceState {
@@ -6,7 +7,7 @@ export interface StudioPreferenceState {
   selectedModelPerMode: Partial<Record<GenerationMode, string>>
   studioVideoWorkflow: StudioVideoWorkflow
   studioImageWorkflow: StudioImageWorkflow
-  audioSubMode: string
+  audioSubMode: NonNullable<StudioPreferenceUpdate['audio_sub_mode']>
   selectedModelPerAudioSubMode: Record<string, string>
   h3OptimizationPreferences: Record<string, unknown>
 }
@@ -15,7 +16,7 @@ export interface StudioPreferencePayload {
   generation_mode: Exclude<GenerationMode, 'tools'>
   studio_video_workflow: StudioVideoWorkflow
   studio_image_workflow: StudioImageWorkflow
-  audio_sub_mode: string
+  audio_sub_mode: NonNullable<StudioPreferenceUpdate['audio_sub_mode']>
   selected_model_per_mode: Record<string, string>
   selected_model_per_audio_sub_mode: Record<string, string>
   h3_optimizations: Record<string, unknown>

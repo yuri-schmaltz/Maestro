@@ -68,17 +68,9 @@ yaml = ["PyYAML>=6.0"]
 # code, vendored code, and is mixed license.
 packages = ["maestro_cli"]
 
-# Pytest configuration — keep collection light so contributors can run
-# `pytest tests/` after a minimal install without playwright /
-# datasets / network extras. The browser-driven shell test lives in
-# test_application_shell.py and is opt-in (the file's module docstring
-# documents the playwright requirement) — opt in with
-# `pytest tests/ --browser` or just `pytest tests/test_application_shell.py`
-# once playwright is installed. The smoke-import test is also opt-in
-# because it spawns a fresh subprocess per module and is slow enough
-# that running it on every CI invocation is wasteful; gate it behind
-# `--smoke` so the default gauntlet stays under a minute.
+# Default suite excludes browser and smoke tests. Opt in with -m browser / -m smoke.
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 addopts = "-ra --strict-markers -m 'not browser and not smoke'"
 markers = [
     "browser: requires playwright + a running backend (opt-in)",

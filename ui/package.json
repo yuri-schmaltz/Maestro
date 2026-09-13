@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:control": "node scripts/control-gauntlet.mjs"
+    "test:control": "node scripts/control-gauntlet.mjs",
+    "test:store": "node scripts/store-gauntlet.mjs"
   },
   "dependencies": {
     "dompurify": "^3.2.4",

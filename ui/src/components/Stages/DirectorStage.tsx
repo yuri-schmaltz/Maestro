@@ -1,3 +1,4 @@
+import { DirectorReview } from '../DirectorDashboard/DirectorReview'
 // filepath: ui/src/components/Stages/DirectorStage.tsx
 //
 // DirectorStage — Strategy B (Director-as-Stage) from the
@@ -460,8 +461,12 @@ export function DirectorStage({ embedded = false }: DirectorStageProps) {
         </aside>
         <section className="director-stage-plan" aria-label="Director plan & shots">
           <DirectorStatusPanel />
-          <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-            <DirectorPlanColumn />
+          <div className="flex-1 min-h-0 min-w-0 overflow-auto">
+            {pipelineStatus?.status === 'paused' ? (
+              <section aria-label="Production review and progress">
+                <DirectorReview />
+              </section>
+            ) : <DirectorPlanColumn />}
           </div>
         </section>
         <aside className="director-stage-options" aria-label="Director generation options">

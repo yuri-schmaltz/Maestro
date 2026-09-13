@@ -633,6 +633,8 @@ export function DirectorChat() {
     }
   }, [mvGenerateSetup, songDescription, loading, generateTrack, step, chatInput, setSceneDescription, autoMode, startDirectorPipeline, isStoryPath, shortFilmPlanFromStory, isShortFilm, shortFilmPlanPrompts, planPrompts])
 
+  const chatInputEnabled = (step === 'style' || mvGenerateSetup) && !loading
+
   const handleQueueDraft = useCallback(async () => {
     const description = (mvGenerateSetup ? songDescription : chatInput).trim()
     if (!description || !chatInputEnabled || draftQueuePending || directorQueueLoading) return
@@ -671,8 +673,6 @@ export function DirectorChat() {
     }
   }, [mvGenerateSetup, songDescription, chatInput, chatInputEnabled, draftQueuePending, directorQueueLoading, generateTrack, queueCurrentDirectorPipeline, setSceneDescription, setDraftQueuePending, setDraftQueueConfirmation])
 
-  // Determine chat input state
-  const chatInputEnabled = (step === 'style' || mvGenerateSetup) && !loading
   useEffect(() => {
     const onDirectorShortcut = (event: KeyboardEvent) => {
       const command = event.metaKey || event.ctrlKey

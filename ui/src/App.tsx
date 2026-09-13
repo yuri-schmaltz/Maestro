@@ -57,6 +57,7 @@ function App() {
       <div className="application-content" role="tabpanel" id={`panel-${section}`} aria-labelledby={`tab-${section}`} tabIndex={0}>
         {section === 'projects' && <ProjectsPage />}
         {section === 'queue' && <QueuePage />}
+        {section === 'dashboard' && <DirectorDashboard embedded />}
         {section === 'director' && <DirectorPage />}
         {section === 'editor' && <EditorWorkspace />}
         {section === 'medias' && <MainContent />}

@@ -33,11 +33,33 @@ if [[ ! -f "$PIDFILE" ]]; then
   exit 0
 fi
 
+is_managed_process() {
+  python3 - "$1" "$APP_DIR" <<'PYPROC'
+import os, sys
+from pathlib import Path
+try:
+    pid = int(sys.argv[1])
+    app = Path(sys.argv[2]).resolve()
+    cwd = Path(os.readlink(f"/proc/{pid}/cwd")).resolve()
+    args = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+    scripts = [Path(os.fsdecode(arg)) for arg in args[1:] if arg and not arg.startswith(b"-")]
+    valid = cwd == app and any((cwd / script).resolve() == app / "launch.py" for script in scripts)
+except (OSError, ValueError):
+    valid = False
+sys.exit(0 if valid else 1)
+PYPROC
+}
+
 PID=$(cat "$PIDFILE")
-if ! kill -0 "$PID" 2>/dev/null; then
+if [[ ! "$PID" =~ ^[0-9]+$ ]] || ! kill -0 "$PID" 2>/dev/null; then
   echo "[stop_local] PID $PID já não está vivo — limpando pidfile stale"
   rm -f "$PIDFILE"
   exit 0
+fi
+
+if ! is_managed_process "$PID"; then
+  echo "[stop_local] ERRO: pidfile aponta para processo não gerenciado; preservado." >&2
+  exit 6
 fi
 
 echo "[stop_local] Matando backend PID $PID..."
@@ -46,12 +68,12 @@ if [[ "$FORCE" -eq 1 ]]; then
 else
   kill "$PID" 2>/dev/null || true
   for i in 1 2 3 4 5; do
-    if ! kill -0 "$PID" 2>/dev/null; then
+    if ! is_managed_process "$PID"; then
       break
     fi
     sleep 1
   done
-  if kill -0 "$PID" 2>/dev/null; then
+  if is_managed_process "$PID"; then
     echo "[stop_local] SIGTERM não foi suficiente — SIGKILL"
     kill -9 "$PID" 2>/dev/null || true
   fi

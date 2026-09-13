@@ -1,3 +1,4 @@
+import { projectAdvancedDefaults } from './projectAdvancedDefaults'
 import type { StateCreator } from 'zustand'
 import * as api from '../api/client'
 import type {
@@ -8,8 +9,17 @@ import type {
 } from '../types'
 import type { AppState } from './useStore'
 
+export type WorkspaceSlice = Pick<AppState,
+  'workspaces' | 'activeWorkspace' | 'activeWorkspaceSetup' | 'activeWorkspaceSetupLoading' |
+  'browsingUploads' | 'loadWorkspaceSetup' | 'saveWorkspaceSetup' | 'applyWorkspaceSetup' |
+  'loadWorkspaces' | 'switchWorkspace' | 'createWorkspace' | 'deleteWorkspace'
+>
+
 /** Workspace state and actions composed into the root store. */
-export const createWorkspaceSlice: StateCreator<AppState, [], [], Partial<AppState>> = (set, get) => ({
+export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice> = (set, get) => {
+  let setupRequest = 0
+  let workspaceRequest = 0
+  return ({
   workspaces: [],
   activeWorkspace: 'default',
   activeWorkspaceSetup: null,
@@ -17,6 +27,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], Partial<AppSta
   browsingUploads: false,
 
   loadWorkspaceSetup: async (name) => {
+    const request = ++setupRequest
     if (!name || name === 'default') {
       set({ activeWorkspaceSetup: null, activeWorkspaceSetupLoading: false })
       return
@@ -24,9 +35,11 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], Partial<AppSta
     set({ activeWorkspaceSetupLoading: true })
     try {
       const setup = await api.fetchWorkspaceSetup(name)
+      if (request !== setupRequest || get().activeWorkspace !== name) return
       set({ activeWorkspaceSetup: setup, activeWorkspaceSetupLoading: false })
       get().applyWorkspaceSetup(setup)
     } catch (error) {
+      if (request !== setupRequest || get().activeWorkspace !== name) return
       console.error('Failed to load workspace setup:', error)
       set({ activeWorkspaceSetup: null, activeWorkspaceSetupLoading: false })
     }
@@ -37,8 +50,16 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], Partial<AppSta
     if (!name || name === 'default') {
       throw new Error('The default workspace cannot hold a custom project setup.')
     }
+    const request = ++setupRequest
     const persisted = await api.saveWorkspaceSetup(name, setup)
-    set({ activeWorkspaceSetup: persisted })
+    if (request !== setupRequest || get().activeWorkspace !== name) return
+    ++workspaceRequest // Discard list responses captured before this save.
+    set(state => ({
+      activeWorkspaceSetup: persisted,
+      activeWorkspaceSetupLoading: false,
+      workspaces: state.workspaces.map(workspace => workspace.name === name
+        ? { ...workspace, setup: persisted } : workspace),
+    }))
     get().applyWorkspaceSetup(persisted)
   },
 
@@ -65,11 +86,13 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], Partial<AppSta
     if (setup.music_source === 'upload' || setup.music_source === 'generate') {
       patch.directorMusicSource = setup.music_source
     }
-    if (setup.music_model) patch.directorMusicModel = setup.music_model
-    if (setup.advanced && typeof setup.advanced === 'object') {
-      patch.directorAdvancedDefaults = { ...setup.advanced }
+    if (typeof setup.music_model === 'string') {
+      patch.directorMusicModel = setup.music_model || 'ace_step_v1_5_xl_sft_lm_4b'
     }
-    if (Object.keys(patch).length > 0) set(patch)
+    const advanced = setup.advanced && typeof setup.advanced === 'object' && !Array.isArray(setup.advanced)
+      ? setup.advanced : {}
+    const videoModel = setup.video_model || get().selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
+    set({ ...patch, ...projectAdvancedDefaults(advanced, get(), videoModel) })
 
     const applyLoraDefaults = (mode: 'image' | 'video', value: unknown) => {
       if (!value || typeof value !== 'object') return
@@ -92,8 +115,10 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], Partial<AppSta
   },
 
   loadWorkspaces: async () => {
+    const request = ++workspaceRequest
     try {
       const data = await api.fetchWorkspaces()
+      if (request !== workspaceRequest) return
       const realWorkspaces = data.workspaces.filter(workspace => workspace.name !== 'default')
       const activeIsReal = data.active !== 'default'
       const current = get()
@@ -112,6 +137,8 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], Partial<AppSta
   },
 
   switchWorkspace: async (name) => {
+    ++setupRequest
+    const request = ++workspaceRequest
     if (name === '__uploads__') {
       set({ browsingUploads: true, outputs: [], outputsTotal: 0, selectedOutput: 0, selectedOutputMeta: null })
       get().loadOutputs()
@@ -119,6 +146,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], Partial<AppSta
     }
     try {
       await api.setActiveWorkspace(name)
+      if (request !== workspaceRequest) return
       set({ browsingUploads: false, activeWorkspace: name, outputs: [], outputsTotal: 0, selectedOutput: 0, selectedOutputMeta: null })
       get().loadOutputs()
       get().loadWorkspaces()
@@ -129,13 +157,15 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], Partial<AppSta
   },
 
   createWorkspace: async (name) => {
+    ++setupRequest
+    ++workspaceRequest
     try {
       await api.createWorkspace(name)
       await api.setActiveWorkspace(name)
       set({ browsingUploads: false, activeWorkspace: name, outputs: [], outputsTotal: 0, selectedOutput: 0, selectedOutputMeta: null })
       set({ activeWorkspaceSetup: null })
       get().loadOutputs()
-      get().loadWorkspaces()
+      await get().loadWorkspaces()
     } catch (error) {
       console.error('Failed to create workspace:', error)
       throw error
@@ -150,4 +180,5 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], Partial<AppSta
     }
     get().loadWorkspaces()
   },
-})
+  })
+}

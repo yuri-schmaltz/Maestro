@@ -626,16 +626,7 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex flex-wrap items-center gap-2 shrink-0">
         <h1 className="text-sm font-semibold text-text-primary shrink-0">Dashboard</h1>
-        {embedded && (
-          <button
-            onClick={() => setOpen(false)}
-            className="ml-auto p-1 rounded text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
-            title="Hide dashboard"
-            aria-label="Hide dashboard"
-          >
-            <X size={14} />
-          </button>
-        )}
+
 
         {/* Pipeline selector */}
         <select

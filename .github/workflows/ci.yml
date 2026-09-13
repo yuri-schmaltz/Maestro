@@ -110,7 +110,7 @@ jobs:
           "decord==0.6.0"
           "iopath==0.1.10"
           "onnxruntime==1.22.0"
-          "pycocotools==0.0.11"
+          "pycocotools==2.0.11"
           "rembg==2.0.65"
           "scipy==1.15.3"
           "timm==1.0.24"
@@ -135,7 +135,7 @@ jobs:
           "safetensors==0.8.0"
           "triton==3.3.1"
       - name: Run smoke-import
-        run: python -m pytest tests/test_smoke_imports.py -v
+        run: python -m pytest tests/test_smoke_imports.py -m smoke -v
 
   ui-build:
     name: UI type-check + build
@@ -153,3 +153,9 @@ jobs:
       - name: Type-check + build (tsc -b && vite build)
         working-directory: ui
         run: npm run build
+      - name: UI lint
+        working-directory: ui
+        run: npm run lint
+      - name: UI behavior contracts
+        working-directory: ui
+        run: npm run test:control && npm run test:store

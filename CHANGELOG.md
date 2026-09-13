@@ -1,5 +1,18 @@
 # Maestro Changelog
 
+## Retomada de estabilização — 2026-09-13 (working tree)
+
+- Corrigido build oficial TypeScript, incluindo inicialização do DirectorChat,
+  contratos de preferências e composição dos slices.
+- Coleta pytest e smoke do CI corrigidos; lint e contratos UI adicionados ao CI.
+- Launcher preserva processos alheios, interpreta fallback numérico e mantém
+  outras configurações de `.env.local`; Vite lê a porta efetiva com `loadEnv`.
+- Progresso de análise conectado ao polling e protegido contra respostas antigas.
+- Defaults avançados hidratam controles reais; setup ignora cargas/saves atrasados.
+- Adicionados contratos do store e teste Chromium para abertura do Director.
+- Validação visual completa e refatoração restante continuam no TODO de retomada.
+
+
 All notable changes to Maestro are documented here. The upstream WanGP
 pipeline's own history lives in [app/docs/CHANGELOG.md](app/docs/CHANGELOG.md).
 
@@ -83,6 +96,10 @@ bind.
 - **LoRA state boundary.** Phase counting, activation toggles, multiplier
   serialization and per-phase weight updates moved to `ui/src/stores/loraState.ts`;
   persistence, H3 turbo rules and download effects remain in the root store.
+- **Studio workflow slice.** Video/Image workflow routing moved to the real
+  `studioWorkflowSlice.ts` StateCreator with injected persistence; mode
+  snapshot restoration remains in the root store until its dependencies are
+  extracted as a separate contract.
 
 ### Application interface overhaul
 

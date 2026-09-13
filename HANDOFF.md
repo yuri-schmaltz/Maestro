@@ -1,5 +1,19 @@
 # Handoff — Maestro fork standalone (2026-09-10)
 
+## Atualização de retomada — 2026-09-13
+
+Consultar primeiro [TODO_RETOMADA](docs/TODO_RETOMADA.md), seção “Execução em
+andamento”. O texto abaixo contém histórico e não equivale à validação atual.
+O build oficial (`npm run build`) e o lint foram restaurados; `tsc --noEmit`
+na configuração raiz da UI não valida os projetos referenciados.
+O launcher agora preserva processos alheios e falha claramente em porta
+ocupada; seu fallback e o carregamento da porta pelo Vite foram corrigidos.
+Há testes de contrato do store em `npm run test:store`. A validação visual
+completa, geração real, exportação, skill local ponta a ponta e as extrações
+Studio/Director/routers permanecem abertas. Nenhum reinício do backend real
+foi realizado nesta etapa.
+
+
 ## Estado e escopo
 
 Fork local baseado em `Blizaine/Maestro v2.0.1`, executado por scripts Bash e
@@ -113,8 +127,9 @@ ambiente com proxy inválido. Não é um teste de geração ou do backend comple
 - Reiniciar a instância real para carregar alterações de Python. A revisão
   preservou a instância aberta; o teste de ciclo de vida usa uma cópia isolada.
 - Geração real de imagem/vídeo não foi executada nesta revisão.
-- O launcher ainda encerra a instância do pidfile e um processo ocupando a porta
-  solicitada. Escolha uma porta livre quando houver outros serviços locais.
+- O launcher verifica se o PID pertence a `launch.py` deste checkout antes de
+  encerrá-lo. Se a porta estiver ocupada por outro processo, preserva-o e falha
+  com orientação para escolher uma porta livre.
 - O backend pode escolher outra porta se a solicitada ficar ocupada durante
   o lançamento. O launcher agora lê esse fallback do log, atualiza a URL
   exibida e reescreve `ui/.env.local` para que o proxy do Vite acompanhe
@@ -194,6 +209,12 @@ mais segura para começar porque reduz acoplamento sem mudar a API do store.
   `ui/src/stores/loraState.ts`: contagem de fases, toggle, serialização de
   multiplicadores e atualização de peso agora são puros. `useStore` mantém
   as regras de turbo, persistência e efeitos de download.
+- O roteamento de workflows do Studio foi extraído para
+  `ui/src/stores/studioWorkflowSlice.ts`, composto como `StateCreator` na
+  store raiz. Video Frames/References/Extend/Blend, Image Generate/Inpaint/
+  Outpaint e as rotas de Tools continuam com os mesmos nomes públicos; o
+  callback de persistência é injetado, enquanto o modo-switch completo
+  permanece no root por ainda compartilhar os snapshots por modo.
 
 ## Verificação visual da nova interface
 

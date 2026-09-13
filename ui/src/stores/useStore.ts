@@ -1,3 +1,4 @@
+import { trackAnalysisProgress } from './analysisProgress'
 import type { SceneSlot } from '../lib/directorTimeline'
 import { create } from 'zustand'
 import { reorderWindowPrompts } from '../lib/reorderWindowPrompts'
@@ -26,6 +27,9 @@ import { createWorkspaceSlice } from './workspaceSlice'
 import { buildStudioPreferencePayload, durableGenerationMode } from './studioPreferences'
 import { composeModelCatalog } from './modelCatalog'
 import { loraPhaseCount, toggleLoraState, updateLoraWeight } from './loraState'
+import { createStudioWorkflowSlice } from './studioWorkflowSlice'
+
+let _directorAnalysisSequence = 0
 
 let _reviewSnapshot: AppState | null = null
 let _reviewRequestToken = 0
@@ -2967,10 +2971,12 @@ function _persistStickyStudioPreferences(state: AppState) {
     })
 }
 
-export const useStore = create<AppState>((set, get) => ({
+export const useStore = create<AppState>((set, get, store) => ({
+  ...createStudioWorkflowSlice(set, get, {
+    persist: () => _persistStickyStudioPreferences(get()),
+  }),
   // Generation mode
   generationMode: 'video',
-  studioVideoWorkflow: 'frames' as StudioVideoWorkflow,
   studioVideoCreateRoute: 'auto',
   studioVideoEffectiveCreateRoute: 'generate',
   studioVideoModelPerCreateRoute: _initialStudioVideoRoutePreferences.models,
@@ -3061,95 +3067,6 @@ export const useStore = create<AppState>((set, get) => ({
     })
     _saveStudioVideoRoutePreferences({ route: 'auto', models: modelPreferences })
     get().selectModel(modelType)
-  },
-  setStudioVideoWorkflow: (workflow) => {
-    set({ studioVideoWorkflow: workflow })
-    const persist = () => _persistStickyStudioPreferences(get())
-
-    if (workflow === 'frames' || workflow === 'references' || workflow === 'extend' || workflow === 'blend') {
-      if (get().generationMode !== 'video') get().setGenerationMode('video')
-      const imageMode = workflow === 'extend' ? 3 : workflow === 'blend' ? 4 : 0
-      if (Number(get().params.image_mode) !== imageMode) {
-        get().setParam('image_mode', imageMode)
-      }
-      set(state => ({
-        studioVideoWorkflow: workflow,
-        params: {
-          ...state.params,
-          _studio_video_workflow: workflow,
-        },
-      }))
-      if (workflow === 'frames' || workflow === 'references') {
-        get().reconcileStudioVideoCreateRoute(`${workflow === 'references' ? 'References' : 'Frames'} workflow opened`)
-      }
-      persist()
-      return
-    }
-
-    if (workflow === 'upscale') {
-      set(state => ({
-        toolsTool: 'upscale',
-        toolsUpscaleMedia: 'video',
-        ...(state.toolsUpscaleMedia === 'image' ? {
-          toolsSourcePath: null, toolsSourceName: null, toolsSourceUrl: null,
-        } : {}),
-      }))
-      if (get().generationMode !== 'tools') get().setGenerationMode('tools')
-      persist()
-      return
-    }
-
-    if (workflow === 'film_grain') {
-      set(state => ({
-        toolsTool: 'film_grain',
-        toolsUpscaleMedia: 'video',
-        filmGrainIntensity: state.filmGrainIntensity > 0
-          ? state.filmGrainIntensity
-          : 0.15,
-        ...(state.toolsUpscaleMedia === 'image' ? {
-          toolsSourcePath: null, toolsSourceName: null, toolsSourceUrl: null,
-        } : {}),
-      }))
-      if (get().generationMode !== 'tools') get().setGenerationMode('tools')
-      persist()
-      return
-    }
-
-    const editMode: import('../types').EditSubMode = workflow === 'prompt_edit'
-      ? 'edit_anything'
-      : workflow === 'repaint'
-        ? 'restyle'
-        : workflow
-    if (get().generationMode !== 'avatar') get().setGenerationMode('avatar')
-    get().setEditSubMode(editMode)
-    persist()
-  },
-  studioImageWorkflow: 'generate' as StudioImageWorkflow,
-  setStudioImageWorkflow: (workflow) => {
-    if (workflow === 'upscale') {
-      set(state => ({
-        studioImageWorkflow: 'upscale',
-        toolsTool: 'upscale',
-        toolsUpscaleMedia: 'image',
-        ...(state.toolsUpscaleMedia === 'video' ? {
-          toolsSourcePath: null, toolsSourceName: null, toolsSourceUrl: null,
-        } : {}),
-      }))
-      if (get().generationMode !== 'tools') get().setGenerationMode('tools')
-      _persistStickyStudioPreferences(get())
-      return
-    }
-
-    if (get().generationMode !== 'image') get().setGenerationMode('image')
-    set(state => ({
-      studioImageWorkflow: workflow,
-      params: {
-        ...state.params,
-        image_mode: workflow === 'inpaint' || workflow === 'outpaint' ? 2 : 1,
-        _studio_image_workflow: workflow,
-      },
-    }))
-    _persistStickyStudioPreferences(get())
   },
   editSubMode: 'retake' as import('../types').EditSubMode,
   setEditSubMode: (mode: import('../types').EditSubMode) => {
@@ -10232,21 +10149,23 @@ export const useStore = create<AppState>((set, get) => ({
     // (first use downloads ~300MB)..." vs "Transcribing audio..." instead of
     // a single "Analyzing audio..." for the entire first-run wait. Cleared on
     // success or failure in the finally block.
+    const analysisSequence = ++_directorAnalysisSequence
+    const progress = trackAnalysisProgress(
+      api.fetchAudioAnalyzeStatus,
+      value => set({
+        directorAnalyzeProgress: value,
+        ...(value.status === 'running' ? { directorLoadingMessage: `${value.message}...` } : {}),
+      }),
+      () => analysisSequence === _directorAnalysisSequence,
+    )
     let analyzePoll: ReturnType<typeof setInterval> | null = null
     const startAnalyzePolling = () => {
-      analyzePoll = setInterval(async () => {
-        try {
-          const status = await api.fetchAudioAnalyzeStatus()
-          if (!status.step) return  // No analyze in flight or just cleared
-          set({ directorLoadingMessage: `${status.detail}...` })
-        } catch { /* polling errors are non-fatal */ }
-      }, 1000)
+      analyzePoll = setInterval(() => { void progress.refresh() }, 1000)
     }
     const stopAnalyzePolling = () => {
-      if (analyzePoll !== null) {
-        clearInterval(analyzePoll)
-        analyzePoll = null
-      }
+      if (analyzePoll !== null) clearInterval(analyzePoll)
+      analyzePoll = null
+      progress.cancel()
     }
     try {
       startAnalyzePolling()
@@ -10256,6 +10175,8 @@ export const useStore = create<AppState>((set, get) => ({
         extract_vocals: transcribe,
         lyrics_hint: opts?.lyricsHint || undefined,
       })
+      if (analysisSequence !== _directorAnalysisSequence) return
+      progress.finish('done')
       stopAnalyzePolling()
       if (Number(analysis.duration || 0) > 60 * 60 + 0.5) {
         throw new Error('Director supports source timelines up to 60 minutes. Trim this audio to one hour or less and try again.')
@@ -10276,6 +10197,7 @@ export const useStore = create<AppState>((set, get) => ({
         }
       }
 
+      if (analysisSequence !== _directorAnalysisSequence) return
       set({ directorAnalysis: analysis })
 
       // Extract unique speakers from diarized lyrics
@@ -10321,6 +10243,7 @@ export const useStore = create<AppState>((set, get) => ({
         directorLoadingMessage: null,
       })
     } catch (e: unknown) {
+      progress.finish('error')
       const msg = e instanceof Error ? e.message : 'Analysis failed'
       console.error('Director analysis failed:', e)
       set({ directorLoading: false, directorLoadingMessage: null, directorError: msg, directorStep: 'upload' })
@@ -11104,7 +11027,9 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   directorReset: () => {
+    ++_directorAnalysisSequence
     set({
+      directorAnalyzeProgress: null,
       appSection: 'director' as const, workspaceStage: 'director' as const, sidebarMode: 'workspace' as const,
       directorStep: 'upload',
       directorAudioFile: null,
@@ -11173,21 +11098,23 @@ export const useStore = create<AppState>((set, get) => ({
     })
     // Same polling pattern as directorUploadAndAnalyze — see comment
     // there for the full rationale on /api/v1/audio/analyze/status.
+    const analysisSequence = ++_directorAnalysisSequence
+    const progress = trackAnalysisProgress(
+      api.fetchAudioAnalyzeStatus,
+      value => set({
+        directorAnalyzeProgress: value,
+        ...(value.status === 'running' ? { directorLoadingMessage: `${value.message}...` } : {}),
+      }),
+      () => analysisSequence === _directorAnalysisSequence,
+    )
     let analyzePoll: ReturnType<typeof setInterval> | null = null
     const startAnalyzePolling = () => {
-      analyzePoll = setInterval(async () => {
-        try {
-          const status = await api.fetchAudioAnalyzeStatus()
-          if (!status.step) return
-          set({ directorLoadingMessage: `${status.detail}...` })
-        } catch { /* polling errors are non-fatal */ }
-      }, 1000)
+      analyzePoll = setInterval(() => { void progress.refresh() }, 1000)
     }
     const stopAnalyzePolling = () => {
-      if (analyzePoll !== null) {
-        clearInterval(analyzePoll)
-        analyzePoll = null
-      }
+      if (analyzePoll !== null) clearInterval(analyzePoll)
+      analyzePoll = null
+      progress.cancel()
     }
     try {
       const uploaded = await api.uploadAudio(file)
@@ -11199,12 +11126,15 @@ export const useStore = create<AppState>((set, get) => ({
         transcribe: true,
         extract_vocals: true,
       })
+      if (analysisSequence !== _directorAnalysisSequence) return
+      progress.finish('done')
       stopAnalyzePolling()
 
       if (Number(analysis.duration || 0) > 60 * 60 + 0.5) {
         throw new Error('Director supports source timelines up to 60 minutes. Trim this audio to one hour or less and try again.')
       }
 
+      if (analysisSequence !== _directorAnalysisSequence) return
       set({ directorAnalysis: analysis })
 
       // Extract unique speakers from diarized lyrics
@@ -11241,6 +11171,7 @@ export const useStore = create<AppState>((set, get) => ({
         directorLoadingMessage: null,
       })
     } catch (e: unknown) {
+      progress.finish('error')
       const msg = e instanceof Error ? e.message : 'Analysis failed'
       console.error('Short film analysis failed:', e)
       set({ directorLoading: false, directorLoadingMessage: null, directorError: msg, directorStep: 'upload' })
@@ -11537,7 +11468,7 @@ export const useStore = create<AppState>((set, get) => ({
     _persistStickyStudioPreferences(get())
   },
 
-  ...createWorkspaceSlice(set, get),
+  ...createWorkspaceSlice(set, get, store),
 
   storageDashboardOpen: false,
   setStorageDashboardOpen: (open) => set({ storageDashboardOpen: open }),

@@ -1,16 +1,16 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-// Backend port resolution — the dev server proxies `/api` to the
-// FastAPI backend. The default matches start_local.sh's default;
-// start_local.sh also re-writes the running backend's port into
-// ui/.env.local at launch time so the proxy follows the actual bind
-// (launch.py falls forward to the next free port when 7860 is taken,
-// so the proxy target has to be configurable, not hard-coded).
-const backendPort = process.env.MAESTRO_BACKEND_PORT || process.env.VITE_BACKEND_PORT || '7860'
-
-export default defineConfig({
+// Environment files must be loaded before resolving the development proxy.
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const backendPort = process.env.MAESTRO_BACKEND_PORT || process.env.VITE_BACKEND_PORT
+    || env.MAESTRO_BACKEND_PORT || env.VITE_BACKEND_PORT || '7860'
+  if (!/^\d+$/.test(backendPort) || Number(backendPort) < 1 || Number(backendPort) > 65535) {
+    throw new Error('Invalid Maestro backend port')
+  }
+  return {
   plugins: [react(), tailwindcss()],
   server: {
     port: 3000,
@@ -28,4 +28,5 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
+  }
 })

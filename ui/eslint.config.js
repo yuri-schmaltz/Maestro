@@ -20,4 +20,9 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Standalone browser harness mounts its own root; it is not an HMR module.
+    files: ['tests/control-harness.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 ])
