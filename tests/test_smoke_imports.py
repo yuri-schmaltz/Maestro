@@ -27,6 +27,15 @@ ROOT = Path(__file__).resolve().parents[1]
 APP_DIR = ROOT / "app"
 
 
+# Smoke-import is heavy (one subprocess per target) and the entry
+# points it exercises all need the real venv at app/env. Marked with
+# the ``smoke`` pytest marker so the default ``pytest tests/``
+# discovery skips it. Opt in with ``pytest tests/ -m smoke``.
+import pytest
+
+pytestmark = pytest.mark.smoke
+
+
 # Entry points we want to guarantee importable. These are the modules
 # the user-facing code touches (Gradio tabs, FastAPI routes, CLI helpers,
 # pipeline runners). Heavy model code (wgp.py) is intentionally excluded

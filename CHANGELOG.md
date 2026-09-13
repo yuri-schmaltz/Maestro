@@ -5,6 +5,85 @@ pipeline's own history lives in [app/docs/CHANGELOG.md](app/docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+### Stabilization round (post-2.0.1 review)
+
+Restores the frontend build, completes the Project Setup defaults pipeline,
+preserves plugin-contributed Director skills through the canonicalizer, and
+realigns the local launcher / Vite proxy / CI runner with the actual backend
+bind.
+
+- **Frontend build restored.** `DirectorStage` now reads a dedicated
+  `directorAnalyzeProgress` slice (mirrors the shape of
+  `DirectorImageGenProgress`) so the analyze phase can render a precise
+  "Step N / M" sub-bar instead of an indeterminate spinner.
+- **Project Setup defaults fully wired.** `applyWorkspaceSetup` now applies
+  `music_source`, `music_model`, the per-mode LoRA bundle (image + video,
+  via the existing `directorSetLora` action), and the free-form
+  `advanced` blob (film grain, spatial upsampling, etc.) onto the
+  Director runtime. Previously only aspect/resolution/seamless/auto and
+  the image/video model pickers were applied, leaving audio source,
+  music model, default LoRAs, and advanced knobs effectively dead
+  config.
+- **Plugin Director skills keep their identity.** `canonicalDirectorSkill`
+  now passes plugin-contributed skill ids through unchanged instead of
+  collapsing any unknown id into `music_video`. The `DirectorSkill`
+  union was widened to `(string & {})` so locally installed skills
+  (e.g. `demo_local_skill`) type-check cleanly without losing the
+  built-in narrowing for the in-stage chooser.
+- **Clean-repo guard restored.** The CI step that referenced
+  `scripts/verify_clean_repo.py` previously failed at collection
+  because the script did not exist. Added a stdlib-only guard that
+  flags model weight / dataset / oversize leaks and embedded
+  credentials (HuggingFace, OpenAI, Anthropic, GitHub, CivitAI, PEM
+  private keys) on every tracked file. Audits 2053 tracked files in
+  well under a second.
+- **JSON-grammar regression coverage added.** CI also referenced a
+  missing `tests/test_call_llm_json_grammar.py`. Added 23 tests
+  covering `repair_text`, `repair_payload`, and the
+  `BasePlanner._parse_json_response` chain (markdown fences,
+  thinking-tag stripping, mojibake recovery, embedded-in-prose
+  extraction, the `shots`-key wrapper shape, and the documented
+  "unclosed thinking tag ⇒ None" contract).
+- **Pytest opt-in / collection discipline.** `pyproject.toml` now
+  configures `addopts = -m 'not browser and not smoke'` and registers
+  the corresponding markers. `test_application_shell.py` (Playwright)
+  is auto-skipped at collection when `playwright` is not installed
+  (`collect_ignore` in the root `conftest.py`), so `pytest tests/`
+  works on a minimal install. `test_smoke_imports.py` opts in with
+  `pytest -m smoke`. Default gauntlet: 157 passed, 2 skipped, 1
+  deselected.
+- **Port resolution end-to-end.** `vite.config.ts` reads
+  `MAESTRO_BACKEND_PORT` (falling back to `VITE_BACKEND_PORT` and
+  `7860`). `start_local.sh` writes `ui/.env.local` before the
+  Vite build, and detects launch.py's "Port N was busy — using M"
+  auto-fallback in the log so a future rebuild tracks the real
+  bind (instead of silently proxying to the preferred-but-busy
+  port).
+- **ESLint clean.** The TypeScript store + UI components carried
+  one `prefer-const`, one `react-hooks/set-state-in-effect`, two
+  `exhaustive-deps` warnings, and one unused-imports lint into the
+  stabilization round. All resolved (state-mirror pattern gets an
+  inline justification + eslint-disable block; the props-bag
+  fingerprint uses `useMemo`; chat handlers move into `useCallback`).
+- **First modularization pass.** Workspace setup persistence now lives in
+  `app/services/workspace_setup.py`, while `launch.py` keeps compatibility
+  wrappers at the HTTP boundary. The Zustand root composes a real
+  `workspaceSlice`; Director, Workspace and Studio read-only namespaces are
+  available through selector facades, and the Editor remains correctly
+  isolated in its existing `useEditorStore`. This reduces the first two
+  monoliths without changing public state/action names.
+- **Studio preference boundary.** Pure normalization and API-payload
+  construction moved to `ui/src/stores/studioPreferences.ts`; persistence
+  side effects remain in the root store while model/LoRA invariants are
+  extracted in later slices.
+- **Model catalog boundary.** API model normalization and composition with
+  virtual SFX models moved to `ui/src/stores/modelCatalog.ts`; `loadModels`
+  retains remote hydration and migration side effects while preserving all
+  Director capability metadata through the pure catalog helper.
+- **LoRA state boundary.** Phase counting, activation toggles, multiplier
+  serialization and per-phase weight updates moved to `ui/src/stores/loraState.ts`;
+  persistence, H3 turbo rules and download effects remain in the root store.
+
 ### Application interface overhaul
 
 - Added centered Projects, Director, Editor, Medias and Configurations tabs

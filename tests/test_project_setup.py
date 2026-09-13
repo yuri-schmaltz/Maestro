@@ -95,7 +95,6 @@ class ProjectSetupHelpersTests(unittest.TestCase):
             "image_model": "flux2_klein_9b",
             "music_source": "generate",
             "music_model": "ace_step_v1_5",
-            "director_skill": "short_film",
             "default_image_loras": {"activated_loras": ["ip_adapter"]},
             "schema_version": 1,
         }
@@ -103,11 +102,9 @@ class ProjectSetupHelpersTests(unittest.TestCase):
         self.assertEqual(persisted["aspect_ratio"], "21:9")
         self.assertEqual(persisted["seamless"], True)
         self.assertEqual(persisted["music_model"], "ace_step_v1_5")
-        self.assertEqual(persisted["director_skill"], "short_film")
         loaded = self._load("demo")
         self.assertEqual(loaded["aspect_ratio"], "21:9")
         self.assertEqual(loaded["auto_mode"], True)
-        self.assertEqual(loaded["director_skill"], "short_film")
 
     def test_persist_rejects_malformed_payload(self):
         bad_payloads = [
@@ -120,28 +117,12 @@ class ProjectSetupHelpersTests(unittest.TestCase):
             "not-a-dict",
             {"schema_version": 1.5},
             {"music_source": "UPLOAD"},  # case-sensitive
-            {"director_skill": 42},  # must be string or null
         ]
         for bad in bad_payloads:
             with self.subTest(payload=bad):
                 with self.assertRaises(Exception) as ctx:
                     self._persist("demo", bad)
                 self.assertEqual(getattr(ctx.exception, "status_code", None), 400)
-
-    def test_director_skill_round_trips_through_empty_string(self):
-        # Empty string is the documented "no skill picked" sentinel —
-        # pick → save → load → still empty. This avoids an unstated
-        # surprise where the picker silently snaps to music_video.
-        persisted = self._persist("demo", {"director_skill": ""})
-        self.assertEqual(persisted["director_skill"], "")
-        loaded = self._load("demo")
-        self.assertEqual(loaded["director_skill"], "")
-
-    def test_director_skill_normalises_null_to_empty(self):
-        # Same null→"" rule the other string fields use so the UI can
-        # clear the picker by sending JSON null without having to map.
-        persisted = self._persist("demo", {"director_skill": None})
-        self.assertEqual(persisted["director_skill"], "")
 
     def test_persist_normalises_null_string_fields_to_empty(self):
         # JSON null for the model-style fields gets normalised to ""

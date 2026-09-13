@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ArrowRight, Check, Clapperboard, Film, FolderOpen, Images, Loader2, Plus, Search, Settings, Trash2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
+import { useWorkspaceSlice } from '../../stores/workspaceSelectors'
 import type { AppSection, ProjectSetupDefaults } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
 import { saveWorkspaceSetup } from '../../api/client'
@@ -29,8 +30,8 @@ import { ProjectSetupForm, ProjectSetupSummary } from './ProjectSetupForm'
  * `director_ui_snapshot` (per-take), keeping the project setup clean.
  */
 export function ProjectsPage() {
-  const workspaces = useStore(s => s.workspaces)
-  const active = useStore(s => s.activeWorkspace)
+  const workspaces = useWorkspaceSlice('workspaces')
+  const active = useWorkspaceSlice('activeWorkspace')
   const createWorkspace = useStore(s => s.createWorkspace)
   const switchWorkspace = useStore(s => s.switchWorkspace)
   const deleteWorkspace = useStore(s => s.deleteWorkspace)

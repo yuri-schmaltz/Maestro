@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { reorderWindowPrompts } from '../lib/reorderWindowPrompts'
 import { reviewSnapshot } from '../lib/reviewSnapshot'
 import { canonicalDirectorSkill } from '../types'
-import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection, ProjectSetupDefaults, Workspace } from '../types'
+import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, DirectorAnalyzeProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection, ProjectSetupDefaults, Workspace } from '../types'
 import * as api from '../api/client'
 import { applyThemePrefs, getStoredPrefs, type FamilyId, type ThemeMode, type ThemePrefs } from '../lib/theme'
 import {
@@ -22,6 +22,10 @@ import {
   durationWindowPlan,
 } from '../lib/durationPlanning'
 import { buildGenerationPlan, resolvedGenerationPlan, type ReviewPlan } from '../lib/generationPlan'
+import { createWorkspaceSlice } from './workspaceSlice'
+import { buildStudioPreferencePayload, durableGenerationMode } from './studioPreferences'
+import { composeModelCatalog } from './modelCatalog'
+import { loraPhaseCount, toggleLoraState, updateLoraWeight } from './loraState'
 
 let _reviewSnapshot: AppState | null = null
 let _reviewRequestToken = 0
@@ -1215,7 +1219,7 @@ function getDefaultModelForMode(
   return ''
 }
 
-interface AppState {
+export interface AppState {
   // Generation mode (top-level: image/video/audio/avatar)
   generationMode: GenerationMode
   setGenerationMode: (mode: GenerationMode) => void
@@ -2007,6 +2011,12 @@ interface AppState {
    *  reviewed Director scene. */
   directorSetClipImage: (clipIndex: number, file: File | null) => void
   directorImageGenProgress: DirectorImageGenProgress | null
+  /** Sub-step counter for the audio analyze phase. Fed by the
+   *  /api/v1/audio/analyze/status polling loop; `null` means "no
+   *  analyze in flight" and the status strip falls back to an
+   *  indeterminate spinner. See `DirectorAnalyzeProgress`. */
+  directorAnalyzeProgress: DirectorAnalyzeProgress | null
+  setDirectorAnalyzeProgress: (progress: DirectorAnalyzeProgress | null) => void
   directorSpeakers: string[]
   directorSpeakerMappings: SpeakerMapping[]
   directorAutoMode: boolean
@@ -2078,6 +2088,13 @@ interface AppState {
   // Music Video: generate-the-track source + song setup
   directorMusicSource: 'upload' | 'generate' | null
   directorMusicModel: string
+  /** Free-form advanced defaults from the project's setup.json
+   *  (film grain, spatial upsampling, inference step tweaks, …).
+   *  Mirrors `ProjectSetupDefaults.advanced` — stored on the
+   *  Director slice so the right column can surface the knobs as
+   *  per-take overrides without re-fetching the setup on every
+   *  render. */
+  directorAdvancedDefaults: Record<string, unknown>
   directorSongDescription: string
   directorSongInstrumental: boolean
   directorSongStyle: string
@@ -2924,14 +2941,10 @@ function _audioSubModeForModel(modelType: string): import('../types').AudioSubMo
  *  seeds, LoRAs, or general Advanced controls. The server mirror makes the
  *  choices survive Pinokio assigning a different browser origin/port. */
 function _persistStickyStudioPreferences(state: AppState) {
-  const durableGenerationMode: Exclude<GenerationMode, 'tools'> = (
-    state.generationMode === 'tools'
-      ? state.toolsUpscaleMedia === 'image' ? 'image' : 'video'
-      : state.generationMode
-  )
+  const persistedGenerationMode = durableGenerationMode(state)
   const h3OptimizationPreferences = state.h3OptimizationPreferences
   _saveSettings({
-    generationMode: durableGenerationMode,
+    generationMode: persistedGenerationMode,
     selectedModelPerMode: state.selectedModelPerMode,
     savedParamsPerMode: state.savedParamsPerMode,
     savedLoraPerMode: state.savedLoraPerMode,
@@ -2943,19 +2956,7 @@ function _persistStickyStudioPreferences(state: AppState) {
     h3OptimizationPreferences,
   }, state.loraIdByFilename)
 
-  const update: api.StudioPreferenceUpdate = {
-    generation_mode: durableGenerationMode,
-    studio_video_workflow: state.studioVideoWorkflow,
-    studio_image_workflow: state.studioImageWorkflow,
-    audio_sub_mode: state.audioSubMode,
-    selected_model_per_mode: Object.fromEntries(
-      Object.entries(state.selectedModelPerMode).filter(([, model]) => Boolean(model)),
-    ),
-    selected_model_per_audio_sub_mode: Object.fromEntries(
-      Object.entries(state.selectedModelPerAudioSubMode).filter(([, model]) => Boolean(model)),
-    ),
-    h3_optimizations: h3OptimizationPreferences,
-  }
+  const update: api.StudioPreferenceUpdate = buildStudioPreferencePayload(state)
   _studioPreferencesSaveTask = _studioPreferencesSaveTask
     .catch(() => { /* a later preference save should still run */ })
     .then(async () => {
@@ -4923,19 +4924,10 @@ export const useStore = create<AppState>((set, get) => ({
           : Promise.resolve(null),
       ])
       const families = data.families
-      // Keep the complete backend capability record. Director publishes a
-      // stricter per-workflow contract than Studio; rebuilding model objects
-      // field-by-field used to discard that metadata and leave both Director
-      // selectors empty even though compatible models were enabled.
-      const backendModels: ModelDef[] = data.models.map(m => ({
-        ...m,
-        guidance_max_phases: m.guidance_max_phases ?? 1,
-        fps: m.fps ?? 16,
-        is_downloaded: m.is_downloaded ?? false,
-        nsfw_only: m.nsfw_only ?? false,
-      }))
-      // Inject virtual SFX (MMAudio) models alongside backend models
-      const models = [...backendModels, ...SFX_VIRTUAL_MODELS]
+      // Keep the complete backend capability record and inject virtual
+      // SFX models through the pure catalog boundary. Director metadata
+      // must survive normalization.
+      const models = composeModelCatalog(data.models, SFX_VIRTUAL_MODELS)
 
       if (shouldHydrateH3WindowOverrides && h3WindowPreferences) {
         _h3WindowOverridesHydrated = true
@@ -8537,37 +8529,16 @@ export const useStore = create<AppState>((set, get) => ({
 
   toggleLora: (filename) => {
     const { params, loraWeights, modelOptions, generationMode, editSubMode } = get()
-    const current = [...params.activated_loras]
-    const idx = current.indexOf(filename)
-    const newWeights = { ...loraWeights }
-    // SCAIL-2 Recast is intentionally a single-phase pipeline even though
-    // the shared Wan model family advertises support for up to three phases.
-    const recastSinglePhase = generationMode === 'avatar' && editSubMode === 'recast'
-    const phases = recastSinglePhase ? 1 : Math.max(1, modelOptions?.guidance_max_phases ?? 1)
+    const phases = loraPhaseCount(modelOptions, generationMode, editSubMode)
     const managedTurboFilenames = new Set(
       modelOptions?.minimax_h3_turbo?.presets?.map(preset => preset.filename)
       || (modelOptions?.minimax_h3_turbo?.filename
         ? [modelOptions.minimax_h3_turbo.filename]
         : []),
     )
-    const removedTurboPreset = idx >= 0 && managedTurboFilenames.has(filename)
-
-    if (idx >= 0) {
-      current.splice(idx, 1)
-      delete newWeights[filename]
-    } else {
-      current.push(filename)
-      newWeights[filename] = Array(phases).fill(1.0)
-    }
-
-    // Serialize multipliers
-    const multipliers = current.map(name => {
-      const w = newWeights[name] || [1.0]
-      return Array.from(
-        { length: phases },
-        (_, i) => w[i] ?? w[w.length - 1] ?? 1.0,
-      ).map(v => v.toFixed(2)).join(';')
-    }).join(' ')
+    const removedTurboPreset = params.activated_loras.includes(filename) && managedTurboFilenames.has(filename)
+    const toggled = toggleLoraState(params.activated_loras, loraWeights, filename, phases)
+    const { activatedLoras: current, weights: newWeights, multipliers } = toggled
 
     set(s => ({
       loraWeights: newWeights,
@@ -8704,26 +8675,17 @@ export const useStore = create<AppState>((set, get) => ({
 
   setLoraWeight: (filename, phaseIndex, value) => {
     const { params, loraWeights, modelOptions, generationMode, editSubMode } = get()
-    const newWeights = { ...loraWeights }
-    if (!newWeights[filename]) return
-    const recastSinglePhase = generationMode === 'avatar' && editSubMode === 'recast'
-    const phases = recastSinglePhase ? 1 : Math.max(1, modelOptions?.guidance_max_phases ?? 1)
-    if (phaseIndex < 0 || phaseIndex >= phases) return
-    const currentWeights = newWeights[filename]
-    newWeights[filename] = Array.from(
-      { length: phases },
-      (_, i) => currentWeights[i] ?? currentWeights[currentWeights.length - 1] ?? 1.0,
+    const phases = loraPhaseCount(modelOptions, generationMode, editSubMode)
+    const updated = updateLoraWeight(
+      params.activated_loras,
+      loraWeights,
+      filename,
+      phaseIndex,
+      value,
+      phases,
     )
-    newWeights[filename][phaseIndex] = value
-
-    // Reserialize
-    const multipliers = params.activated_loras.map(name => {
-      const w = newWeights[name] || [1.0]
-      return Array.from(
-        { length: phases },
-        (_, i) => w[i] ?? w[w.length - 1] ?? 1.0,
-      ).map(v => v.toFixed(2)).join(';')
-    }).join(' ')
+    if (!updated) return
+    const { weights: newWeights, multipliers } = updated
 
     set(s => ({
       loraWeights: newWeights,
@@ -9912,6 +9874,8 @@ export const useStore = create<AppState>((set, get) => ({
     }
   }),
   directorImageGenProgress: null,
+  directorAnalyzeProgress: null,
+  setDirectorAnalyzeProgress: (progress) => set({ directorAnalyzeProgress: progress }),
   directorSpeakers: [],
   directorSpeakerMappings: [],
   // Defaults per user preference (2026-06): Auto ON (hands-off pipeline is
@@ -9924,6 +9888,7 @@ export const useStore = create<AppState>((set, get) => ({
   directorSkill: null,
   directorMusicSource: null,
   directorMusicModel: 'ace_step_v1_5_xl_sft_lm_4b',
+  directorAdvancedDefaults: {},
   directorSongDescription: '',
   directorSongInstrumental: false,
   directorSongStyle: '',
@@ -10657,7 +10622,11 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   directorPlanPrompts: async () => {
-    let { directorPlannedClips, directorSceneDescription, directorAnalysis } = get()
+    let { directorPlannedClips, directorAnalysis } = get()
+    // directorSceneDescription is read here for the early-return
+    // guard and then re-read on the next line — using `let` would
+    // be ESLint-flagged since it's never reassigned.
+    const directorSceneDescription = get().directorSceneDescription
     if (!directorSceneDescription.trim()) return
     // Music Video intentionally reaches this action from the style step
     // without a finalized timeline. Create it only after the visual brief
@@ -11568,158 +11537,7 @@ export const useStore = create<AppState>((set, get) => ({
     _persistStickyStudioPreferences(get())
   },
 
-  // Workspaces
-  workspaces: [],
-  activeWorkspace: 'default',
-  activeWorkspaceSetup: null,
-  activeWorkspaceSetupLoading: false,
-  browsingUploads: false,
-  loadWorkspaceSetup: async (name) => {
-    if (!name || name === 'default') {
-      set({ activeWorkspaceSetup: null, activeWorkspaceSetupLoading: false })
-      return
-    }
-    set({ activeWorkspaceSetupLoading: true })
-    try {
-      const setup = await api.fetchWorkspaceSetup(name)
-      set({ activeWorkspaceSetup: setup, activeWorkspaceSetupLoading: false })
-      get().applyWorkspaceSetup(setup)
-    } catch (error) {
-      console.error('Failed to load workspace setup:', error)
-      set({ activeWorkspaceSetup: null, activeWorkspaceSetupLoading: false })
-    }
-  },
-  saveWorkspaceSetup: async (setup) => {
-    const name = get().activeWorkspace
-    if (!name || name === 'default') {
-      throw new Error('The default workspace cannot hold a custom project setup.')
-    }
-    // Persist to backend first — UI mirrors state on success so a
-    // network failure never desyncs the on-disk copy from what the
-    // user sees in the dialog.
-    const persisted = await api.saveWorkspaceSetup(name, setup)
-    set({ activeWorkspaceSetup: persisted })
-    get().applyWorkspaceSetup(persisted)
-  },
-  applyWorkspaceSetup: (setup) => {
-    // ProjectSetup writes over the Director runtime + Studio model
-    // selectors. Only the fields the setup actually carries get
-    // applied — a `""` model name means the user didn't pick one,
-    // so the Studio's existing default (or last-used) survives.
-    const patch: {
-      directorAspectRatio?: AspectRatio
-      directorResolution?: ResolutionPreset
-      directorSeamless?: boolean
-      directorAutoMode?: boolean
-      directorSkill?: DirectorSkill | null
-      selectedModelPerMode?: Partial<Record<GenerationMode, string>>
-    } = {}
-    if (setup.aspect_ratio) patch.directorAspectRatio = setup.aspect_ratio as AspectRatio
-    if (setup.resolution) patch.directorResolution = setup.resolution as ResolutionPreset
-    if (typeof setup.seamless === 'boolean') patch.directorSeamless = setup.seamless
-    if (typeof setup.auto_mode === 'boolean') patch.directorAutoMode = setup.auto_mode
-    // Director skill: empty string = "let the user pick in Director".
-    // We only stamp a non-empty value; null/empty keeps the chooser
-    // card visible so the user can opt into a different skill on the
-    // next launch without us silently overriding their last pick.
-    if (setup.director_skill && setup.director_skill !== '') {
-      patch.directorSkill = setup.director_skill as DirectorSkill
-    } else if ('director_skill' in setup) {
-      // The field was explicitly cleared. Stamp null so the chooser
-      // appears instead of holding whatever was previously selected.
-      patch.directorSkill = null
-    }
-    // Video + image model choices live in selectedModelPerMode. Empty
-    // string means "no preference" — keep the current selection so
-    // saving from an incomplete form doesn't blank the model.
-    let nextModels: Partial<Record<GenerationMode, string>> | undefined
-    if (setup.video_model) nextModels = { ...(get().selectedModelPerMode || {}), video: setup.video_model }
-    if (setup.image_model) nextModels = { ...(nextModels || get().selectedModelPerMode || {}), image: setup.image_model }
-    if (nextModels) patch.selectedModelPerMode = nextModels
-    if (Object.keys(patch).length > 0) set(patch)
-  },
-  loadWorkspaces: async () => {
-    try {
-      const data = await api.fetchWorkspaces()
-      // Real user workspaces exclude the implicit "default" container —
-      // it's the backend's root outputs/ directory, not a project. If
-      // the user has no real project yet AND the server reports default
-      // as active, kick them to Projects so they're forced to create or
-      // pick one before any tooling is exposed. Settings still allowed.
-      const realWorkspaces = data.workspaces.filter(w => w.name !== 'default')
-      const activeIsReal = data.active !== 'default'
-      const current = get()
-      const previousActive = current.activeWorkspace
-      if (realWorkspaces.length === 0 && !activeIsReal && current.appSection !== 'configurations') {
-        set({ workspaces: data.workspaces, activeWorkspace: data.active, appSection: 'projects' })
-      } else {
-        set({ workspaces: data.workspaces, activeWorkspace: data.active })
-      }
-      // Hydrate the project setup when boot lands on a non-default
-      // workspace (or when the active workspace changed since last
-      // call). Without this, refresh-on-existing-session keeps the
-      // last in-memory defaults — which belong to whatever project
-      // was current at flush, not whatever the server just reported.
-      if (activeIsReal && data.active !== previousActive) {
-        get().loadWorkspaceSetup(data.active)
-      }
-    } catch (e) {
-      console.error('Failed to load workspaces:', e)
-    }
-  },
-  switchWorkspace: async (name) => {
-    // Virtual "Uploads" view: browse the uploads folder WITHOUT touching
-    // the server-side active workspace — generations keep saving to the
-    // real workspace; uploads are read-only in the gallery.
-    if (name === '__uploads__') {
-      set({ browsingUploads: true, outputs: [], outputsTotal: 0, selectedOutput: 0, selectedOutputMeta: null })
-      get().loadOutputs()
-      return
-    }
-    try {
-      await api.setActiveWorkspace(name)
-      set({ browsingUploads: false, activeWorkspace: name, outputs: [], outputsTotal: 0, selectedOutput: 0, selectedOutputMeta: null })
-      get().loadOutputs()
-      get().loadWorkspaces()
-      // Hydrate the project setup so the Director/Studio pickers land
-      // on this project's defaults (aspect ratio, resolution, models,
-      // workflow flags). Without this hop the right column opens with
-      // whatever the previous project left behind in state, which is
-      // confusing once projects diverge.
-      get().loadWorkspaceSetup(name)
-    } catch (e) {
-      console.error('Failed to switch workspace:', e)
-    }
-  },
-  createWorkspace: async (name) => {
-    try {
-      await api.createWorkspace(name)
-      await api.setActiveWorkspace(name)
-      set({ browsingUploads: false, activeWorkspace: name, outputs: [], outputsTotal: 0, selectedOutput: 0, selectedOutputMeta: null })
-      // New project means no setup.json yet — applyWorkspaceSetup
-      // would no-op against null defaults, so just clear any stale
-      // setup from the prior active project.
-      set({ activeWorkspaceSetup: null })
-      get().loadOutputs()
-      get().loadWorkspaces()
-    } catch (e) {
-      console.error('Failed to create workspace:', e)
-      throw e
-    }
-  },
-  deleteWorkspace: async (name) => {
-    // The server refuses 'default', refuses while anything generates, and
-    // auto-switches to default when the deleted workspace was active —
-    // its switched_to_default answer is authoritative (a client-side
-    // activeWorkspace comparison could disagree after a desync and would
-    // widen it by force-resetting state the server never changed).
-    const result = await api.deleteWorkspace(name)
-    if (result.switched_to_default) {
-      set({ browsingUploads: false, activeWorkspace: 'default', outputs: [], outputsTotal: 0, selectedOutput: 0, selectedOutputMeta: null })
-      get().loadOutputs()
-    }
-    get().loadWorkspaces()
-  },
+  ...createWorkspaceSlice(set, get),
 
   storageDashboardOpen: false,
   setStorageDashboardOpen: (open) => set({ storageDashboardOpen: open }),

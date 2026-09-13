@@ -59,6 +59,7 @@ export interface DirectorNamespace {
   pipelineId: string | null
   pipelineStatus: ReturnType<typeof useStore.getState>['pipelineStatus']
   imageGenProgress: ReturnType<typeof useStore.getState>['directorImageGenProgress']
+  analyzeProgress: ReturnType<typeof useStore.getState>['directorAnalyzeProgress']
   shortFilmTargetDuration: number
 }
 
@@ -106,6 +107,7 @@ const _selectorTable: Record<keyof DirectorNamespace, (s: DirectorStateSlice) =>
   pipelineId: s => s.pipelineId,
   pipelineStatus: s => s.pipelineStatus,
   imageGenProgress: s => s.directorImageGenProgress,
+  analyzeProgress: s => s.directorAnalyzeProgress,
   shortFilmTargetDuration: s => s.shortFilmTargetDuration,
 }
 
@@ -165,6 +167,7 @@ export function readDirectorNamespace(): DirectorNamespace {
     pipelineId: s.pipelineId,
     pipelineStatus: s.pipelineStatus,
     imageGenProgress: s.directorImageGenProgress,
+    analyzeProgress: s.directorAnalyzeProgress,
     shortFilmTargetDuration: s.shortFilmTargetDuration,
   }
 }

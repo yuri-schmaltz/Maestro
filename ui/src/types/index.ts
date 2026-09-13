@@ -32,11 +32,6 @@ export interface ProjectSetupDefaults {
   image_model?: string
   music_source?: 'upload' | 'generate'
   music_model?: string
-  /** Director skill this project uses (music video, short film, demo
-   *  skill, …). Empty string = inherit last-selected. Set when the
-   *  user picks a skill in the New project form so the Director opens
-   *  on the matching upload step instead of the chooser card. */
-  director_skill?: DirectorSkill | ''
   /** Pre-activated LoRAs applied to every Director run in this project. */
   default_image_loras?: Record<string, unknown>
   default_video_loras?: Record<string, unknown>
@@ -60,7 +55,6 @@ export const DEFAULT_PROJECT_SETUP: ProjectSetupDefaults = {
   image_model: '',
   music_source: 'upload',
   music_model: '',
-  director_skill: '',
   default_image_loras: {},
   default_video_loras: {},
   advanced: {},
@@ -1508,6 +1502,24 @@ export interface DirectorImageGenProgress {
   status: 'generating' | 'polling' | 'downloading' | 'done' | 'error'
 }
 
+/** Counter fed by the /api/v1/audio/analyze/status polling loop. The
+ *  Director pipeline status exposes a separate "step / total_steps"
+ *  counter that only lights up once the analyze phase hands off to
+ *  the LLM planner; the dedicated analyze counter is what powers the
+ *  first long phase (Whisper → pyannote → vocal extraction →
+ *  section classification → structure assembly). Mirrors the shape
+ *  of `DirectorImageGenProgress` so the status strip can show
+ *  consistent "Step N / M" labels across phases. */
+export interface DirectorAnalyzeProgress {
+  current: number
+  total: number
+  /** Backend-reported human label for the current sub-step (e.g.
+   *  "transcribing", "diarizing"). Falls back to a generic message
+   *  in the UI when empty. */
+  message: string
+  status: 'running' | 'done' | 'error'
+}
+
 /** Director skills exposed by the in-stage chooser modal.
  *
  *  Active (wired to a planner in `services/director/planners/`):
@@ -1516,8 +1528,14 @@ export interface DirectorImageGenProgress {
  *  Visible-but-inactive ("Soon" badge in the chooser):
  *    - podcast (legacy alias, kept for saved-state compatibility),
  *      video_podcast (the user-facing label), viral_video
- */
-export type DirectorSkill = 'music_video' | 'short_film' | 'podcast' | 'video_podcast' | 'viral_video' | 'demo_skill'
+ *
+ *  Plugin-contributed skills can carry any string id (see
+ *  `canonicalDirectorSkill`). The union is widened to `string` so a
+ *  locally installed skill that announces a new id (e.g.
+ *  `demo_local_skill`) is not silently collapsed into `music_video`
+ *  by the canonicalizer — the Stage uses the raw id to look up
+ *  the plugin's metadata and icon. */
+export type DirectorSkill = 'music_video' | 'short_film' | 'podcast' | 'video_podcast' | 'viral_video' | 'demo_skill' | (string & {})
 
 export const DIRECTOR_SKILL_OPTIONS: Array<{
   id: DirectorSkill
@@ -1533,14 +1551,32 @@ export const DIRECTOR_SKILL_OPTIONS: Array<{
   { id: 'demo_skill', label: 'Demo Skill', desc: 'Validation planner for importable skills', icon: 'sparkles', active: true },
 ] as const
 
+/** Normalise legacy aliases and passthrough plugin-contributed skills.
+ *
+ *  Built-in aliases still in saved-state (the user might have
+ *  selected a skill years ago and persisted it):
+ *    - video_podcast / podcast_video → podcast (kept as a single
+ *      archived entry — the in-stage chooser surfaces it as "Soon").
+ *
+ *  Anything else is returned as-is so a plugin-installed skill
+ *  (e.g. `demo_local_skill` from `services/director/planners/demo/`)
+ *  keeps its identity through the canonicaliser instead of being
+ *  silently rewritten to the default. Empty / null fall back to
+ *  `music_video` (the historical default) so first-launch flows
+ *  don't blow up on a missing skill. */
 export function canonicalDirectorSkill(skill: string | null | undefined): DirectorSkill {
-  if (skill === 'video_podcast') return 'podcast'
-  if (skill === 'podcast_video') return 'podcast'
-  if (skill === 'demo_skill') return 'demo_skill'
-  if (skill === 'music_video' || skill === 'short_film' || skill === 'podcast' || skill === 'viral_video') {
+  if (!skill) return 'music_video'
+  if (skill === 'video_podcast' || skill === 'podcast_video') return 'podcast'
+  // Built-in skills: pass through unchanged.
+  if (skill === 'music_video' || skill === 'short_film'
+      || skill === 'podcast' || skill === 'viral_video'
+      || skill === 'demo_skill') {
     return skill
   }
-  return 'music_video'
+  // Plugin-contributed skill: preserve its identity. The Stage
+  // resolves the human label / icon from the plugin manifest at
+  // render time; the canonicaliser must not rewrite it.
+  return skill
 }
 
 export type ShortFilmPath = 'audio' | 'story'

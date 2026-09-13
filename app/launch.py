@@ -64,6 +64,13 @@ from services.checkpoint_compatibility import (
 )
 from services.generation_eta import AdaptiveGenerationEta, GenerationEtaHistory
 from services.web_push import WebPushService, WebPushUnavailable
+from services.workspace_setup import (
+    DEFAULT_PROJECT_SETUP,
+    WorkspaceSetupError,
+    load_setup,
+    persist_setup,
+    setup_path,
+)
 from services.editor_projects import (
     build_editor_media_preview,
     EditorProjectError,
@@ -459,23 +466,9 @@ def _workspace_dir(workspace: str = None) -> str:
 
 
 def _workspace_setup_path(name: str) -> str | None:
-    """Resolve the absolute path to a workspace's setup.json.
-
-    Returns None for the default workspace (which has no per-project setup
-    — it's the catch-all backwards-compat bucket) or for paths that fail
-    the workspace-name containment check. The directory is *not* created
-    here; callers do that after a name passes the regex validation.
-    """
-    import re
-    if name == "default":
-        return None
-    if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_-]*$', str(name or "")):
-        return None
+    """Compatibility wrapper for the workspace setup service."""
     base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
-    ws_dir = _safe_join(base, name)
-    if ws_dir is None:
-        return None
-    return os.path.join(ws_dir, "setup.json")
+    return setup_path(base, name)
 
 
 # Settings that live per-workspace. Marked optional because legacy
@@ -486,121 +479,22 @@ def _workspace_setup_path(name: str) -> str | None:
 # `ui/src/types/index.ts`. Keep them aligned: the backend acts as the
 # durable copy and the UI is the source of truth for what the user is
 # editing at the moment.
-_DEFAULT_PROJECT_SETUP = {
-    "aspect_ratio": "16:9",
-    "resolution": "720p",
-    "seamless": False,
-    "auto_mode": False,
-    "video_model": "",
-    "image_model": "",
-    "music_source": "upload",
-    "music_model": "",
-    "director_skill": "",
-    "default_image_loras": {},
-    "default_video_loras": {},
-    "advanced": {},
-    "schema_version": 1,
-}
+_DEFAULT_PROJECT_SETUP = DEFAULT_PROJECT_SETUP
 
 
 def _load_workspace_setup(name: str) -> dict:
-    """Read <workspace>/setup.json and merge with the schema defaults.
-
-    Returns the defaults when the file is missing, malformed, or the
-    workspace does not exist. The merge is shallow on purpose: missing
-    keys restore the default value instead of disappearing, so an old
-    setup.json grows newer fields without breaking existing reads.
-    """
-    setup_path = _workspace_setup_path(name)
-    if setup_path is None or not os.path.isfile(setup_path):
-        return dict(_DEFAULT_PROJECT_SETUP)
-    try:
-        with open(setup_path, "r", encoding="utf-8") as handle:
-            raw = json.loads(handle.read() or "{}")
-    except (OSError, ValueError):
-        return dict(_DEFAULT_PROJECT_SETUP)
-    if not isinstance(raw, dict):
-        return dict(_DEFAULT_PROJECT_SETUP)
-    merged = dict(_DEFAULT_PROJECT_SETUP)
-    for key, value in raw.items():
-        if key in merged:
-            merged[key] = value
-    return merged
+    """Compatibility wrapper for the workspace setup service."""
+    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
+    return load_setup(base, name)
 
 
 def _persist_workspace_setup(name: str, setup: dict) -> dict:
-    """Validate + write setup.json for a workspace. Atomic via temp-file
-    rename so a crashed write never leaves a half-empty file behind.
-
-    Returns the stored setup (post-validation). Raises HTTPException on
-    bad shapes — callers should NOT catch.
-    """
-    import re
-    if name == "default":
-        raise HTTPException(status_code=400, detail="The default workspace cannot hold a custom project setup.")
-    if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_-]*$', str(name or "")):
-        raise HTTPException(status_code=400, detail="Invalid workspace name.")
-    if not isinstance(setup, dict):
-        raise HTTPException(status_code=400, detail="Setup payload must be a JSON object.")
-
-    # Keep only fields we know about — the front-end may add newer
-    # keys before the backend schema bump catches up.
-    sanitized: dict = {}
-    for key in _DEFAULT_PROJECT_SETUP.keys():
-        if key not in setup:
-            continue
-        value = setup[key]
-        if key in {"aspect_ratio", "resolution", "video_model", "image_model", "music_model"}:
-            if value is None or isinstance(value, str):
-                sanitized[key] = value if value is not None else ""
-            else:
-                raise HTTPException(status_code=400, detail=f"{key} must be a string or null.")
-        elif key in {"seamless", "auto_mode"}:
-            if not isinstance(value, bool):
-                raise HTTPException(status_code=400, detail=f"{key} must be a boolean.")
-            sanitized[key] = value
-        elif key == "music_source":
-            if value not in {"upload", "generate"}:
-                raise HTTPException(status_code=400, detail="music_source must be 'upload' or 'generate'.")
-            sanitized[key] = value
-        elif key == "director_skill":
-            # Director skill id (e.g. "music_video", "short_film"). Empty
-            # string means "let the user pick on the Director chooser";
-            # the registry list (services/director/registry.py) is the
-            # canonical source of valid ids, so we only enforce shape
-            # here and let the registry reject unknown values downstream.
-            if value is None or isinstance(value, str):
-                sanitized[key] = value if value is not None else ""
-            else:
-                raise HTTPException(status_code=400, detail="director_skill must be a string or null.")
-        elif key in {"default_image_loras", "default_video_loras", "advanced"}:
-            if value is None or isinstance(value, dict):
-                sanitized[key] = value if value is not None else {}
-            else:
-                raise HTTPException(status_code=400, detail=f"{key} must be an object.")
-        elif key == "schema_version":
-            if not isinstance(value, int):
-                raise HTTPException(status_code=400, detail="schema_version must be an integer.")
-            sanitized[key] = value
-    sanitized.setdefault("schema_version", _DEFAULT_PROJECT_SETUP["schema_version"])
-
-    setup_path = _workspace_setup_path(name)
-    if setup_path is None:
-        raise HTTPException(status_code=400, detail="Invalid workspace path.")
-    os.makedirs(os.path.dirname(setup_path), exist_ok=True)
-    tmp_path = setup_path + ".tmp"
+    """Compatibility wrapper mapping service errors to FastAPI errors."""
+    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
     try:
-        with open(tmp_path, "w", encoding="utf-8") as handle:
-            json.dump(sanitized, handle, indent=2)
-        os.replace(tmp_path, setup_path)
-    except OSError as exc:
-        try:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
-        except OSError:
-            pass
-        raise HTTPException(status_code=500, detail=f"Could not persist setup: {exc}")
-    return sanitized
+        return persist_setup(base, name, setup)
+    except WorkspaceSetupError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 def _workspace_browse_dir(workspace: str) -> str | None:

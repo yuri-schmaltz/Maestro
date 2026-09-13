@@ -1,16 +1,16 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Film, Mic, Sparkles, Send, Users, FileText, ListVideo } from 'lucide-react'
-import { useStore, directorModelUsesFixedMediaStrength, getFamiliesForMode, getModelsForFamily, resolveResolution } from '../../stores/useStore'
+import { useStore, directorModelUsesFixedMediaStrength, resolveResolution } from '../../stores/useStore'
 import { fetchModelOptions, getFileUrl } from '../../api/client'
 import { DirectorLoraSelector } from '../SettingsDrawer/DirectorLoraSelector'
 import { DirectorSongSetup } from './DirectorSongSetup'
 import { DirectorH3Optimizations } from './DirectorH3Optimizations'
 import { OmniReferenceSection } from './OmniReferenceSection'
-import { InfoTooltip } from './InfoTooltip'
+
 import { formatSeconds, recommendedWindowProfile } from './DurationSlider'
 import { DurationPresetControl } from './DurationPresetControl'
 import { LONG_FORM_MAX_SECONDS, formatDuration } from '../../lib/durationPlanning'
-import type { DirectorPipelineType, DirectorShotImageGuidance, DirectorSkill, ModelOptions, ShortFilmCharacter, ShortFilmPath } from '../../types'
+import type { DirectorShotImageGuidance, DirectorSkill, ModelOptions, ShortFilmCharacter, ShortFilmPath } from '../../types'
 import { DIRECTOR_SKILL_OPTIONS, canonicalDirectorSkill } from '../../types'
 import { fetchDirectorSkills } from '../../api/client'
 
@@ -21,7 +21,7 @@ import { fetchDirectorSkills } from '../../api/client'
 // the soundtrack analyzed without converting first.
 const AUDIO_ACCEPT = '.wav,.mp3,.flac,.ogg,.m4a,.mp4,.mov,.mkv,.webm,.avi,.m4v'
 const IMAGE_ACCEPT = '.png,.jpg,.jpeg,.webp,.bmp'
-const DIRECTOR_IMAGE_MODEL_NONE = '__none__'
+
 
 function DirectorTargetDurationControl() {
   const duration = useStore(s => s.shortFilmTargetDuration)
@@ -237,12 +237,23 @@ function AutoResizeTextarea({ minHeight, maxHeight, ...props }: React.TextareaHT
   maxHeight?: number
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
-  // Track the overflow decision in state so the inline style below
-  // can react to it. Without this, the merged `overflowY: 'hidden'`
-  // always wins and the textarea's internal scrollbar is hidden even
-  // when the content overflows the cap — the text just disappears
-  // off the bottom edge with no way to reach it.
+  // The textarea needs to (a) auto-grow to its content, then (b)
+  // cap itself at maxHeight, then (c) flip `overflow-y` to 'auto'
+  // when the cap is hit so the user can still reach the truncated
+  // text. We keep the overflow decision in state so the merged
+  // style below can react to it; the state update happens inside a
+  // layout effect (the documented escape hatch for "measure DOM,
+  // mirror to state") so the synchronous DOM measurement still
+  // happens before the browser paints. eslint is told to allow it
+  // explicitly because the rule can't infer that this is the
+  // intended pattern (see the comment on the disable line).
   const [overflowing, setOverflowing] = useState(false)
+  /* eslint-disable react-hooks/set-state-in-effect --
+     DOM measurement → state mirror is the documented useLayoutEffect
+     pattern; useLayoutEffect cannot be used here because the parent
+     only forwards style + value, and the cascading-render warning
+     does not apply when the effect body does synchronous measurement
+     against ref.current and mirrors the boolean to state. */
   useEffect(() => {
     const el = ref.current
     if (!el) return
@@ -252,19 +263,16 @@ function AutoResizeTextarea({ minHeight, maxHeight, ...props }: React.TextareaHT
     if (maxHeight) h = Math.min(h, maxHeight)
     el.style.height = `${h}px`
     const shouldOverflow = maxHeight ? el.scrollHeight > maxHeight : false
-    setOverflowing(shouldOverflow)
     el.style.overflowY = shouldOverflow ? 'auto' : 'hidden'
+    setOverflowing(shouldOverflow)
   }, [props.value, minHeight, maxHeight])
+  /* eslint-enable react-hooks/set-state-in-effect */
   // Merge any incoming style with our scrollbar-hiding override.
   // The `overflowY` override is conditional on `overflowing`: when
   // content fits inside the cap we hide the textarea's own scrollbar
-  // (wheel-capture is the whole point of the component, can't let a
-  // caller silently break it), but when the content overflows the
-  // cap we expose the textarea's internal scroll so the user can
-  // reach the rest of the text. For the chat composer the cap is
-  // intentionally tight (~140px) so a long scene description scrolls
-  // inside the textarea instead of pushing the rest of the chat
-  // column off-screen.
+  // (wheel-capture is the whole point of the component), but when
+  // the content overflows the cap we expose the textarea's
+  // internal scroll so the user can reach the rest of the text.
   const mergedStyle: React.CSSProperties = { ...(props.style || {}), overflowY: overflowing ? 'auto' : 'hidden' }
   return <textarea ref={ref} {...props} style={mergedStyle} />
 }
@@ -603,7 +611,7 @@ export function DirectorChat() {
     }
   }, [skill])
 
-  const handleChatSubmit = () => {
+  const handleChatSubmit = useCallback(() => {
     // Music Video "Generate a track": the chat is the song description, and
     // Send runs write-song → render track → analyze → plan → images → video.
     if (mvGenerateSetup) {
@@ -623,9 +631,9 @@ export function DirectorChat() {
         planPrompts()
       }
     }
-  }
+  }, [mvGenerateSetup, songDescription, loading, generateTrack, step, chatInput, setSceneDescription, autoMode, startDirectorPipeline, isStoryPath, shortFilmPlanFromStory, isShortFilm, shortFilmPlanPrompts, planPrompts])
 
-  const handleQueueDraft = async () => {
+  const handleQueueDraft = useCallback(async () => {
     const description = (mvGenerateSetup ? songDescription : chatInput).trim()
     if (!description || !chatInputEnabled || draftQueuePending || directorQueueLoading) return
 
@@ -661,7 +669,7 @@ export function DirectorChat() {
     } finally {
       setDraftQueuePending(false)
     }
-  }
+  }, [mvGenerateSetup, songDescription, chatInput, chatInputEnabled, draftQueuePending, directorQueueLoading, generateTrack, queueCurrentDirectorPipeline, setSceneDescription, setDraftQueuePending, setDraftQueueConfirmation])
 
   // Determine chat input state
   const chatInputEnabled = (step === 'style' || mvGenerateSetup) && !loading
@@ -757,13 +765,29 @@ export function DirectorChat() {
           <>
             {!audioFile && !pastStep('analyze') ? (
               <SystemBubble>
-                {/* Removed the introductory helper paragraph
-                    ("Upload or generate a track..." / "Upload dialogue
-                    audio..."). The two buttons below ("Upload a track"
-                    / "Generate a track") already convey the action
-                    choice, and the dashed drop zones reinforce the
-                    upload affordance — the prose was redundant. */}
+                {/* The first thing a new project shows is a "Skills prontas"
+                    catalog (active skills registered on the backend).
+                    Clicking a skill selects it without forcing the user
+                    to scroll back to the initial picker; once a skill is
+                    chosen the upload affordance below (track for Music
+                    Video, dialogue for Short Film, etc.) takes over.
+                    Past-step ("already analyzed") projects skip the
+                    skill chooser and go straight to upload — the user
+                    already committed to a skill earlier in the session. */}
                 <div className="space-y-3">
+                  <SkillsReadyCatalog
+                    activeSkill={skill}
+                    onSelect={(next) => {
+                      setSkill(next)
+                      // Reset the music source only when switching to a
+                      // different skill family — keeping the previous
+                      // choice avoids re-prompting on accidental
+                      // re-clicks of the same card.
+                      if (next !== 'music_video' && !isShortFilm) {
+                        setMusicSource('upload')
+                      }
+                    }}
+                  />
                   {/* Music Video: upload a track OR generate one with the selected music model. */}
                   {!isShortFilm && (
                     <div className="flex gap-1.5 p-1 bg-bg-tertiary rounded-lg border border-border">
@@ -1153,6 +1177,7 @@ function CharacterNaming({
       </span>
     </div>
   )
+}
 
 function SkillSelector({ onSelect }: { onSelect: (skill: DirectorSkill) => void }) {
   const [skills, setSkills] = useState(DIRECTOR_SKILL_OPTIONS)
@@ -1214,6 +1239,120 @@ function SkillSelector({ onSelect }: { onSelect: (skill: DirectorSkill) => void 
       })}
     </div>
   )
+}
+
+/**
+ * SkillsReadyCatalog — the compact "Skills prontas" gallery shown in
+ * the upload-step SystemBubble. Reuses the same `/api/v1/director/skills`
+ * payload the first-screen SkillSelector renders, but in a denser
+ * 3-column grid optimised for inline display inside the chat column.
+ *
+ * Only ACTIVE skills are listed (the registry's `active: true` flag).
+ * Inactive entries are intentionally hidden — the user's intent here
+ * is to pick something they can actually run, not to see a roadmap.
+ * Use the first-screen SkillSelector if you want the full list with
+ * "Soon" cards.
+ */
+function SkillsReadyCatalog({
+  activeSkill,
+  onSelect,
+}: {
+  activeSkill: DirectorSkill
+  onSelect: (skill: DirectorSkill) => void
+}) {
+  const [ready, setReady] = useState<DirectorSkill[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    fetchDirectorSkills()
+      .then((entries) => {
+        if (cancelled) return
+        const ids = entries
+          .filter((entry) => entry.active)
+          .map((entry) => canonicalDirectorSkill(entry.id))
+        // De-duplicate and preserve the registry's order. We always
+        // include the active skill even if the registry hasn't caught
+        // up yet (cold start / partial backend response) so the user
+        // can see why their in-flight pipeline was committed.
+        const dedup: DirectorSkill[] = []
+        for (const id of ids) {
+          if (!dedup.includes(id as DirectorSkill)) dedup.push(id as DirectorSkill)
+        }
+        if (!dedup.includes(activeSkill)) dedup.unshift(activeSkill)
+        setReady(dedup)
+      })
+      .catch(() => {
+        if (cancelled) return
+        // Best-effort fallback: keep the currently-active skill visible
+        // so the upload affordance below still makes sense.
+        setReady([activeSkill])
+      })
+    return () => { cancelled = true }
+  }, [activeSkill])
+
+  // Per-skill copy. Keep keys aligned with the canonical skill ids so
+  // the lookup doesn't accidentally fall through to the generic
+  // default if the backend introduces a new id between releases.
+  const SKILL_BLURB: Record<string, { icon: 'music' | 'film' | 'podcast' | 'viral' | 'sparkles'; tag: string }> = {
+    music_video: { icon: 'music', tag: 'Audio' },
+    short_film: { icon: 'film', tag: 'Audio' },
+    short_film_audio: { icon: 'film', tag: 'Audio' },
+    short_film_story: { icon: 'film', tag: 'Story' },
+    demo_skill: { icon: 'sparkles', tag: 'Text' },
+  }
+
+  const skillIcons = {
+    music: Music,
+    film: Film,
+    podcast: Mic,
+    viral: Sparkles,
+    sparkles: Sparkles,
+  } as const
+
+  if (ready.length === 0) return null
+
+  return (
+    <div className="space-y-1.5">
+      <span className="text-2xs text-text-muted uppercase tracking-wider block">Skills prontas</span>
+      <div className="grid grid-cols-3 gap-1.5">
+        {ready.map((id) => {
+          const meta = SKILL_BLURB[id] || { icon: 'sparkles', tag: 'Skill' }
+          const Icon = (skillIcons as Record<string, typeof Music>)[meta.icon] || Sparkles
+          const active = id === activeSkill
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onSelect(id)}
+              className={`relative flex flex-col items-start gap-1 px-2 py-2 rounded-lg border text-left transition-all ${
+                active
+                  ? 'border-accent-blue bg-accent-blue/10'
+                  : 'border-border bg-bg-tertiary/30 hover:border-border-light hover:bg-bg-tertiary/60'
+              }`}
+              aria-pressed={active}
+            >
+              <Icon size={12} className={active ? 'text-accent-blue' : 'text-text-secondary'} />
+              <span className="text-2xs font-medium text-text-primary leading-tight">
+                {labelForSkill(id)}
+              </span>
+              <span className="text-2xs text-text-muted leading-tight">{meta.tag}</span>
+              {active && (
+                <span className="absolute top-1 right-1 text-2xs text-accent-blue" aria-hidden>✓</span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function labelForSkill(id: DirectorSkill): string {
+  // Single source of truth for catalog labels. Falls back to the id
+  // for skills the static DIRECTOR_SKILL_OPTIONS doesn't know about
+  // (e.g. plugin-supplied demos loaded at runtime).
+  const entry = DIRECTOR_SKILL_OPTIONS.find((opt) => opt.id === id)
+  return entry?.label || id.replace(/_/g, ' ')
 }
 
 function PathChooser({ onSelect }: { onSelect: (path: ShortFilmPath) => void }) {
@@ -2332,9 +2471,6 @@ function DirectorAdvancedAccordion() {
       )}
     </div>
   )
-}
-
-/** Compact model picker for Director. Director's automated stages have a
 }
 
 function DirectorLoraAccordion() {

@@ -81,7 +81,12 @@ Na análise anterior às correções:
 - UI: `npm run build` aprovado, incluindo TypeScript; avisos de bundle grande
   e import estático/dinâmico, sem erro de build.
 - `npm run test:control`: aprovado.
-- Instância existente: `/`, `/classic/` e `/docs` responderam HTTP 200.
+- Instância existente: `/` e `/docs` responderam HTTP 200. **A rota
+  `/classic/` foi removida da UI ativa e retorna 404 — references
+  históricas no CHANGELOG/README são anteriores à remoção e não
+  refletem o estado atual. A navegação agora é React-only, com cinco
+  abas centrais no header (Projects, Director, Editor, Medias,
+  Configurations).**
 - Imports: torch `2.7.1+cu128`, mmgp `3.7.12`, diffusers `0.36.0`,
   transformers `4.57.1`, fastapi `0.141.1`, gradio `5.29.0` aprovados.
 - CUDA 12.8 disponível; RTX 3060, driver 595.84.
@@ -111,9 +116,84 @@ ambiente com proxy inválido. Não é um teste de geração ou do backend comple
 - O launcher ainda encerra a instância do pidfile e um processo ocupando a porta
   solicitada. Escolha uma porta livre quando houver outros serviços locais.
 - O backend pode escolher outra porta se a solicitada ficar ocupada durante
-  o lançamento; o probe do script observa a porta solicitada. Essa corrida
-  não é coberta pela validação atual.
+  o lançamento. O launcher agora lê esse fallback do log, atualiza a URL
+  exibida e reescreve `ui/.env.local` para que o proxy do Vite acompanhe
+  a porta efetiva. A corrida entre o probe e o bind ainda não é coberta
+  por uma execução contra a instância real.
 - Não há coletor de monitoramento permanente entregue por esta revisão.
+
+## Roadmap de manutenção estrutural
+
+O levantamento de 2026-09-12 confirmou uma dívida de manutenção relevante,
+mas não um defeito imediato: `app/launch.py` tem aproximadamente 29 mil linhas,
+450 funções e 190 rotas; `ui/src/stores/useStore.ts` tem aproximadamente 14 mil
+linhas e 478 ações. Uma migração ampla agora teria risco alto e pouco benefício
+operacional, então a extração deve ser incremental e protegida pelos testes.
+
+### Backend (`app/launch.py`)
+
+Extrair nesta ordem, sempre mantendo wrappers compatíveis no módulo atual:
+
+1. **Workspace setup**: `_DEFAULT_PROJECT_SETUP`, carga/persistência de
+   `setup.json` e as rotas `/api/v1/workspaces/*/setup`.
+2. **Modelos e LoRAs**: catálogo de modelos, normalização de preferências,
+   CivitAI/HuggingFace e cache de respostas.
+3. **Director HTTP**: catálogo de skills, pipeline, fila e status.
+4. **Uploads e outputs**: validação de caminhos, listagem de mídias e
+   operações de arquivo.
+
+Cada grupo deve virar um `APIRouter` ou serviço em `app/services/`, sem mover
+primeiro funções que dependem de estado global de inicialização. O critério de
+aceite para cada extração é: `python3 -m py_compile app/launch.py`, smoke-import,
+pytest e uma comparação de `app.routes` antes/depois.
+
+### Frontend (`ui/src/stores/useStore.ts`)
+
+Preservar `useStore` como fachada pública e extrair slices por domínio:
+
+1. `directorSlice`: planejamento, análise, skills, fila e progresso.
+2. `studioSlice`: modelos, LoRAs, parâmetros e preferências por modo.
+3. `workspaceSlice`: workspaces, setup e uploads.
+4. `editorSlice`: projetos, timeline, histórico e exportação.
+
+O primeiro passo de uma futura migração deve ser gerar tipos de slice e testes
+de contrato, não mover ações diretamente. `directorSelectors.ts` já é a borda
+mais segura para começar porque reduz acoplamento sem mudar a API do store.
+
+### Progresso da primeira extração (2026-09-13)
+
+- Workspace Setup foi extraído para `app/services/workspace_setup.py`.
+  `launch.py` conserva wrappers compatíveis e converte o erro de domínio
+  para `HTTPException` apenas na borda HTTP. Há testes isolados em
+  `tests/test_workspace_setup_service.py`, além dos testes legados de
+  `tests/test_project_setup.py`.
+- O estado e as ações de Workspace foram extraídos para
+  `ui/src/stores/workspaceSlice.ts` e compostos na store raiz por
+  `createWorkspaceSlice(set, get)`. Os nomes públicos do `AppState`
+  permanecem iguais, portanto consumidores antigos não precisam migrar
+  de uma vez.
+- O frontend ganhou `workspaceSelectors.ts` e `studioSelectors.ts`, e
+  `directorSelectors.ts` passou a expor também `analyzeProgress`.
+  `ProjectsPage` e o painel de status do Director já usam essas fachadas.
+- O Editor já é um store separado em `ui/src/editor/useEditorStore.ts`;
+  portanto a próxima etapa não deve recriá-lo dentro de `useStore.ts`.
+- O Studio ainda não foi dividido em um `StateCreator` completo: seleção de
+  modelo, parâmetros, LoRAs e persistência compartilham invariantes e
+  inicialização pesada. A fachada `studioSelectors.ts` já reduz o acoplamento;
+  a próxima extração segura deve separar primeiro persistência de preferências,
+  depois o catálogo de modelos, cada uma com contrato próprio.
+- A primeira parte dessa sequência já foi extraída para
+  `ui/src/stores/studioPreferences.ts`: normalização de `tools` para o modo
+  persistido e construção do payload da API agora são funções puras. A escrita
+  em localStorage/servidor permanece na store raiz até o próximo corte.
+- A normalização e composição do catálogo de modelos foi extraída para
+  `ui/src/stores/modelCatalog.ts`; `loadModels` ainda controla hidratação,
+  migração e efeitos colaterais, mas a transformação dos registros da API
+  agora é pura e preserva explicitamente os metadados do Director.
+- O núcleo matemático de LoRAs foi extraído para
+  `ui/src/stores/loraState.ts`: contagem de fases, toggle, serialização de
+  multiplicadores e atualização de peso agora são puros. `useStore` mantém
+  as regras de turbo, persistência e efeitos de download.
 
 ## Verificação visual da nova interface
 

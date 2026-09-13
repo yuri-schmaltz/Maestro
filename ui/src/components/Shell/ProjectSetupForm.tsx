@@ -2,10 +2,10 @@
    ProjectSetup form chips and the Director right-column override live here
    so the two surfaces stay in lockstep. */
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Sparkles, Layers, Music, Film, Mic } from 'lucide-react'
+import { ChevronDown, ChevronRight, Sparkles, Layers } from 'lucide-react'
 import type { ProjectSetupDefaults, AspectRatio, ResolutionPreset, GenerationMode } from '../../types'
-import { DEFAULT_PROJECT_SETUP, DIRECTOR_SKILL_OPTIONS, canonicalDirectorSkill, type DirectorSkill } from '../../types'
-import { fetchModels, fetchDirectorSkills, type ApiModel, type DirectorSkillOption } from '../../api/client'
+import { DEFAULT_PROJECT_SETUP } from '../../types'
+import { fetchModels, type ApiModel } from '../../api/client'
 import { useEffect } from 'react'
 
 /** Architectures that produce video output. Used to filter the model
@@ -96,14 +96,6 @@ export function ProjectSetupForm({
   const [models, setModels] = useState<ApiModel[]>([])
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [lorasOpen, setLorasOpen] = useState(false)
-  // Skills fetched from the backend (when the registry plugin system is
-  // available) fall back to the hardcoded DIRECTOR_SKILL_OPTIONS. The
-  // local skill registry under app/services/director/plugins can add
-  // skills without changing this UI — the form just renders whatever
-  // the backend says it has.
-  const [skills, setSkills] = useState<DirectorSkillOption[]>(
-    DIRECTOR_SKILL_OPTIONS as DirectorSkillOption[],
-  )
 
   useEffect(() => {
     let cancelled = false
@@ -115,58 +107,7 @@ export function ProjectSetupForm({
     return () => { cancelled = true }
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-    fetchDirectorSkills()
-      .then(next => { if (!cancelled && next.length) setSkills(next) })
-      .catch(() => { /* keep defaults on failure */ })
-    return () => { cancelled = true }
-  }, [])
-
   const update = (patch: Partial<ProjectSetupDefaults>) => onChange({ ...safeValue, ...patch })
-
-  // ── Skill chooser grid (mirrors DirectorChat's SkillSelector so the
-  //    two surfaces pick from the same cards). Visible-but-inactive
-  //    entries get the "Soon" badge and stay click-disabled — same
-  //    contract users already learned on the Director side.
-  const SKILL_ICONS: Record<string, typeof Music> = {
-    music: Music,
-    film: Film,
-    podcast: Mic,
-    viral: Sparkles,
-    sparkles: Sparkles,
-  }
-  const renderSkillCard = (entry: DirectorSkillOption) => {
-    const Icon = SKILL_ICONS[entry.icon] || Music
-    const skillId = canonicalDirectorSkill(entry.id) as DirectorSkill
-    const selected = safeValue.director_skill === skillId
-    return (
-      <button
-        key={entry.id}
-        type="button"
-        role="radio"
-        aria-checked={selected}
-        onClick={() => entry.active && update({ director_skill: skillId })}
-        disabled={!entry.active || disabled}
-        className={`relative p-3 rounded-lg border text-left transition-all ${
-          entry.active
-            ? selected
-              ? 'border-accent-blue bg-accent-blue/10 cursor-pointer'
-              : 'border-accent-blue/30 bg-bg-tertiary/50 hover:border-accent-blue hover:bg-accent-blue/5 cursor-pointer'
-            : 'border-border/30 bg-bg-tertiary/20 opacity-50 cursor-not-allowed'
-        }`}
-      >
-        <Icon size={16} className={entry.active ? 'text-accent-blue mb-1.5' : 'text-text-muted mb-1.5'} />
-        <div className="text-xs font-medium text-text-primary">{entry.label}</div>
-        <div className="text-2xs text-text-muted mt-0.5 leading-snug">{entry.desc || 'Director skill'}</div>
-        {!entry.active && (
-          <span className="absolute top-1.5 right-1.5 text-2xs bg-bg-hover text-text-muted px-1.5 py-0.5 rounded-full">
-            Soon
-          </span>
-        )}
-      </button>
-    )
-  }
   const supportsUltraWide = (safeValue.video_model || '').toLowerCase().startsWith('minimax_h3')
   const aspectOptions = PROJECT_SETUP_ASPECT_RATIOS.filter(opt => opt.value !== '21:9' || supportsUltraWide)
 
@@ -298,38 +239,42 @@ export function ProjectSetupForm({
         />
       </fieldset>
 
-      {/* Director skill — pick the workflow this project targets. The
-          skills here are the same cards the Director chat shows on
-          first launch (Music Video, Short Film, Demo Skill, …);
-          selecting one makes the Director open straight on that
-          skill's upload step instead of the chooser card. Audio
-          source / model fields were removed from this surface
-          because they are inherent to the skill (Music Video = audio
-          track, Short Film = dialogue, Demo Skill = synthetic) and
-          don't need a second picker on top. */}
-      <fieldset className={sectionCls} aria-label="Director skill">
-        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Director skill</legend>
-        <p className="text-2xs text-text-muted leading-relaxed">
-          Each skill brings its own pipeline (audio analysis vs dialogue vs synthetic). Pick the one this project
-          is built around; you can change it later from <code className="text-text-secondary">Edit setup</code>.
-        </p>
-        <div className="grid grid-cols-2 gap-2 mt-1" role="radiogroup" aria-label="Director skill">
-          {skills.map(renderSkillCard)}
-        </div>
-        {safeValue.director_skill && (
-          <div className="flex items-center gap-2 mt-1">
+      {/* Audio — source shape (upload vs generate) and the music model
+          used when source = generate. Skipped entirely from
+          short-film story-driven projects where audio is created
+          from voice references instead of a song. */}
+      <fieldset className={sectionCls} aria-label="Audio defaults">
+        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Audio</legend>
+        <div className="flex gap-1.5 p-1 bg-bg-tertiary rounded-lg border border-border">
+          {(['upload', 'generate'] as const).map(opt => (
             <button
+              key={opt}
               type="button"
-              onClick={() => update({ director_skill: '' })}
+              onClick={() => update({ music_source: opt })}
               disabled={disabled}
-              className="text-2xs text-accent-blue hover:text-accent-blue-hover transition-colors"
+              className={`flex-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
+                safeValue.music_source === opt
+                  ? 'bg-accent-blue text-white'
+                  : 'text-text-secondary hover:text-text-primary'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              Clear skill selection
+              {opt === 'upload' ? 'Upload a track' : 'Generate a track'}
             </button>
-            <span className="text-2xs text-text-muted/70">
-              (Director will open on the skill chooser)
-            </span>
-          </div>
+          ))}
+        </div>
+        {safeValue.music_source === 'generate' && (
+          <FormSelect
+            label="Music model"
+            value={safeValue.music_model || ''}
+            onChange={next => update({ music_model: next })}
+            options={[
+              { value: '', label: 'Use default music model' },
+              ...models
+                .filter(m => isAudioModel(m) || (m.name || '').toLowerCase().includes('music'))
+                .map(m => ({ value: m.model_type, label: m.name || m.model_type })),
+            ]}
+            disabled={disabled}
+          />
         )}
       </fieldset>
 

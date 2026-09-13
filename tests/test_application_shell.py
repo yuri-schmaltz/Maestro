@@ -3,11 +3,19 @@
 Requires Playwright + Chromium and a running Vite dev server proxying Maestro.
 Run: SHELL_TEST_URL=http://127.0.0.1:3000 python tests/test_application_shell.py
 Project mutations are intercepted so test data never reaches the backend.
+
+Marked with the ``browser`` pytest marker so the default
+``pytest tests/`` discovery skips it (playwright isn't a default
+install dependency). Opt in with ``pytest tests/ -m browser`` or
+``pytest tests/test_application_shell.py``.
 """
 import json
 import os
 from pathlib import Path
+import pytest
 from playwright.sync_api import sync_playwright, expect
+
+pytestmark = pytest.mark.browser
 
 URL = os.environ.get('SHELL_TEST_URL', 'http://127.0.0.1:3000')
 ARTIFACTS = Path(os.environ.get('SHELL_TEST_ARTIFACTS', '/tmp/maestro-overhaul'))

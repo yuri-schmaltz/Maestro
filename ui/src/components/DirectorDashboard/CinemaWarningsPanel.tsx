@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, AlertTriangle, Film, X } from 'lucide-react'
 
 /** A single cinema rule violation surfaced by the backend advisor. */
@@ -46,6 +46,12 @@ export function CinemaWarningsPanel({ fields, label }: { fields: CinemaShotField
   const [error, setError] = useState<string | null>(null)
   const [evaluation, setEvaluation] = useState<CinemaEvaluation | null>(null)
   const [dismissed, setDismissed] = useState(false)
+  // Stable string fingerprint of the props bag — used as a
+  // useEffect dependency instead of JSON.stringify(fields) inline.
+  // exhaustive-deps can't reason about the stability of the inline
+  // stringify; lifting it to a named binding silences the warning
+  // AND makes the dependency cheap to compare (string equality).
+  const propsFingerprint = useMemo(() => JSON.stringify(fields.props ?? {}), [fields.props])
 
   useEffect(() => {
     // Reset state when the inputs change — a new shot, an edited
@@ -55,7 +61,7 @@ export function CinemaWarningsPanel({ fields, label }: { fields: CinemaShotField
     setEvaluation(null)
     setError(null)
     setDismissed(false)
-  }, [fields.scene_goal, fields.environment, fields.lighting, fields.wardrobe, JSON.stringify(fields.props)])
+  }, [fields.scene_goal, fields.environment, fields.lighting, fields.wardrobe, propsFingerprint])
 
   const query = async () => {
     setLoading(true)

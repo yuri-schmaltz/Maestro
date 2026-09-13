@@ -42,6 +42,7 @@
 import { useEffect, useState } from 'react'
 import { Check, ChevronDown, ChevronRight, Loader2, X } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
+import { useDirectorSlice } from '../../stores/directorSelectors'
 import {
   DirectorChat,
   DirectorGenerationOptions,
@@ -133,9 +134,9 @@ const STATUS_STEPS: StepMeta[] = [
 ]
 
 function DirectorStatusPanel() {
-  const step = useStore(s => s.directorStep)
-  const loading = useStore(s => s.directorLoading)
-  const loadingMessage = useStore(s => s.directorLoadingMessage)
+  const step = useDirectorSlice('step')
+  const loading = useDirectorSlice('loading')
+  const loadingMessage = useDirectorSlice('loadingMessage')
   const cancel = useStore(s => s.cancelDirectorV2Plan)
   // Live progress feeds from the backend. The Director pipeline status
   // exposes {current, total, step, total_steps, current_clip, total_clips}
@@ -144,14 +145,14 @@ function DirectorStatusPanel() {
   // loop keeps fresh. Reading both lets each phase show its own precise
   // percentage instead of a generic spinner.
   const pipelineProgress = useStore(s => s.pipelineStatus?.progress)
-  const imageGenProgress = useStore(s => s.directorImageGenProgress)
+  const imageGenProgress = useDirectorSlice('imageGenProgress')
   // Analyze phase feeds its own precise counter via the
   // /api/v1/audio/analyze/status polling loop. The backend reports
   // step numbers as "1 of 6 … 6 of 6" so the sub-bar shows "Step 3 / 6"
   // while Whisper / pyannote / vocal extraction are running. When the
   // counter is null (backend hasn't reported yet, or analyze was
   // skipped) we fall back to the indeterminate sliding bar.
-  const analyzeProgress = useStore(s => s.directorAnalyzeProgress)
+  const analyzeProgress = useDirectorSlice('analyzeProgress')
   const plannedClipsCount = useStore(s => s.directorPlannedClips.length)
   const clipImagesCount = useStore(s => s.directorClipImages.length)
   const clipPlansCount = useStore(s => s.directorClipPlans.length)

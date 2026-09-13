@@ -64,12 +64,16 @@ jobs:
           "einops==0.8.2"
           "safetensors==0.8.0"
           "triton==3.3.1"
+          "pytest==9.1.1"
       - name: Python unit tests
-        run: python -m unittest discover -s tests -p "test_*.py"
-      - name: JSON grammar regression tests
-        # These are standalone test functions, so unittest discovery does not
-        # execute them yet. Keep this explicit runner until they are migrated.
-        run: python tests/test_call_llm_json_grammar.py
+        # pytest is the canonical runner: the conftest.py hooks
+        # sys.path before collection, and pyproject.toml's
+        # ``addopts = -m 'not browser and not smoke'`` keeps the
+        # playwright-driven test_application_shell.py and the
+        # subprocess-heavy test_smoke_imports.py opt-out of the
+        # default gauntlet. opt in with `-m browser` / `-m smoke`
+        # when the matching dependency is available.
+        run: python -m pytest tests/ -v
 
   smoke-import:
     # Pattern lifted from directo_studio v1.1.7 (lifted the smoke-import
