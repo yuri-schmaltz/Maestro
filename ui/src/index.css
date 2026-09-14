@@ -860,7 +860,7 @@ input[type="range"]::-webkit-slider-thumb {
    badges overlay the banner corners. */
 .project-skill-music { --skill-color:var(--color-accent-blue); }
 .project-skill-film { --skill-color:#a78bfa; }
-.project-banner { position:relative; height:140px; border-radius:10px; overflow:hidden; border:1px solid var(--color-border); margin-bottom:10px; background:var(--color-bg-tertiary); }
+.project-banner { position:relative; height:156px; border-radius:10px; overflow:hidden; border:1px solid var(--color-border); margin-bottom:10px; background:var(--color-bg-tertiary); }
 .project-banner img { display:block; width:100%; height:100%; object-fit:contain; }
 .project-placeholder { display:flex; align-items:center; justify-content:center; width:100%; height:100%; background:linear-gradient(135deg,color-mix(in srgb,var(--skill-color) 24%,transparent),transparent 70%); color:color-mix(in srgb,var(--skill-color) 60%,transparent); }
 /* Project name overlaid where the skill chip used to be. Ellipsized
@@ -872,7 +872,7 @@ input[type="range"]::-webkit-slider-thumb {
 /* Single consolidated meta line (skill lives in the banner chip, so the
    summary starts at the format). The raw path moved to the tooltip. */
 .project-card-meta { font-size: var(--text-2xs); color:var(--color-text-secondary); line-height:1.6; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.project-card-actions { display:flex; align-items:center; gap:2px; margin-top:20px; padding-top:16px; border-top:1px solid var(--color-border); }
+.project-card-actions { display:flex; align-items:center; gap:2px; margin-top:12px; padding-top:12px; border-top:1px solid var(--color-border); }
 .project-card-actions .project-danger { margin-left:auto; }
 /* Icon-only Open Director button: keeps the accent highlight of the
    old text button so the primary action still stands out in the row. */
