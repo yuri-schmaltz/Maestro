@@ -2,6 +2,14 @@
 
 ## Retomada de estabilização — 2026-09-13 (working tree)
 
+- Contratos de comportamento para `studioModelSlice` e `studioModeSlice` no
+  `test:store` (store composta real + catálogo determinístico): hidratação de
+  visibilidade acontece uma vez por boot, upgrade determinístico de defaults
+  curados (v1→v11) mescla adições uma vez, toggle/all/bulk/reset persistem via
+  localStorage, `selectModel` reseta o estado de LoRA, lifecycle LoRA persiste
+  por modo, receitas SCAIL-2 trocam/restauram o modelo de avatar, mappings de
+  edição clampam e o roteamento de criação segue as mídias (generate→guided)
+  rejeitando modelos omni-only.
 - Extraída a camada de persistência do Studio para `ui/src/stores/studioPersistence.ts`
   (localStorage per-modo + espelho de preferências no servidor): `saveModeSettings`,
   `loadModeSettings`, tradução lora_id/filename, strip de campos efêmeros e a fila

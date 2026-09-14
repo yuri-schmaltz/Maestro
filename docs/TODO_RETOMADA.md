@@ -20,19 +20,22 @@ Entregue nesta etapa (verificado com os gates abaixo):
   `useStore.ts` conserva `_saveSettings`/`_loadSettings` como aliases e
   `_persistStickyStudioPreferences` como wrapper; slices seguem recebendo-os via
   `dependencies`.
+- Contratos de comportamento de `studioModelSlice`/`studioModeSlice` no `test:store`
+  (store raiz composta, catálogo determinístico, router de fetch): hidratação de
+  visibilidade única por boot; upgrade de defaults curados (v1→v11) uma vez;
+  toggle/all/bulk/reset persistem `maestro_enabled_models`; `selectModel` reseta
+  LoRA; lifecycle `toggleLora`/`setLoraWeight` grava por modo; receitas
+  `recast`/`restyle` trocam para SCAIL-2 e `retake` restaura; mappings de repaint
+  clampam a 5 e recast deriva/clampa; roteamento de criação segue mídias
+  (`generate`→`guided`) e rejeita omni-only para frames.
 - Corrigido o build oficial, quebrado por um import morto do `studioModelSlice`
   (`recommendedH3OmniSequenceProfile`). `npm run build`, `npm run lint`,
   `npm run test:store` e `npm run test:control` terminam com código zero.
-- `test:store` passou a exercitar o módulo de persistência isolado (localStorage
-  fake): strip de campos efêmeros em save e load, formato legado vs versionado,
-  round-trip lora_id/filename com disambiguation multi-versão, sticky preservation
-  e resiliência da fila a falha. Execução repetida 5/5 estável.
 - `directorAnalyzeProgress` confirmado alimentado nos dois pollings de análise
-  (`useStore.ts`, aprox. linhas 8366 e 9317) com reset por sequência — item P1
-  historico concluído; atualizar os checklists abaixo.
-- Defaults avançados confirmados aplicados ao payload efetivo: o `test:store`
-  exercita `applyWorkspaceSetup` + `startDirectorPipeline` e assere precedência
-  de overrides por take e limpeza de chaves desconhecidas.
+  (`useStore.ts`, aprox. linhas 8366 e 9317) com reset por sequência, e defaults
+  avançados confirmados aplicados ao payload efetivo (`applyWorkspaceSetup` +
+  `startDirectorPipeline` com precedência de overrides por take) — itens P1
+  historicos concluídos; atualizar os checklists abaixo.
 
 Evidências atuais desta etapa:
 
@@ -44,10 +47,10 @@ Evidências atuais desta etapa:
 | `npm run test:control` | Aprovado |
 | Python leve (setup, style bible, cli, cinema, registry) | 106 passed, 6 skipped |
 
-Próximas ações: contratos de comportamento para `studioModelSlice`/`studioModeSlice`
-(visibilidade, hidratação e LoRAs); extrair os campos de finishing/advanced que ainda
-vivem no root; savas dos routers backend; CI em ambiente limpo; geração/exportação
-reais. O backend do usuário não foi reiniciado.
+Próximas ações: extrair `setParam`/`params`, campos de finishing/advanced e
+snapshots por modo que ainda vivem no root (`useStore.ts`); savas dos routers
+backend; CI em ambiente limpo; geração/exportação reais. O backend do usuário
+não foi reiniciado.
 
 ## Execução em andamento — historico (etapas anteriores)
 
@@ -259,10 +262,12 @@ terminam com código zero, seguidos de uma verificação visual do Director.
 - [ ] Criar testes de contrato para os slices e helpers extraídos: troca de
   workflow, restauração por modo, persistência e LoRAs por fase. O gauntlet
   atual exercita quatro helpers de timeline/review/plano, não essas extrações.
-  *Progresso nesta etapa: além da troca de workflow/modo já exercitada, o
-  `test:store` passou a cobrir a persistência em `studioPersistence.ts`
-  (round-trip, sticky, fila). Faltam os contratos de visibilidade/hidratação
-  de modelos e de LoRAs do `studioModelSlice`.*
+  *Progresso: o `test:store` agora exercita `studioPersistence`
+  (round-trip, sticky, fila), `studioModelSlice` (visibilidade/hidratação,
+  defaults curados, enabled write-through, `selectModel` e lifecycle de LoRA)
+  e `studioModeSlice` (receitas de edição do Avatar, mappings de mappings e
+  roteamento de criação por mídia). Faltam os contratos de `setParam`/campos
+  de finishing no root e a restauração por modo via `setGenerationMode`.*
 
 ## P2 — Retomar a refatoração planejada após os gates verdes
 

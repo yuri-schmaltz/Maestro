@@ -238,6 +238,21 @@ mais segura para começar porque reduz acoplamento sem mudar a API do store.
   fila de preferências. Esta era a próxima extração "persistência primeiro" do
   estúdio; o catálogo (`studioModelSlice`) e o modo (`studioModeSlice`) já tinham
   saído.
+- Os contratos de comportamento para `studioModelSlice`/`studioModeSlice` foram
+  adicionados ao `test:store` (a store raiz é composta com um catálogo
+  determinístico e um router de fetch): (a) a visibilidade do servidor hidrata
+  uma única vez por boot e o upgrade determinístico de defaults curados (v1→v11)
+  mescla as adições uma vez; (b) toggle/all/bulk/reset de `enabledModels`
+  persistem o whitelist em `maestro_enabled_models`; (c) `selectModel` reseta a
+  runtime de LoRA por troca de modelo e actors `toggleLora`/`setLoraWeight`
+  gravam `savedLoraPerMode` por modo; (d) as receitas `recast`/`restyle` do
+  Avatar trocam para os checkpoints SCAIL-2 e `retake` restaura o modelo anterior,
+  incluindo o stash para reentrada; (e) mappings de repaint clampam a 5 slots e
+  o recast deriva target/person count do primeiro item; (f) o roteamento de
+  criação segue as mídias (`generate`→`guided` conforme um frame aparece) e
+  modelos omni-only são rejeitados para intenção frames. Execução repetida 5/5
+  estável. Falta ainda: extrair `setParam`/`params` e os campos de finishing
+  (`slidingWindow*`, `filmGrain*`) que ainda vivem no root.
 
 ## Verificação visual da nova interface
 

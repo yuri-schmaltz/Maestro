@@ -255,3 +255,185 @@ assert.equal(updates[1].audio_sub_mode, 'music')
 assert.equal(updates[1].selected_model_per_audio_sub_mode.music, 'ace_step_v1_5_xl_sft_lm_4b')
 assert.equal(updates.length, 2, 'a failed preference save must not poison the queue')
 console.log('Persistence contracts passed: ephemeral strip, legacy/lora_id shapes, sticky preservation and queued preference mirror.')
+
+// --- Slice contracts: studioModelSlice + studioModeSlice (composed store) ---
+// Deterministic catalog. The ids deliberately overlap DEFAULTS_ADDED_IN so
+// the curated-defaults upgrade path is exercised (storedVer 1 -> v11).
+const SLICE_CATALOG = [
+  { model_type: 'ltx2_22B_distilled_1_1', name: 'LTX', family: 'ltx2', architecture: 'ltx2_22B', is_i2v: true, is_t2v: true, guidance_max_phases: 1, fps: 24 },
+  { model_type: 'minimax_h3', name: 'H3', family: 'minimax_h3', architecture: 'minimax_h3', is_i2v: true, is_t2v: true, guidance_max_phases: 1, fps: 16 },
+  { model_type: 'minimax_h3_ref2va', name: 'H3 Omni', family: 'minimax_h3', architecture: 'minimax_h3_ref2va', is_i2v: true, is_t2v: true, guidance_max_phases: 1, fps: 16, omni_reference: true },
+  { model_type: 'scail2_14B', name: 'SCAIL', family: 'scail2', architecture: 'scail2_14B', is_i2v: true, is_t2v: true, guidance_max_phases: 1, fps: 16 },
+  { model_type: 'scail2_14B_fast', name: 'SCAIL Fast', family: 'scail2', architecture: 'scail2_14B', is_i2v: true, is_t2v: true, guidance_max_phases: 1, fps: 16 },
+  { model_type: 'scail2_14B_recast_fast', name: 'SCAIL Recast', family: 'scail2', architecture: 'scail2_14B', is_i2v: true, is_t2v: true, guidance_max_phases: 1, fps: 16 },
+  { model_type: 'ltx2_25', name: 'LTX25', family: 'ltx25', architecture: 'ltx2_25', is_i2v: true, is_t2v: true, guidance_max_phases: 1, fps: 24 },
+  { model_type: 'krea2_raw', name: 'Krea', family: 'krea2', architecture: 'krea2', is_i2v: false, is_t2v: false, guidance_max_phases: 1, fps: 0 },
+  { model_type: 'minimax_music3', name: 'Music3', family: 'tts', architecture: 'minimax_music3', is_i2v: false, is_t2v: false, guidance_max_phases: 1, fps: 0 },
+]
+const SLICE_MODEL_OPTIONS = {
+  name: 'fixture', fps: 16, guidance_max_phases: 1,
+  resolution_preset_order: [], supports_auto_aspect: true,
+  default_num_inference_steps: 20, default_guidance_scale: 5,
+}
+let visibilityFixture = {
+  configured: true, enabled_models: ['ltx2_22B_distilled_1_1', 'minimax_h3'],
+  initialized_mature_models: [], defaults_version: 1,
+}
+const defaultEnabled = new Set(original.enabledModels)
+globalThis.localStorage = {
+  getItem: key => (memory.has(key) ? memory.get(key) : null),
+  setItem: (key, value) => memory.set(key, String(value)),
+  removeItem: key => memory.delete(key),
+  clear: () => memory.clear(),
+}
+memory.clear()
+globalThis.fetch = async (url, options) => {
+  const path = String(url).split('?')[0]
+  const method = options?.method || 'GET'
+  let body = {}
+  if (path === '/api/v1/models') body = { families: [], models: SLICE_CATALOG }
+  else if (path === '/api/v1/model-visibility') body = visibilityFixture
+  else if (path === '/api/v1/h3-window-overrides') body = { overrides: {} }
+  else if (path === '/api/v1/studio-preferences') body = method === 'GET' ? { configured: false } : {}
+  else if (path.endsWith('/loras/installed')) body = { loras: [] }
+  else if (path.endsWith('/loras/check-updates')) body = {}
+  else if (path.startsWith('/api/v1/loras/')) body = { loras: ['style.safetensors'], guidance_max_phases: 1 }
+  else if (path.startsWith('/api/v1/model-options/')) body = SLICE_MODEL_OPTIONS
+  else if (path.startsWith('/api/v1/defaults/')) body = {}
+  return new Response(JSON.stringify(body), { status: 200 })
+}
+useStore.setState(original, true)
+await useStore.getState().loadModels()
+let st = useStore.getState()
+assert.equal(st.modelsLoaded, true, 'models load marks loaded')
+assert.equal(st.params.model_type, 'ltx2_22B_distilled_1_1', 'boot defaults to the curated video model')
+assert.equal(st.selectedModelPerMode.video, 'ltx2_22B_distilled_1_1')
+assert.equal(memory.get('maestro_defaults_version'), '11', 'curated defaults upgrade stamps the version')
+for (const id of ['scail2_14B_recast_fast', 'minimax_h3_ref2va', 'ltx2_25', 'minimax_music3']) {
+  assert.equal(st.enabledModels.has(id), true, `${id} enabled by the curated defaults upgrade`)
+}
+// Server visibility hydrates exactly once: a later different server
+// visibility must not re-apply over the (migrated) local explicit set.
+visibilityFixture = {
+  configured: true, enabled_models: ['minimax_music3'],
+  initialized_mature_models: [], defaults_version: 11,
+}
+await useStore.getState().loadModels()
+st = useStore.getState()
+assert.equal(st.enabledModels.size, SLICE_CATALOG.length, 'visibility hydrates once across reloads')
+assert.equal(st.enabledModels.has('krea2_raw'), true, 'migrated member survives a stale second load')
+// Enabled-model actions write through to the backend mirror + localStorage.
+useStore.getState().toggleModelEnabled('krea2_raw')
+st = useStore.getState()
+assert.equal(st.enabledModels.has('krea2_raw'), false, 'toggle disables the curated member')
+assert.equal(JSON.parse(memory.get('maestro_enabled_models')).includes('krea2_raw'), false, 'disable persists to localStorage')
+useStore.getState().setAllModelsEnabled(true)
+st = useStore.getState()
+assert.equal(st.enabledModels.has('mmaudio_nsfw'), true, 'virtual SFX joins the all-enabled set')
+useStore.getState().setModelsEnabled(['minimax_music3'], false)
+st = useStore.getState()
+assert.equal(st.enabledModels.has('minimax_music3'), false)
+assert.equal(JSON.parse(memory.get('maestro_enabled_models')).includes('minimax_music3'), false, 'bulk disable persists')
+useStore.getState().resetEnabledModels()
+st = useStore.getState()
+assert.deepEqual(new Set(st.enabledModels), defaultEnabled, 'reset restores the curated default whitelist')
+assert.deepEqual(JSON.parse(memory.get('maestro_enabled_models')), [...defaultEnabled], 'reset persists the curated whitelist')
+useStore.setState({ settingsOpen: false })
+useStore.getState().openModelVisibility('video')
+st = useStore.getState()
+assert.equal(st.settingsOpen, true)
+assert.equal(st.settingsTab, 'performance')
+assert.equal(st.modelVisibilityFocus, 'video')
+useStore.getState().clearModelVisibilityFocus()
+assert.equal(useStore.getState().modelVisibilityFocus, null)
+// selectModel reseeds the per-mode map and resets the LoRA runtime.
+useStore.getState().setGenerationMode('video')
+useStore.getState().selectModel('minimax_h3')
+st = useStore.getState()
+assert.equal(st.params.model_type, 'minimax_h3')
+assert.equal(st.selectedModelPerMode.video, 'minimax_h3')
+assert.deepEqual(st.params.activated_loras, [])
+assert.equal(st.params.loras_multipliers, '')
+assert.deepEqual(st.loraWeights, {})
+assert.deepEqual(st.availableLoras, [])
+await new Promise(resolve => setTimeout(resolve, 0))
+st = useStore.getState()
+assert.equal(st.lorasLoading, false)
+assert.deepEqual(st.availableLoras, ['style.safetensors'], 'LoRAs hydrate for the chosen model')
+// LoRA toggle/weight round-trips per-mode persistence through the store.
+useStore.getState().toggleLora('style.safetensors')
+st = useStore.getState()
+assert.deepEqual(st.params.activated_loras, ['style.safetensors'])
+assert.equal(st.params.loras_multipliers, '1.00')
+assert.deepEqual(st.savedLoraPerMode.video.activated_loras, ['style.safetensors'])
+assert.deepEqual(JSON.parse(memory.get('maestro_mode_settings')).savedLoraPerMode.video.activated_loras, ['style.safetensors'], 'LoRA toggle persists per mode')
+useStore.getState().setLoraWeight('style.safetensors', 0, 0.75)
+st = useStore.getState()
+assert.equal(st.params.loras_multipliers, '0.75')
+assert.deepEqual(st.loraWeights['style.safetensors'], [0.75])
+assert.equal(JSON.parse(memory.get('maestro_mode_settings')).savedLoraPerMode.video.loras_multipliers, '0.75', 'LoRA weight persists per mode')
+// Avatar edit recipes swap SCAIL-2 models and restore the prior avatar model.
+useStore.setState({
+  generationMode: 'avatar',
+  editSubMode: 'retake',
+  params: { ...useStore.getState().params, model_type: 'ltx2_22B_distilled_1_1', activated_loras: [], loras_multipliers: '' },
+})
+useStore.getState().setEditSubMode('recast')
+st = useStore.getState()
+assert.equal(st.params.model_type, 'scail2_14B_recast_fast', 'recast swaps to its curated model')
+assert.equal(st.selectedModelPerMode.avatar, 'scail2_14B_recast_fast')
+useStore.getState().setEditSubMode('restyle')
+assert.equal(useStore.getState().params.model_type, 'scail2_14B_fast', 'restyle swaps to the Restyle recipe')
+useStore.getState().setEditSubMode('retake')
+assert.equal(useStore.getState().params.model_type, 'ltx2_22B_distilled_1_1', 'leaving SCAIL edit restores the prior avatar model')
+// Edit input mappings: repaint clamps to 5 slots, recast derives + clamps.
+const nineMaps = Array.from({ length: 9 }, (_, i) => ({
+  id: `m${i}`, target: i === 0 ? 'figure' : 'person',
+  refFile: null, refPath: '', refUrl: '', referenceAlignedToSource: false,
+}))
+useStore.getState().setEditRepaintMappings(nineMaps)
+assert.equal(useStore.getState().editRepaintMappings.length, 5, 'repaint mappings clamp to five slots')
+const sevenMaps = Array.from({ length: 7 }, (_, i) => ({
+  ...nineMaps[i], id: `r${i}`, target: i === 0 ? 'prop' : 'person',
+}))
+useStore.getState().setEditRecastMappings(sevenMaps)
+st = useStore.getState()
+assert.equal(st.editRecastMappings.length, 7)
+assert.equal(st.editRecastTarget, 'prop', 'recast target follows the first mapping')
+assert.equal(st.editRecastPersonCount, 5, 'recast person count clamps to five')
+// Create-route routing: media roles own the route, not a pinned control.
+useStore.setState({
+  generationMode: 'video',
+  studioVideoWorkflow: 'frames',
+  studioVideoCreateRoute: 'auto',
+  startImage: null, endImage: null, imageRefs: [],
+  params: {
+    ...useStore.getState().params,
+    model_type: 'ltx2_22B_distilled_1_1',
+    image_mode: 0,
+    image_start: '', image_end: '',
+    image_refs: undefined, frames_positions: undefined,
+    minimax_h3_references: [], audio_guide: '',
+  },
+})
+useStore.getState().setStudioVideoCreateRoute()
+st = useStore.getState()
+assert.equal(st.studioVideoEffectiveCreateRoute, 'generate', 'empty frames input routes to generate')
+assert.equal(st.studioVideoModelPerCreateRoute.generate, 'ltx2_22B_distilled_1_1')
+assert.equal(st.params.model_type, 'ltx2_22B_distilled_1_1', 'generate intent keeps the T2V model')
+useStore.setState({ params: { ...st.params, image_start: '/uploads/first.png' } })
+useStore.getState().reconcileStudioVideoCreateRoute('Frame added')
+st = useStore.getState()
+assert.equal(st.studioVideoEffectiveCreateRoute, 'guided', 'a first frame pulls the route to guided')
+assert.equal(st.studioVideoModelPerCreateRoute.generate, 'ltx2_22B_distilled_1_1', 'past route model is remembered')
+assert.equal(st.params.model_type, 'ltx2_22B_distilled_1_1', 'guided intent keeps the frame-capable model')
+useStore.getState().selectStudioVideoModel('minimax_h3')
+st = useStore.getState()
+assert.equal(st.studioVideoEffectiveCreateRoute, 'guided')
+assert.equal(st.studioVideoModelPerCreateRoute.guided, 'minimax_h3', 'compatible model remembered per route')
+assert.equal(st.params.model_type, 'minimax_h3')
+useStore.getState().selectStudioVideoModel('minimax_h3_ref2va')
+st = useStore.getState()
+assert.equal(st.params.model_type, 'minimax_h3', 'an omni-only model is rejected for a frames/guided intent')
+assert.equal(st.studioVideoEffectiveCreateRoute, 'guided')
+console.log('Slice contracts passed: model visibility hydration, defaults upgrade, enabled-model write-through, LoRA lifecycle, edit recipes, mappings and create-route routing.')
