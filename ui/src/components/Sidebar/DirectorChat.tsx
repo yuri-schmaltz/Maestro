@@ -232,7 +232,7 @@ const sectionBarColors: Record<string, string> = {
  * composer because it sits OUTSIDE the scrollable chat panel — the
  * wheel-capture concern above doesn't apply.
  */
-function AutoResizeTextarea({ minHeight, maxHeight, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
+export function AutoResizeTextarea({ minHeight, maxHeight, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
   minHeight?: number
   maxHeight?: number
 }) {
@@ -1044,28 +1044,33 @@ export function DirectorChat() {
               buttons read as a single primary action row underneath.
               AutoResizeTextarea still grows up to 240px so a long brief
               doesn't break out of the chat column. */}
-          <AutoResizeTextarea
-            value={mvGenerateSetup ? songDescription : chatInput}
-            onChange={e => {
-              const v = e.target.value
-              setDraftQueueConfirmation(null)
-              if (mvGenerateSetup) { setSongDescription(v); return }
-              setChatInput(v)
-              if (step === 'style') setSceneDescription(v)
-            }}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey && chatInputEnabled) {
-                e.preventDefault()
-                handleChatSubmit()
-              }
-            }}
-            placeholder={chatInputPlaceholder}
-            disabled={!chatInputEnabled}
-            rows={3}
-            minHeight={84}
-            maxHeight={140}
-            className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
-          />
+          <div className="relative">
+            <AutoResizeTextarea
+              value={mvGenerateSetup ? songDescription : chatInput}
+              onChange={e => {
+                const v = e.target.value
+                setDraftQueueConfirmation(null)
+                if (mvGenerateSetup) { setSongDescription(v); return }
+                setChatInput(v)
+                if (step === 'style') setSceneDescription(v)
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey && chatInputEnabled) {
+                  e.preventDefault()
+                  handleChatSubmit()
+                }
+              }}
+              placeholder={chatInputPlaceholder}
+              disabled={!chatInputEnabled}
+              rows={3}
+              minHeight={84}
+              maxHeight={140}
+              className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
+            />
+            <span className="pointer-events-none absolute bottom-1 right-3 select-none text-2xs text-text-muted/60">
+              Enter to send · Shift+Enter for a new line
+            </span>
+          </div>
           <div className="flex shrink-0 self-end overflow-hidden rounded-lg border border-accent-blue/60">
             <button
               onClick={handleChatSubmit}

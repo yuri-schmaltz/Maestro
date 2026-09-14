@@ -31,17 +31,17 @@ export function DirectorStageToggle() {
 /**
  * Director page — single screen, full-height layout.
  *
- * Two columns side-by-side so the user can see the planning chat AND
- * the saved-pipelines dashboard at the same time, without scrollbars
- * stacking vertically. The Studio toggle (Planning / Studio) used to
- * live in the section-toolbar above the workspace; it now sits in
- * the bottom HardwareStatusBar via the leftSlot prop so the
- * workspace gets the full vertical height back.
+ * The Director Stage renders three equal columns (chat / plan /
+ * setup) so the user sees the creative conversation, the per-shot
+ * artifacts, and the generation options without scrollbars stacking
+ * vertically. The Studio toggle (Planning / Studio) used to live in a
+ * section-toolbar above the workspace; it now sits in the bottom
+ * HardwareStatusBar via the leftSlot prop so the workspace gets the
+ * full vertical height back.
  *
- *   ┌─────────────────────────────────────────┬─────────────┐
- *   │  DirectorStage (chat + composer)        │  Dashboard  │
- *   │  flex:1                                 │  360px      │
- *   └─────────────────────────────────────────┴─────────────┘
+ *   ┌─────────────────────────────────────────────────────────┐
+ *   │  DirectorStage: chat | plan | setup (1fr 1fr 1fr)        │
+ *   └─────────────────────────────────────────────────────────┘
  *
  * When `stage === 'studio'` we render the original Studio layout
  * (Sidebar + MainContent) without the dashboard — manual generation

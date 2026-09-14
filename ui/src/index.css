@@ -899,17 +899,9 @@ input[type="range"]::-webkit-slider-thumb {
  * segmentation, audio upload). A 33%-wide bar slides left↔right so
  * the user sees *something* moving without a number to trust. */
 @keyframes indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(333%); } }
-/* Director sub-toolbar (Planning/Studio toggle + future actions).
- * padding-left/right (12px) match the .director-layout below it so the
- * Planning/Studio toggle aligns visually with the left edge of the first
- * column. The border-bottom was removed so the toolbar no longer draws a
- * hard horizontal line that crashes into the top of the 3-column stage
- * below it. */
-.section-toolbar { display:flex; align-items:center; justify-content:space-between; min-height:56px; flex-shrink:0; gap:16px; padding:8px 12px; background:var(--color-bg-secondary); }
 .shell-segmented { display:flex; gap:3px; padding:3px; border:1px solid var(--color-border); border-radius:8px; background:var(--color-bg-primary); }
 .shell-segmented button { display:flex; align-items:center; gap:6px; border-radius:5px; padding:6px 12px; font-size: var(--text-xs); color:var(--color-text-muted); }
 .shell-segmented button[aria-pressed=true] { background:var(--color-bg-active); color:var(--color-text-primary); }
-.director-planning-surface { flex:1; min-height:0; width:100%; max-width:1100px; margin:0 auto; border-inline:1px solid var(--color-border); }
 .director-layout { display:flex; flex:1; min-height:0; gap:12px; padding:0 12px 12px; overflow:hidden; }
 .director-stage-pane { flex:1; min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
 /* Three columns inside the Director Stage: chat | plan | setup. The
@@ -935,9 +927,20 @@ input[type="range"]::-webkit-slider-thumb {
    so the column reads as inputs only, without touching the bubble
    components themselves (other surfaces still want the rail). */
 .director-stage-chat .border-l-2 { border-left-width: 0 !important; }
-.director-stage-plan { min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); padding:20px; gap:16px; overflow-y:auto; }
+.director-stage-plan { min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); padding:20px; gap:16px; }
 .director-stage-options { min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; padding:20px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); overflow-y:auto; gap:16px; }
-.director-dashboard-pane { width:360px; min-width:360px; max-width:360px; min-height:0; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); }
+/* Responsive: the 3-column stage only fits on wide viewports. Between
+   801px and 1100px the chat takes the full first row (its message list
+   scrolls internally) and Plan/Options share the second row. At or below
+   800px every column stacks full-width and the stage itself scrolls. */
+@media(max-width:1100px) {
+  .director-stage-columns { grid-template-columns: repeat(2, minmax(0,1fr)); overflow-y:auto; }
+  .director-stage-chat { grid-column: 1 / -1; max-height: 360px; }
+}
+@media(max-width:800px) {
+  .director-stage-columns { grid-template-columns: minmax(0,1fr); }
+  .director-stage-chat, .director-stage-plan, .director-stage-options { grid-column: 1 / -1; min-height: 280px; }
+}
 .shell-icon-button.is-active { background:var(--color-bg-active); color:var(--color-accent-blue); }
 .configurations-layout { display:grid; grid-template-columns:280px minmax(0,1fr); align-items:stretch; gap:32px; }
 .configurations-navigation { display:flex; flex-direction:column; gap:6px; }
@@ -1004,23 +1007,13 @@ input[type="range"]::-webkit-slider-thumb {
  .section-heading h1 { font-size: var(--text-3xl); }
  .projects-grid { grid-template-columns:1fr; }
  .project-card { padding:20px; }
- .configurations-content { padding:16px; }
- .section-toolbar { padding-inline:12px; gap:8px; }
- .status-project button span { max-width:72px; }
- .status-telemetry { gap:8px; justify-content:flex-end; font-size: var(--text-2xs); }
- .status-telemetry > span { gap:3px; }
- .global-status-summary { grid-template-columns:auto 1fr auto; gap:10px; padding-inline:12px; }
- .status-gauges { gap:10px; }
- .mini-gauge-label { display:none; }
- .mini-gauge-bar { min-width:36px; max-width:80px; }
- .mini-gauge-value { min-width:auto; }
+.configurations-content { padding:16px; }
+  .status-project button span { max-width:72px; }
+  .status-telemetry { gap:8px; justify-content:flex-end; font-size: var(--text-2xs); }
+  .status-telemetry > span { gap:3px; }
+  .global-status-summary { grid-template-columns:auto 1fr auto; gap:10px; padding-inline:12px; }
+  .status-gauges { gap:10px; }
+  .mini-gauge-label { display:none; }
+  .mini-gauge-bar { min-width:36px; max-width:80px; }
+  .mini-gauge-value { min-width:auto; }
 }
-.director-planning-layout { display:flex; flex:1; min-height:0; overflow:hidden; }
-.director-planning-layout.has-production .director-planning-surface { width:400px; flex:none; margin:0; border-left:0; }
-.director-production-surface { flex:1; min-width:0; padding:24px; overflow-y:auto; }
-@media(max-width:800px) {
- .director-planning-layout.has-production { overflow-y:auto; flex-direction:column; }
- .director-planning-layout.has-production .director-planning-surface { width:100%; height:600px; min-height:480px; border-inline:0; border-bottom:1px solid var(--color-border); }
- .director-production-surface { overflow:visible; flex:none; padding:16px; }
-}
-@media(min-width:768px) { .studio-preview-toggle { display:none; } }

@@ -221,7 +221,7 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
   return (
     <div className={`rounded-lg border-2 ${tagColor} bg-bg-secondary overflow-hidden`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-bg-tertiary border-b border-border">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-1.5 bg-bg-tertiary border-b border-border">
         <span className="text-xs font-medium text-text-primary">
           Shot {clip.index + 1}
           {(clip.planned_clip as unknown as Record<string, unknown> | null)?.duration_sec ? (
@@ -241,12 +241,16 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
           {/* Tag buttons */}
           <button onClick={() => onTag(clip.tag === 'good' ? null : 'good')}
             disabled={busy}
+            aria-pressed={clip.tag === 'good'}
+            aria-label={`Mark shot ${clip.index + 1} as good`}
             className={`ml-2 p-0.5 rounded disabled:opacity-40 ${clip.tag === 'good' ? 'bg-green-500 text-white' : 'text-text-muted hover:text-indicator-success'}`}
             title="Mark as good">
             <Check size={12} />
           </button>
           <button onClick={() => onTag(clip.tag === 'needs_work' ? null : 'needs_work')}
             disabled={busy}
+            aria-pressed={clip.tag === 'needs_work'}
+            aria-label={`Mark shot ${clip.index + 1} as needs work`}
             className={`p-0.5 rounded disabled:opacity-40 ${clip.tag === 'needs_work' ? 'bg-amber-500 text-white' : 'text-text-muted hover:text-indicator-warning'}`}
             title="Needs work">
             <AlertTriangle size={12} />
@@ -285,12 +289,15 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
               </span>
               {requiresShotImage && <div className="flex items-center gap-1">
                 <button onClick={() => { setEditingImage(!editingImage); setEditImagePrompt(clip.image_prompt || '') }}
+                  aria-pressed={editingImage}
+                  aria-label={`Edit image prompt for shot ${clip.index + 1}`}
                   className={`p-0.5 rounded transition-colors ${editingImage ? 'text-accent-blue' : 'text-text-muted hover:text-text-secondary'}`}
                   title="Edit prompt">
                   <Pencil size={9} />
                 </button>
                 <button onClick={() => onRerunImage(clip.index, editingImage ? editImagePrompt : undefined)}
                   disabled={busy}
+                  aria-label={`Re-generate start image for shot ${clip.index + 1}`}
                   className="p-0.5 rounded text-text-muted hover:text-accent-blue transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Re-generate start image">
                   <Camera size={10} />
@@ -353,6 +360,8 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
                 setEditVideoPrompt(clip.video_prompt || '')
                 setEditWindowPrompts(clip.window_prompts || [])
               }}
+                aria-pressed={editingVideo}
+                aria-label={`Edit video prompt for shot ${clip.index + 1}`}
                 className={`p-0.5 rounded transition-colors ${editingVideo ? 'text-accent-blue' : 'text-text-muted hover:text-text-secondary'}`}
                 title="Edit prompt">
                 <Pencil size={9} />
@@ -365,6 +374,7 @@ function ClipCard({ clip, pipeline, busy = false, onTag, onRerunImage, onRerunVi
                 }
               }}
                 disabled={busy || (requiresShotImage && !clip.start_image_filename)}
+                aria-label={`Re-generate video clip for shot ${clip.index + 1}`}
                 className="p-0.5 rounded text-text-muted hover:text-indicator-success transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title={busy
                   ? 'Wait for pipeline repair to finish'

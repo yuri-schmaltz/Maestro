@@ -212,7 +212,7 @@ export function DirectorPlanColumn() {
        visible inset is 36px from the column's rounded border —
        generous enough to let the cards breathe without wasting
        vertical real estate. */
-    <div className="h-full overflow-y-auto p-4 space-y-3" data-testid="director-plan-column">
+    <div className="h-full p-4 space-y-3" data-testid="director-plan-column">
       {/* 1) Structure — clip structure with pacing slider. Skipped for
           the story path (no audio → no clip boundary detection). */}
       {!isStoryPath && (atStep('structure') || pastStep('structure')) && (

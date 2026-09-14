@@ -3,6 +3,7 @@ import { Check, X, LockKeyhole, Unlock, Loader2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import * as api from '../../api/client'
 import { CinemaWarningsPanel } from './CinemaWarningsPanel'
+import { AutoResizeTextarea } from '../Sidebar/DirectorChat'
 
 /** One card per scene; approval belongs to the displayed server revision. */
 export function DirectorReview() {
@@ -85,15 +86,17 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
                     {locks[index]?.includes(field) ? <LockKeyhole size={13} /> : <Unlock size={13} />}
                   </button>
                 </span>
-                <textarea className="w-full rounded border border-border bg-bg-tertiary p-2 disabled:opacity-60" rows={4}
+                <AutoResizeTextarea className="w-full rounded border border-border bg-bg-tertiary p-2 disabled:opacity-60" rows={4} minHeight={96}
                   disabled={busy || finalReview || locks[index]?.includes(field) || (imageReview && field === 'image_prompt')}
                   value={plan[field] || ''} onChange={event => change(index, field, event.target.value)} />
+                {finalReview && <p className="text-2xs text-text-muted">Final render — every field is locked as submitted.</p>}
+                {!finalReview && locks[index]?.includes(field) && <p className="text-2xs text-accent-blue">Locked — this field will be preserved exactly as written.</p>}
                 {plan[field] !== status.clip_plans[index][field] && <details className="text-text-muted"><summary>Original prompt</summary><p className="whitespace-pre-wrap">{status.clip_plans[index][field]}</p></details>}
               </label>
             ))}
             {plan.window_prompts?.map((prompt, wi) => (
               <label key={wi} className="block text-xs">Window {wi + 1}
-                <textarea rows={3} className="w-full rounded border border-border bg-bg-tertiary p-2" value={prompt}
+                <AutoResizeTextarea rows={3} minHeight={72} className="w-full rounded border border-border bg-bg-tertiary p-2" value={prompt}
                   disabled={busy || finalReview || locks[index]?.includes('window_prompts')}
                   onChange={event => change(index, 'window_prompts', plan.window_prompts!.map((p, j) => j === wi ? event.target.value : p))} />
               </label>

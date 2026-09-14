@@ -50,11 +50,6 @@ import {
 } from '../Sidebar/DirectorChat'
 import { DirectorPlanColumn } from '../Sidebar/DirectorPlanColumn'
 
-interface DirectorStageProps {
-  /** Render in compact mode (no header) when nested inside another surface. */
-  embedded?: boolean
-}
-
 /**
  * Mounts the Director planning UI as a Stage inside the Workspace.
  *
@@ -414,21 +409,12 @@ function DirectorStatusPanel() {
   )
 }
 
-export function DirectorStage({ embedded = false }: DirectorStageProps) {
+export function DirectorStage() {
   const pipelineId = useStore(s => s.pipelineId)
   const pipelineStatus = useStore(s => s.pipelineStatus)
   const directorStep = useStore(s => s.directorStep)
-  // The right column used to be locked past the analyze step under the
-  // "Project setup is locked after planning begins" rule, since the
-  // chosen values were baked into the per-pipeline director_ui_snapshot
-  // and changing them mid-stream would invalidate prompts that downstream
-  // clips already depend on. With ProjectSetup living on the workspace,
-  // the project's defaults are settled at creation; the right column is
-  // now per-take (changes land in the per-pipeline snapshot at submit
-  // time) and stays editable throughout. We keep `directorStep` in scope
-  // here because future per-step UX (e.g. context-aware help text) can
-  // pivot off it without touching this signature.
-  void directorStep
+  // The right column is now strictly per-take (changes land in the
+  // per-pipeline snapshot at submit time) and stays editable throughout.
 
   // Make sure the DirectorChat's LLM-log polling effect runs whenever
   // the Stage is mounted. The legacy `<DirectorChat/>` was only mounted
@@ -444,10 +430,6 @@ export function DirectorStage({ embedded = false }: DirectorStageProps) {
       // stage is hidden" behavior (out of scope for Stage 1).
     }
   }, [pipelineId, pipelineStatus?.status])
-
-  if (embedded) {
-    return <DirectorChat />
-  }
 
   return (
     <div
@@ -470,16 +452,13 @@ export function DirectorStage({ embedded = false }: DirectorStageProps) {
           </div>
         </section>
         <aside className="director-stage-options" aria-label="Director generation options">
-          {/* The right column is now strictly per-take. Aspect ratio,
-              resolution, workflow flags and models live on the project
-              (ProjectsPage → Edit setup) and were intentionally
-              removed from the Director: changing them mid-run would
-              silently desync from the project's stored defaults. The
-              "Project defaults" recap that used to live here moved
-              into the project card on the Projects page so the user
-              still has a one-look summary of what each project starts
-              with. */}
-          <DirectorGenerationOptions />
+          {directorStep !== 'upload' ? (
+            <DirectorGenerationOptions />
+          ) : (
+            <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-bg-tertiary p-6 text-center text-xs text-text-muted">
+              Generation options appear after you upload your audio and reference images.
+            </div>
+          )}
         </aside>
       </div>
     </div>
