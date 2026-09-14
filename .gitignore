@@ -111,3 +111,6 @@ app/plugins/wan2gp-lora-multipliers-ui/
 # Python bytecode (anywhere)
 __pycache__/
 app/wgp_config.json.bak
+
+# Launcher runtime state
+.launcher.pid
