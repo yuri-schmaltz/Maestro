@@ -180,7 +180,7 @@ export function ProjectSetupForm({
             <img
               src={coverPreview}
               alt="Project cover preview"
-              className="w-full h-28 object-cover rounded-lg border border-border"
+              className="w-full h-28 object-contain bg-bg-tertiary rounded-lg border border-border"
               onError={e => { e.currentTarget.style.display = 'none' }}
             />
             <button
