@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Clapperboard, Copy, Film, FolderOpen, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Trash2 } from 'lucide-react'
+import { Check, Clapperboard, Copy, Film, FolderOpen, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Trash2, X } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useWorkspaceSlice } from '../../stores/workspaceSelectors'
 import type { AppSection, ProjectSetupDefaults } from '../../types'
@@ -57,8 +57,10 @@ export function ProjectsPage() {
   const [destination, setDestination] = useState<AppSection>('director')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
+  // Card armed for deletion — shows a small inline confirm popover
+  // next to its trash button instead of a central modal.
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
   // Cover image picked in the dialog but not uploaded yet (the New
   // project workspace doesn't exist until submit). Uploaded as part of
   // create/saveEdit, then cleared.
@@ -129,16 +131,15 @@ export function ProjectsPage() {
     setDestination('director')
     setCreating(true)
   }
-  const remove = async () => {
-    if (!deleting) return
-    setBusy(deleting); setError(null)
+  const remove = async (name: string) => {
+    setBusy(name); setError(null)
     try {
       // deleteWorkspace hits DELETE /api/v1/workspaces/<name> which
       // removes the folder and all files inside. The backend also
       // auto-switches to 'default' if the deleted workspace was active;
       // the store handles that transition by routing back to Projects.
-      await deleteWorkspace(deleting)
-      setDeleting(null)
+      await deleteWorkspace(name)
+      setConfirmingDelete(null)
     }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not delete project.') }
     finally { setBusy(null) }
@@ -207,9 +208,11 @@ export function ProjectsPage() {
     <div className="section-scroll">
       <div className="section-container">
         <div className="projects-toolbar">
-          <button className="shell-primary-button shrink-0" onClick={openCreate}><Plus size={16} />New project</button>
-          <label className="shell-search"><Search size={15} /><input aria-label="Search projects" placeholder="Search projects…" value={query} onChange={e => setQuery(e.target.value)} /></label>
-          <span className="shrink-0 text-xs text-text-muted">{userProjects.length} {userProjects.length === 1 ? 'project' : 'projects'}</span>
+          <div className="projects-toolbar-searchzone">
+            <button className="shell-primary-button shrink-0" onClick={openCreate}><Plus size={16} />New project</button>
+            <label className="shell-search"><Search size={15} /><input aria-label="Search projects" placeholder="Search projects…" value={query} onChange={e => setQuery(e.target.value)} /></label>
+          </div>
+          <span className="projects-toolbar-count">{userProjects.length} {userProjects.length === 1 ? 'project' : 'projects'}</span>
         </div>
         {error && <p role="alert" className="my-4 rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-400">{error}</p>}
         {!hasProjects && !query && (
@@ -269,20 +272,32 @@ export function ProjectsPage() {
                 <button disabled={busy !== null} onClick={() => openDuplicate(workspace)} title={`Duplicate ${workspace.name} setup`} aria-label={`Duplicate ${workspace.name} setup`} className="shell-icon-button"><Copy size={14} /></button>
                 <button disabled={busy !== null} onClick={() => void togglePin(workspace)} title={workspace.setup?.pinned ? 'Unpin project' : 'Pin project'} aria-label={workspace.setup?.pinned ? 'Unpin project' : 'Pin project'} className="shell-icon-button">{busy === `pin-${workspace.name}` ? <Loader2 size={14} className="animate-spin" /> : workspace.setup?.pinned ? <PinOff size={14} /> : <Pin size={14} />}</button>
                 <button disabled={busy !== null} onClick={() => openEdit(workspace.name)} title={`Edit ${workspace.name} setup`} aria-label={`Edit ${workspace.name} setup`} className="shell-icon-button"><Settings size={14} /></button>
-                <button disabled={busy !== null} onClick={() => setDeleting(workspace.name)} title={`Delete ${workspace.name}`} aria-label={`Delete ${workspace.name}`} className="shell-icon-button project-danger"><Trash2 size={14} /></button>
+                <span className="relative ml-auto">
+                  <button disabled={busy !== null} onClick={() => setConfirmingDelete(current => current === workspace.name ? null : workspace.name)} title={`Delete ${workspace.name}`} aria-label={`Delete ${workspace.name}`} aria-expanded={confirmingDelete === workspace.name} className="shell-icon-button project-danger"><Trash2 size={14} /></button>
+                  {confirmingDelete === workspace.name && (
+                    <span className="project-delete-pop" role="alertdialog" aria-label={`Delete ${workspace.name}?`}>
+                      <span className="project-delete-pop-text">Delete?</span>
+                      <button type="button" disabled={busy !== null} onClick={() => void remove(workspace.name)} className="project-delete-confirm">
+                        {busy === workspace.name ? 'Deleting…' : 'Delete'}
+                      </button>
+                      <button type="button" aria-label="Cancel delete" title="Cancel" onClick={() => setConfirmingDelete(null)} className="project-delete-cancel"><X size={12} /></button>
+                    </span>
+                  )}
+                </span>
               </div>
             </article>
             )
           })}
         </div>
       </div>
-      {/* New project / Edit setup / Delete dialog. Each uses its own
+      {/* New project / Edit setup dialog. Each uses its own
           contextual content; the modal chrome stays shared so the
-          keyboard escape and Tab trap logic isn't repeated. */}
-      {(creating || editing || deleting) && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4" onClick={() => { if (!busy) { setCreating(false); setEditing(null); setDeleting(null) } }}>
-          <form role="dialog" aria-modal="true" aria-labelledby="project-dialog-title" className="w-full max-w-xl max-h-[88vh] overflow-y-auto rounded-2xl border border-border bg-bg-secondary p-6 shadow-2xl" onClick={e => e.stopPropagation()} onSubmit={e => { e.preventDefault(); void (deleting ? remove() : creating ? create() : saveEdit()) }} onKeyDown={e => {
-              if (e.key === 'Escape' && !busy) { setCreating(false); setEditing(null); setDeleting(null) }
+          keyboard escape and Tab trap logic isn't repeated. Delete
+          confirmation is inline on the card (no modal). */}
+      {(creating || editing) && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4" onClick={() => { if (!busy) { setCreating(false); setEditing(null) } }}>
+          <form role="dialog" aria-modal="true" aria-labelledby="project-dialog-title" className="w-full max-w-xl max-h-[88vh] overflow-y-auto rounded-2xl border border-border bg-bg-secondary p-6 shadow-2xl" onClick={e => e.stopPropagation()} onSubmit={e => { e.preventDefault(); void (creating ? create() : saveEdit()) }} onKeyDown={e => {
+              if (e.key === 'Escape' && !busy) { setCreating(false); setEditing(null) }
               if (e.key === 'Tab') {
                 const controls = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('input:not(:disabled), select:not(:disabled), button:not(:disabled)'))
                 const first = controls[0], last = controls[controls.length - 1]
@@ -291,14 +306,9 @@ export function ProjectsPage() {
               }
             }}>
             <h2 id="project-dialog-title" className="mb-3 text-lg font-semibold">
-              {deleting ? `Delete ${deleting}?` : creating ? 'New project' : `Edit ${editing} setup`}
+              {creating ? 'New project' : `Edit ${editing} setup`}
             </h2>
-            {deleting ? (
-              <>
-                <p className="text-sm text-text-secondary">This permanently deletes the project's workspace folder and <strong>all media files, Editor projects and Director productions</strong> inside it.</p>
-                <p className="mt-2 text-xs text-text-muted">Folder: <code className="text-text-secondary">{deleting}</code></p>
-              </>
-            ) : creating ? (
+            {creating ? (
               <>
                 <div>
                   <span className="text-xs text-text-secondary block mb-1.5">Start from a template</span>
@@ -361,9 +371,9 @@ export function ProjectsPage() {
             )}
             {error && <p role="alert" className="mt-3 text-sm text-red-400">{error}</p>}
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" autoFocus={Boolean(deleting)} disabled={busy !== null} className="shell-secondary-button" onClick={() => { setCreating(false); setEditing(null); setDeleting(null) }}>Cancel</button>
-              <button disabled={busy !== null || (!deleting && !creating && !editing) || (creating && !name.trim())} className="shell-primary-button">
-                {busy ? 'Working…' : deleting ? 'Delete project' : creating ? 'Create project' : 'Save setup'}
+              <button type="button" disabled={busy !== null} className="shell-secondary-button" onClick={() => { setCreating(false); setEditing(null) }}>Cancel</button>
+              <button disabled={busy !== null || (!creating && !editing) || (creating && !name.trim())} className="shell-primary-button">
+                {busy ? 'Working…' : creating ? 'Create project' : 'Save setup'}
               </button>
             </div>
           </form>
