@@ -207,11 +207,9 @@ export function ProjectsPage() {
     <div className="section-scroll">
       <div className="section-container">
         <div className="projects-toolbar">
+          <button className="shell-primary-button shrink-0" onClick={openCreate}><Plus size={16} />New project</button>
           <label className="shell-search"><Search size={15} /><input aria-label="Search projects" placeholder="Search projects…" value={query} onChange={e => setQuery(e.target.value)} /></label>
-          <div className="projects-toolbar-end">
-            <span className="text-xs text-text-muted">{userProjects.length} {userProjects.length === 1 ? 'project' : 'projects'}</span>
-            <button className="shell-primary-button" onClick={openCreate}><Plus size={16} />New project</button>
-          </div>
+          <span className="shrink-0 text-xs text-text-muted">{userProjects.length} {userProjects.length === 1 ? 'project' : 'projects'}</span>
         </div>
         {error && <p role="alert" className="my-4 rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-400">{error}</p>}
         {!hasProjects && !query && (
