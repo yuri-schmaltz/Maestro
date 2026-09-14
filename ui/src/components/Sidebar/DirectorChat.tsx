@@ -554,7 +554,7 @@ export function DirectorChat() {
   }, [analysis?.lyrics])
 
   const currentIndex = STEP_ORDER.indexOf(step)
-  const pastStep = (s: DirectorStep) => currentIndex > STEP_ORDER.indexOf(s)
+  const pastStep = useCallback((s: DirectorStep) => currentIndex > STEP_ORDER.indexOf(s), [currentIndex])
   const atStep = (s: DirectorStep) => step === s
     && step !== 'review_video'
 
@@ -637,6 +637,28 @@ export function DirectorChat() {
       }
     }
   }, [mvGenerateSetup, songDescription, loading, generateTrack, step, chatInput, setSceneDescription, autoMode, startDirectorPipeline, isStoryPath, shortFilmPlanFromStory, isShortFilm, shortFilmPlanPrompts, planPrompts])
+
+  // Shared "attach a script" handler for the Story and Music Video paths.
+  // Loads the extracted text into the scene description (and the composer)
+  // so Send plans from it. Past the style step it rewinds the plan back to
+  // style — reapplies the pending texts and re-enables Send — but only when
+  // no pipeline is running or paused, to avoid detaching from live work.
+  const loadScriptIntoDescription = useCallback(({ text }: { text: string }) => {
+    setSceneDescription(text)
+    setChatInput(text)
+    const pipelineActive = !!(pipelineStatus &&
+      ['running', 'paused', 'queued', 'starting'].includes(pipelineStatus.status))
+    if (pastStep('style') && !loading && !pipelineActive) {
+      useStore.setState({
+        directorStep: 'style',
+        directorPlannedClips: [],
+        directorClipPlans: [],
+        directorClipImages: [],
+        directorImageGenProgress: null,
+        directorLoadingMessage: null,
+      })
+    }
+  }, [pipelineStatus, loading, pastStep, setSceneDescription, setChatInput])
 
   const chatInputEnabled = (step === 'style' || mvGenerateSetup) && !loading
 
@@ -966,6 +988,15 @@ export function DirectorChat() {
 
 
         {/* Style step */}
+        {!isShortFilm && (atStep('style') || pastStep('style')) && (
+          <SystemBubble>
+            <p className="text-xs text-text-secondary mb-2">
+              Attach a story outline or lyric script to shape the music video. The text loads into the scene
+              description in the composer below, alongside the song's audio structure.
+            </p>
+            <ScriptAttachCard onLoaded={loadScriptIntoDescription} />
+          </SystemBubble>
+        )}
         {isStoryPath && (atStep('style') || pastStep('style')) && (
           <SystemBubble>
             <p className="text-xs text-text-secondary mb-2">
@@ -1004,27 +1035,7 @@ export function DirectorChat() {
                   </label>
                 </>
               )}
-              <ScriptAttachCard onLoaded={({ text }) => {
-                setSceneDescription(text)
-                setChatInput(text)
-                // Past the style step (e.g. a story session restored from an
-                // earlier save), loading a script rewinds the plan to style
-                // so Send becomes actionable again — but only when no
-                // pipeline is running or paused, to avoid detaching from
-                // live work.
-                const pipelineActive = !!(pipelineStatus &&
-                  ['running', 'paused', 'queued', 'starting'].includes(pipelineStatus.status))
-                if (pastStep('style') && !loading && !pipelineActive) {
-                  useStore.setState({
-                    directorStep: 'style',
-                    directorPlannedClips: [],
-                    directorClipPlans: [],
-                    directorClipImages: [],
-                    directorImageGenProgress: null,
-                    directorLoadingMessage: null,
-                  })
-                }
-              }} />
+              <ScriptAttachCard onLoaded={loadScriptIntoDescription} />
             </div>
           </SystemBubble>
         )}
