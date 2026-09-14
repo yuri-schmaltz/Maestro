@@ -49,9 +49,9 @@ Evidências atuais: build oficial, lint, contratos UI e sete testes de launcher
 aprovados; smoke executado com `-m smoke`: 1 teste e 35 subtests aprovados.
 O teste novo `test_director_opens_without_runtime_errors` passou no Chromium
 com mutações interceptadas; screenshot em `/tmp/maestro-overhaul/director-runtime.png`.
-O teste visual completo ainda falha por esperar controles antigos de hardware
-removidos da aplicação. Atualizar os seletores e fixtures, sem esconder
-regressões reais de revisão de produção, editor ou CRUD.
+Na primeira etapa, o teste visual completo ainda falhava por esperar controles
+antigos. A segunda etapa abaixo atualizou o teste e corrigiu regressões reais
+de Dashboard e revisão de produção.
 
 Próximas ações: modernizar o teste visual completo com todas as mutações
 interceptadas desde o início; verificar salvamento/reabertura e snapshot do
@@ -60,7 +60,36 @@ limpo; seguir as extrações P2. Geração real e exportação ainda não execut
 O Vite de teste está em `127.0.0.1:3000`, proxy explícito para `7861`; confirmar
 processos vivos antes de reutilizar. O backend do usuário não foi reiniciado.
 
-## Estado para quem assumir
+## Segunda etapa — navegação e setup validados
+
+- Corrigida a criação de projetos para aplicar o setup antes de abrir Director.
+  Saves atualizam o cartão e invalidam listagens antigas; editar e reabrir o
+  formulário conserva a última configuração salva.
+- Dashboard agora renderiza o componente existente na aba correspondente.
+- Director mostra `DirectorReview` quando a produção está pausada, permitindo
+  aprovar cenas e habilitar a continuação sem trocar para Studio/Medias.
+- Teste visual atualizado: 35 combinações de sete abas e cinco larguras,
+  teclado, telemetria, Dashboard, revisão pausada, histórico/salvamento do
+  Editor e CRUD. Todas as mutações são interceptadas desde o primeiro request.
+  Resultado: dois testes de shell Chromium aprovados, sem erros JavaScript.
+- Novo teste Chromium de criação/edição/reabertura de setup aprovado. Valida
+  proporção, resolução e origem de música no estado efetivo do Director.
+- Corrigida seleção de skills locais: frontend envia o ID escolhido, pipeline
+  conserva `skill_type` separado do workflow de renderização e orquestrador
+  resolve planners pelo registry em runtime. Plugins usam v2 mesmo com a
+  preferência legada desligada. O teste HTTP real descobre um plugin instalado
+  após o import do orquestrador e executa seu planner/renderers; apenas a carga
+  do LLM é substituída, pois o planner de demonstração é determinístico.
+- Validação desta etapa: build oficial/lint/contratos UI aprovados; suite Python
+  padrão: 162 passed, 2 skipped, 4 deselected, 33 subtests. Browser: 3 testes
+  aprovados (2 shell + 1 setup). Artefatos em `/tmp/maestro-overhaul/`.
+
+Ainda faltam: CI em ambiente limpo; testes adicionais de snapshots/workflows e
+persistência contra backend real isolado; extrações Studio/Director/routers;
+geração e exportação reais; revisão final e commits. O backend existente
+continua sem reinício. O objetivo completo permanece ativo.
+
+## Estado inicial do diagnóstico (histórico)
 
 - O commit `659907b` contém as correções iniciais, o serviço Workspace Setup,
   o workspace slice e os helpers de Studio/modelos/LoRAs.
@@ -75,7 +104,7 @@ processos vivos antes de reutilizar. O backend do usuário não foi reiniciado.
   `studioSlice` completo solicitado no histórico. Seleção de modelos,
   hidratação, troca de modo, snapshots e efeitos de LoRAs continuam na raiz.
 
-## Melhorias confirmadas por inspeção
+## Melhorias da primeira revisão (histórico)
 
 - [x] Extração de persistência/validação de setup para
   `app/services/workspace_setup.py`, com wrappers em `launch.py` e testes próprios.
@@ -139,7 +168,7 @@ terminam com código zero, seguidos de uma verificação visual do Director.
 - [ ] Proteger `loadWorkspaceSetup` contra respostas fora de ordem ao alternar
   rapidamente entre projetos. Hoje aplica qualquer resposta recebida sem
   conferir se o workspace continua ativo. Verificar também saves pendentes.
-- [ ] Validar uma skill local desde a listagem até o planner correspondente;
+- [x] Validar uma skill local desde a listagem até o planner correspondente;
   a correção do canonicalizador, isoladamente, não comprova todo o fluxo.
 
 ## P1 — Corrigir launcher e proxy
@@ -203,7 +232,7 @@ terminam com código zero, seguidos de uma verificação visual do Director.
 
 ## Comandos para repetir a verificação
 
-Resultados observados nesta revisão:
+Resultados do diagnóstico inicial, anteriores às correções acima:
 
 | Verificação | Resultado |
 | --- | --- |

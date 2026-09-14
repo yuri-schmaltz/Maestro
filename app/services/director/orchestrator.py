@@ -18,7 +18,7 @@ import threading
 from typing import Optional, Any
 
 from .schema import ProductionPlan, ShotPlan, RenderedPrompts, canonical_skill_type
-from .registry import get_skill_planner_class, list_skill_types
+from .registry import get_skill_planner_class
 from .renderers import (
     LtxT2VRenderer, LtxI2VRenderer, LtxA2VRenderer,
     LtxRetakeRenderer, LtxExtendRenderer, ImageGenRenderer,
@@ -56,13 +56,6 @@ class DirectorFlags:
 # Default flags
 DEFAULT_FLAGS = DirectorFlags()
 
-
-# ── Planner Registry ────────────────────────────────────────────────
-
-_PLANNER_MAP = {
-    skill_type: get_skill_planner_class(skill_type)
-    for skill_type in list_skill_types()
-}
 
 # ── Renderer Registry ───────────────────────────────────────────────
 
@@ -150,9 +143,10 @@ class DirectorOrchestrator:
             ProductionPlan with normalized ShotPlan objects.
         """
         skill_type = canonical_skill_type(skill_type)
-        planner_cls = _PLANNER_MAP.get(skill_type)
-        if not planner_cls:
-            raise ValueError(f"Unknown skill type: {skill_type}. Available: {list(_PLANNER_MAP.keys())}")
+        try:
+            planner_cls = get_skill_planner_class(skill_type)
+        except KeyError as exc:
+            raise ValueError(f"Unknown skill type: {skill_type}") from exc
 
         planner = planner_cls(
             llm_generate=self._generate,

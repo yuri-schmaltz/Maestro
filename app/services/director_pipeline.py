@@ -6123,6 +6123,9 @@ def _run_planning(pid: str, params: dict, pipeline_type: str):
     # the flag at all. Keeping it consistent with the services-config
     # default here so the legacy path isn't accidentally hit.
     use_v2 = params.get("use_director_v2", True)
+    # Plugin planners exist only in the registry-backed v2 orchestration.
+    if params.get("skill_type") not in (None, "music_video", "short_film"):
+        use_v2 = True
     execution_profile = _director_video_execution_profile(params)
     if execution_profile.get("is_minimax_h3") and not use_v2:
         # The legacy planner only understands generic 20-second rolling
@@ -6218,7 +6221,7 @@ def _run_planning_v2(pid: str, params: dict, pipeline_type: str):
         "podcast": "podcast",
         "viral_video": "viral_video",
     }
-    skill_type = skill_map.get(pipeline_type, "music_video")
+    skill_type = params.get("skill_type") or skill_map.get(pipeline_type, "music_video")
 
     # Build planner kwargs
     scene_description = params.get("scene_description", "")

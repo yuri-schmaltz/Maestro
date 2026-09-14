@@ -76,7 +76,7 @@ def test_application_shell():
         for width, height in [(1440, 960), (1024, 768), (768, 1024), (390, 844), (320, 740)]:
             page.set_viewport_size({'width': width, 'height': height})
             for name in SECTIONS:
-                tab = page.get_by_role('tab', name=name, exact=True)
+                tab = page.locator(f'#tab-{name.lower()}')
                 tab.click()
                 expect(tab).to_have_attribute('aria-selected', 'true')
                 expect(page.get_by_role('tabpanel')).to_have_attribute('id', f'panel-{name.lower()}')

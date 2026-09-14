@@ -1,3 +1,6 @@
+import { createStudioModelSlice } from './studioModelSlice'
+import { studioModelRuntime } from './studioModelRuntime'
+import { createStudioModeSlice } from './studioModeSlice'
 import { trackAnalysisProgress } from './analysisProgress'
 import type { SceneSlot } from '../lib/directorTimeline'
 import { create } from 'zustand'
@@ -25,8 +28,6 @@ import {
 import { buildGenerationPlan, resolvedGenerationPlan, type ReviewPlan } from '../lib/generationPlan'
 import { createWorkspaceSlice } from './workspaceSlice'
 import { buildStudioPreferencePayload, durableGenerationMode } from './studioPreferences'
-import { composeModelCatalog } from './modelCatalog'
-import { loraPhaseCount, toggleLoraState, updateLoraWeight } from './loraState'
 import { createStudioWorkflowSlice } from './studioWorkflowSlice'
 
 let _directorAnalysisSequence = 0
@@ -60,9 +61,7 @@ let _dashboardPipelineListLoadToken = 0
 let _directorPipelineAttachToken = 0
 let _directorPipelineReconnectAttempted = false
 let _directorPipelinePollToken = 0
-let _h3WindowOverridesHydrated = false
 let _h3WindowOverrideSaveTask: Promise<void> = Promise.resolve()
-let _studioPreferencesHydrated = false
 let _studioPreferencesSaveTask: Promise<void> = Promise.resolve()
 const STUDIO_VIDEO_CREATE_ROUTE_KEY = 'maestro_studio_video_create_route_v1'
 
@@ -757,7 +756,6 @@ const _PRIMARY_MODEL_DEFAULT_FIELDS: ReadonlyArray<string> = [
 
 // Monotonic sequence for loadModelOptions staleness detection — only the
 // most recently requested model's options may touch the store.
-let _modelOptionsSeq = 0
 
 function _applyModelDefaults(
   storeGet: () => { selectedModelPerMode: Partial<Record<GenerationMode, string>>; generationMode: GenerationMode; params: GenerateParams },
@@ -970,9 +968,6 @@ const OLD_MUSIC_DEFAULT = 'ace_step_v1_5_xl_turbo_lm_4b'
 const NEW_MUSIC_DEFAULT = 'ace_step_v1_5_xl_sft_lm_4b'
 
 const ENABLED_MODELS_KEY = 'maestro_enabled_models'
-let _initializedMatureModels = new Set<string>()
-let _modelVisibilityHydrated = false
-let _modelVisibilityDefaultsVersion = 1
 let _modelVisibilitySaveTask: Promise<void> = Promise.resolve()
 
 function _saveEnabledModels(models: Set<string>) {
@@ -981,8 +976,8 @@ function _saveEnabledModels(models: Set<string>) {
   } catch { /* quota exceeded */ }
   const payload = {
     enabled_models: [...models],
-    initialized_mature_models: [..._initializedMatureModels],
-    defaults_version: _modelVisibilityDefaultsVersion,
+    initialized_mature_models: [...studioModelRuntime.initializedMatureModels],
+    defaults_version: studioModelRuntime.defaultsVersion,
   }
   _modelVisibilitySaveTask = _modelVisibilitySaveTask
     .catch(() => { /* a later save should still run */ })
@@ -1013,7 +1008,7 @@ function _markMatureModelsInitialized(
       model.nsfw_only
       && (requested == null || requested.has(model.model_type))
     ) {
-      _initializedMatureModels.add(model.model_type)
+      studioModelRuntime.initializedMatureModels.add(model.model_type)
     }
   }
 }
@@ -1027,9 +1022,9 @@ function _enableUninitializedMatureModels(
   for (const model of models) {
     if (
       model.nsfw_only
-      && !_initializedMatureModels.has(model.model_type)
+      && !studioModelRuntime.initializedMatureModels.has(model.model_type)
     ) {
-      _initializedMatureModels.add(model.model_type)
+      studioModelRuntime.initializedMatureModels.add(model.model_type)
       next.add(model.model_type)
       changed = true
     }
@@ -1187,7 +1182,7 @@ export function getDisplayFamily(model: ModelDef): string {
 
 // Transient: the LTX model selected before entering either SCAIL-2 edit
 // workflow, so leaving Recast/Repaint restores the user's prior edit model.
-let _preScail2AvatarModel = ''
+
 
 const DEFAULT_RECAST_MAPPING: RecastCharacterMapping = {
   id: 'recast-a',
@@ -2971,903 +2966,76 @@ function _persistStickyStudioPreferences(state: AppState) {
     })
 }
 
+export type StudioModeDependencies = {
+  _initialStudioVideoRoutePreferences: typeof _initialStudioVideoRoutePreferences
+  _saveStudioVideoRoutePreferences: typeof _saveStudioVideoRoutePreferences
+  _studioCreateInputState: typeof _studioCreateInputState
+  _resolveStudioCreateModel: typeof _resolveStudioCreateModel
+  modelSupportsStudioVideoMediaIntent: typeof modelSupportsStudioVideoMediaIntent
+  getDefaultModelForMode: typeof getDefaultModelForMode
+  DEFAULT_RECAST_MAPPING: typeof DEFAULT_RECAST_MAPPING
+  _persistStickyStudioPreferences: typeof _persistStickyStudioPreferences
+  _snapshotModeParams: typeof _snapshotModeParams
+  _saveSettings: typeof _saveSettings
+  _restoreModeParams: typeof _restoreModeParams
+  _normalizeStudioImageWorkflow: typeof _normalizeStudioImageWorkflow
+  _normalizeStudioVideoWorkflow: typeof _normalizeStudioVideoWorkflow
+  defaultParams: typeof defaultParams
+  sfxModelTypes: typeof sfxModelTypes
+  _applyModelDefaults: typeof _applyModelDefaults
+  captureVideoSubModeStash: typeof captureVideoSubModeStash
+  BLANK_VIDEO_INPUT_PARAMS: typeof BLANK_VIDEO_INPUT_PARAMS
+}
+
+export type StudioModelDependencies = {
+  _loadEnabledModels: typeof _loadEnabledModels
+  DEFAULT_ENABLED_MODELS: typeof DEFAULT_ENABLED_MODELS
+  _markMatureModelsInitialized: typeof _markMatureModelsInitialized
+  _saveEnabledModels: typeof _saveEnabledModels
+  SFX_VIRTUAL_MODELS: typeof SFX_VIRTUAL_MODELS
+  DEFAULTS_VERSION_KEY: typeof DEFAULTS_VERSION_KEY
+  DEFAULTS_VERSION: typeof DEFAULTS_VERSION
+  DEFAULTS_ADDED_IN: typeof DEFAULTS_ADDED_IN
+  _loadSettings: typeof _loadSettings
+  _audioSubModeForModel: typeof _audioSubModeForModel
+  _normalizeStudioImageWorkflow: typeof _normalizeStudioImageWorkflow
+  OLD_MUSIC_DEFAULT: typeof OLD_MUSIC_DEFAULT
+  NEW_MUSIC_DEFAULT: typeof NEW_MUSIC_DEFAULT
+  getDefaultModelForMode: typeof getDefaultModelForMode
+  _normalizeStudioVideoWorkflow: typeof _normalizeStudioVideoWorkflow
+  _isOmniVideoModel: typeof _isOmniVideoModel
+  sfxModelTypes: typeof sfxModelTypes
+  _applyModelDefaults: typeof _applyModelDefaults
+  _persistStickyStudioPreferences: typeof _persistStickyStudioPreferences
+  _enableUninitializedMatureModels: typeof _enableUninitializedMatureModels
+  _saveSettings: typeof _saveSettings
+  resolveResolution: typeof resolveResolution
+}
+
 export const useStore = create<AppState>((set, get, store) => ({
   ...createStudioWorkflowSlice(set, get, {
     persist: () => _persistStickyStudioPreferences(get()),
   }),
-  // Generation mode
-  generationMode: 'video',
-  studioVideoCreateRoute: 'auto',
-  studioVideoEffectiveCreateRoute: 'generate',
-  studioVideoModelPerCreateRoute: _initialStudioVideoRoutePreferences.models,
-  studioVideoRouteNotice: null,
-  setStudioVideoCreateRoute: () => {
-    const before = get()
-    const previousRoute = before.studioVideoEffectiveCreateRoute
-    const previousModel = String(before.params.model_type || '')
-    const modelPreferences = {
-      ...before.studioVideoModelPerCreateRoute,
-      ...(previousModel ? { [previousRoute]: previousModel } : {}),
-    }
-    set({
-      studioVideoCreateRoute: 'auto',
-      studioVideoModelPerCreateRoute: modelPreferences,
-      studioVideoRouteNotice: null,
-    })
-    _saveStudioVideoRoutePreferences({ route: 'auto', models: modelPreferences })
-    get().reconcileStudioVideoCreateRoute('Inputs changed')
-  },
-  reconcileStudioVideoCreateRoute: (reason = 'Inputs changed') => {
-    const state = get()
-    if (
-      state.generationMode !== 'video'
-      || (state.studioVideoWorkflow !== 'frames' && state.studioVideoWorkflow !== 'references')
-      || Number(state.params.image_mode) !== 0
-    ) return
-    const inputState = _studioCreateInputState(state)
-    const previousRoute = state.studioVideoEffectiveCreateRoute
-    const previousModel = String(state.params.model_type || '')
-    const routeChanged = inputState.desired !== previousRoute
-    const modelPreferences = {
-      ...state.studioVideoModelPerCreateRoute,
-      ...(routeChanged && previousModel ? { [previousRoute]: previousModel } : {}),
-    }
-    set({
-      studioVideoCreateRoute: 'auto',
-      studioVideoEffectiveCreateRoute: inputState.desired,
-      studioVideoModelPerCreateRoute: modelPreferences,
-      studioVideoRouteNotice: inputState.conflict ? {
-        message: `${reason}: fixed frame guidance and flexible references cannot be used in one generation. Remove one of those input roles to continue.`,
-        previousRoute,
-        previousModel,
-        undoable: false,
-      } : null,
-    })
-    _saveStudioVideoRoutePreferences({ route: 'auto', models: modelPreferences })
-    const targetModel = _resolveStudioCreateModel(get(), inputState)
-    if (targetModel && targetModel !== previousModel) get().selectModel(targetModel)
-  },
-  undoStudioVideoRoute: () => {
-    const notice = get().studioVideoRouteNotice
-    if (!notice) return
-    const modelPreferences = {
-      ...get().studioVideoModelPerCreateRoute,
-      [notice.previousRoute]: notice.previousModel,
-    }
-    set({
-      studioVideoCreateRoute: 'auto',
-      studioVideoEffectiveCreateRoute: notice.previousRoute,
-      studioVideoModelPerCreateRoute: modelPreferences,
-      studioVideoRouteNotice: null,
-    })
-    _saveStudioVideoRoutePreferences({ route: 'auto', models: modelPreferences })
-    if (
-      notice.previousModel
-      && get().enabledModels.has(notice.previousModel)
-      && notice.previousModel !== get().params.model_type
-    ) get().selectModel(notice.previousModel)
-    get().reconcileStudioVideoCreateRoute('Inputs changed')
-  },
-  clearStudioVideoRouteNotice: () => set({ studioVideoRouteNotice: null }),
-  selectStudioVideoModel: (modelType) => {
-    const state = get()
-    const model = state.models.find(candidate => candidate.model_type === modelType)
-    const inputState = _studioCreateInputState(state)
-    if (!modelSupportsStudioVideoMediaIntent(model, inputState)) return
-    const route = inputState.desired
-    const modelPreferences = {
-      ...state.studioVideoModelPerCreateRoute,
-      [route]: modelType,
-    }
-    set({
-      studioVideoCreateRoute: 'auto',
-      studioVideoEffectiveCreateRoute: route,
-      studioVideoModelPerCreateRoute: modelPreferences,
-      studioVideoRouteNotice: null,
-    })
-    _saveStudioVideoRoutePreferences({ route: 'auto', models: modelPreferences })
-    get().selectModel(modelType)
-  },
-  editSubMode: 'retake' as import('../types').EditSubMode,
-  setEditSubMode: (mode: import('../types').EditSubMode) => {
-    const s = get()
-    const prev = s.editSubMode
-    set({ editSubMode: mode })
-    if (mode === prev || s.generationMode !== 'avatar') return
-    // Recast uses SCAIL-2 Replace; Repaint uses the proven SCAIL-2 Animate
-    // path from Studio Video/Frames. Swap recipes when moving between those
-    // modes and restore the previous LTX edit model when leaving both.
-    const current = (s.params.model_type as string) || ''
-    const isScail2 = (mt: string) => s.models.find(m => m.model_type === mt)?.architecture === 'scail2_14B'
-    const enteringScail2Edit = mode === 'recast' || mode === 'restyle'
-    const leavingScail2Edit = prev === 'recast' || prev === 'restyle'
-    if (enteringScail2Edit) {
-      const valid = mode === 'recast'
-        ? current === 'scail2_14B_recast_fast' || current === 'scail2_14B'
-        : current === 'scail2_14B_fast' || current === 'scail2_14B'
-      if (!valid) {
-        if (!leavingScail2Edit && !isScail2(current)) {
-          _preScail2AvatarModel = current
-        }
-        const preferred = mode === 'recast'
-          ? 'scail2_14B_recast_fast'
-          : 'scail2_14B_fast'
-        const target = s.models.some(m => m.model_type === preferred)
-          ? preferred
-          : s.models.some(m => m.model_type === 'scail2_14B')
-            ? 'scail2_14B'
-            : undefined
-        if (target) get().selectModel(target)
-      }
-    } else if (leavingScail2Edit && isScail2(current)) {
-      const restore = _preScail2AvatarModel && s.models.some(m => m.model_type === _preScail2AvatarModel)
-        ? _preScail2AvatarModel
-        : getDefaultModelForMode('avatar', s.families, s.models, s.enabledModels)
-      if (restore) get().selectModel(restore)
-    }
-  },
-  editVideoPath: '',
-  editVideoUrl: '',
-  editVideoFile: null,
-  editVideoDuration: 0,
-  editVideoResolution: '',
-  editStartTime: 0,
-  editEndTime: 5,
-  editRetakeStrength: 0.85,
-  editPromptStrength: 3.5,
-  editAnythingLoraStrength: 1.0,
-  editAnythingStartAnchor: null,
-  editAnythingEndAnchor: null,
-  editRepaintFrameFile: null,
-  editRepaintFramePath: '',
-  editRepaintFrameUrl: '',
-  editRepaintMappings: [],
-  editRepaintResolutionProfile: '480p',
-  setEditRepaintFrame: (file, path, url) => set({
-    editRepaintFrameFile: file,
-    editRepaintFramePath: path,
-    editRepaintFrameUrl: url,
+  ...createStudioModeSlice(set, get, {
+    _initialStudioVideoRoutePreferences,
+    _saveStudioVideoRoutePreferences,
+    _studioCreateInputState,
+    _resolveStudioCreateModel,
+    modelSupportsStudioVideoMediaIntent,
+    getDefaultModelForMode,
+    DEFAULT_RECAST_MAPPING,
+    _persistStickyStudioPreferences,
+    _snapshotModeParams,
+    _saveSettings,
+    _restoreModeParams,
+    _normalizeStudioImageWorkflow,
+    _normalizeStudioVideoWorkflow,
+    defaultParams,
+    sfxModelTypes,
+    _applyModelDefaults,
+    captureVideoSubModeStash,
+    BLANK_VIDEO_INPUT_PARAMS
   }),
-  setEditRepaintMappings: mappings => set({
-    editRepaintMappings: mappings.slice(0, 5),
-  }),
-  editRecastTarget: 'person',
-  editRecastPersonCount: 1,
-  editRecastRefFile: null,
-  editRecastRefPath: '',
-  editRecastRefUrl: '',
-  editRecastMappings: [{ ...DEFAULT_RECAST_MAPPING }],
-  editRecastRefAligned: false,
-  editRecastIsolateReference: true,
-  editRecastAutoFaceDetail: true,
-  editRecastEnhancePrompt: false,
-  editRecastProtectBystanders: false,
-  editRecastPreserveBystanders: true,
-  editRecastUseRelighting: false,
-  editRecastResolutionProfile: '480p',
-  setEditRecastMappings: mappings => set({
-    editRecastMappings: mappings,
-    editRecastTarget: mappings[0]?.target || 'person',
-    editRecastPersonCount: Math.min(5, Math.max(1, mappings.length || 1)),
-    editRecastRefFile: mappings[0]?.refFile || null,
-    editRecastRefPath: mappings[0]?.refPath || '',
-    editRecastRefUrl: mappings[0]?.refUrl || '',
-    editRecastRefAligned: mappings[0]?.referenceAlignedToSource === true,
-  }),
-  setEditRecastRef: (file, path, url, aligned = false) => set(s => ({
-    editRecastRefFile: file,
-    editRecastRefPath: path,
-    editRecastRefUrl: url,
-    editRecastRefAligned: aligned,
-    editRecastMappings: [
-      {
-        ...(s.editRecastMappings[0] || DEFAULT_RECAST_MAPPING),
-        refFile: file,
-        refPath: path,
-        refUrl: url,
-        referenceAlignedToSource: aligned,
-      },
-      ...s.editRecastMappings.slice(1),
-    ],
-  })),
-  editReturnTarget: null,
-  setEditAnythingStartAnchor: (path: string | null) => set({ editAnythingStartAnchor: path }),
-  setEditAnythingEndAnchor: (path: string | null) => set({ editAnythingEndAnchor: path }),
-  sendFrameToImageMode: async (which: 'start' | 'end' | 'recast' | 'repaint') => {
-    const state = get()
-    const clipPath = state.editVideoPath
-    if (!clipPath) {
-      console.error('Edit Anything: no source video loaded')
-      return
-    }
-    const startTime = state.editStartTime || 0
-    const endTime = state.editEndTime || state.editVideoDuration || 0
-    if (endTime <= startTime) {
-      console.error('Edit Anything: invalid trim range')
-      return
-    }
-
-    // Snapshot user's current image-mode reference state BEFORE the
-    // hijack so we can restore it on return / skip / cancel and not
-    // disturb their non-Edit-Anything Image-mode workflow.
-    const savedImageRefs = state.imageRefs
-    const savedImageRefType = state.imageRefType
-
-    // Decide which timestamp to grab. End frame is one frame INSIDE the
-    // exclusive end (at -0.04s = ~one frame at 25fps) so it matches what
-    // the retake pipeline will pin during inference.
-    const tStart = which === 'end' ? Math.max(0, endTime - 0.04) : startTime
-    try {
-      let framePath = ''
-      let frameUrl = ''
-      // Repaint can refine its existing edited frame. The first trip starts
-      // from the source trim frame; later trips start from the applied result.
-      if (which === 'repaint' && state.editRepaintFramePath) {
-        framePath = state.editRepaintFramePath
-        const frameName = framePath.replace(/\\/g, '/').split('/').pop() || ''
-        frameUrl = state.editRepaintFrameUrl || api.getFileUrl(frameName)
-      } else {
-        const res = await fetch('/api/v1/extract-frames', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            video_path: clipPath,
-            ...(which === 'end' ? { end_time: tStart } : { start_time: tStart }),
-          }),
-        })
-        if (!res.ok) throw new Error(`extract-frames failed: ${res.status}`)
-        const data = await res.json()
-        framePath = (which === 'end' ? data.end_path : data.start_path) as string
-        frameUrl = (which === 'end' ? data.end_url : data.start_url) as string
-      }
-
-      // Use setGenerationMode rather than poking generationMode directly.
-      // This is the proper switch — it picks the right model for image
-      // mode (auto-restoring the user's last image-mode model or the
-      // family default), reloads LoRAs, and resets image_mode + the
-      // resolution/aspect presets that go with image generation. Without
-      // this, the model stays on whatever LTX-2 video model was active.
-      get().setGenerationMode('image')
-
-      // Load the extracted frame into Image mode's REFERENCE images list
-      // (the "Reference Images" drop zone in the sidebar). This is the
-      // i2i / image-edit input slot — distinct from video mode's
-      // image_start (which is i2v's "first frame"). ImageRefSection's
-      // own useEffect picks the right imageRefType when imageRefs goes
-      // from empty to populated; we leave that to it.
-      const blob = await fetch(frameUrl).then(r => r.blob())
-      const file = new File([blob], `${which}_frame.png`, { type: blob.type || 'image/png' })
-      set(s => ({
-        // Replace any pre-existing refs with just our extracted frame
-        // for the duration of the round-trip. Restored from the
-        // editReturnTarget snapshot when we return.
-        imageRefs: [file],
-        imageRefType: '',  // let ImageRefSection re-set the default for the new model
-        // Make sure no stale i2v fields are populated — those would land
-        // in video mode's i2v slot, which isn't what we want here.
-        startImage: null,
-        params: { ...s.params, image_start: '', image_mode: 1 },
-        editReturnTarget: {
-          anchor: which,
-          framePath,
-          clipPath,
-          startTime,
-          endTime,
-          savedImageRefs,
-          savedImageRefType,
-        },
-      }))
-    } catch (e) {
-      console.error('Failed to send frame to Image mode:', e)
-    }
-  },
-  applyOutputAsAnchor: async () => {
-    const state = get()
-    const target = state.editReturnTarget
-    if (!target) return
-    // Find the latest image-mode output (newest first in the outputs list).
-    const latestImage = state.outputs.find(o => o.type === 'image')
-    if (!latestImage) {
-      console.error('Edit Anything return: no image-mode output yet to apply')
-      return
-    }
-    // The backend resolver in /api/v1/edit-anything will look in the
-    // active workspace's outputs/ for a bare filename, so passing the
-    // gallery name is enough.
-    const outputPath = latestImage.name
-
-    if (target.anchor === 'recast') {
-      set(s => ({
-        editRecastRefFile: null,
-        editRecastRefPath: outputPath,
-        editRecastRefUrl: latestImage.url,
-        editRecastRefAligned: true,
-        editRecastMappings: [
-          {
-            ...(s.editRecastMappings[0] || DEFAULT_RECAST_MAPPING),
-            refFile: null,
-            refPath: outputPath,
-            refUrl: latestImage.url,
-            referenceAlignedToSource: true,
-          },
-          ...s.editRecastMappings.slice(1),
-        ],
-      }))
-    } else if (target.anchor === 'repaint') {
-      set({
-        editRepaintFrameFile: null,
-        editRepaintFramePath: outputPath,
-        editRepaintFrameUrl: latestImage.url,
-      })
-    } else if (target.anchor === 'start') {
-      set({ editAnythingStartAnchor: outputPath })
-    } else {
-      set({ editAnythingEndAnchor: outputPath })
-    }
-
-    // Restore the user's pre-round-trip image-mode reference state and
-    // switch back to Edit Anything. setGenerationMode handles the model
-    // swap so they land back on their video model with the right LoRAs.
-    get().setGenerationMode('avatar')
-    set({
-      editSubMode: target.anchor === 'recast'
-        ? 'recast'
-        : target.anchor === 'repaint'
-          ? 'restyle'
-          : 'edit_anything',
-      editReturnTarget: null,
-      imageRefs: target.savedImageRefs,
-      imageRefType: target.savedImageRefType,
-    })
-  },
-  skipAnchorPhase: () => {
-    // Skip = return to Edit Anything without setting the anchor. Empty
-    // slot → ltx2.py falls back to the source-extracted frame at
-    // generation time (the morph-from-source default).
-    const target = get().editReturnTarget
-    get().setGenerationMode('avatar')
-    set({
-      editSubMode: target?.anchor === 'recast'
-        ? 'recast'
-        : target?.anchor === 'repaint'
-          ? 'restyle'
-          : 'edit_anything',
-      editReturnTarget: null,
-      ...(target ? { imageRefs: target.savedImageRefs, imageRefType: target.savedImageRefType } : {}),
-    })
-  },
-  cancelAnchorReturn: () => {
-    const target = get().editReturnTarget
-    get().setGenerationMode('avatar')
-    set({
-      editSubMode: target?.anchor === 'recast'
-        ? 'recast'
-        : target?.anchor === 'repaint'
-          ? 'restyle'
-          : 'edit_anything',
-      editReturnTarget: null,
-      ...(target ? { imageRefs: target.savedImageRefs, imageRefType: target.savedImageRefType } : {}),
-    })
-  },
-  editRetakeEngine: 'native' as const,
-  editRegenerateAudio: true,
-  editSamTarget: '',
-  editInvertMask: false,
-  editMasksPath: null,
-  editMaskPreview: null,
-  editDetectedTarget: '',
-  continueVideo: null,
-  continueVideoPath: '',
-  continueVideoUrl: '',
-  continueVideoDuration: 0,
-  videoSubModeStash: {},
-  setContinueVideo: (file, path, url, duration) => set({
-    continueVideo: file, continueVideoPath: path, continueVideoUrl: url, continueVideoDuration: duration,
-  }),
-  clearContinueVideo: () => {
-    // Also strip "V" from image_prompt_type — removing the source video
-    // means the user is no longer in extend mode, so any leftover "V"
-    // flag would cause the backend to demand a video_source we just
-    // cleared. startGeneration has a defensive strip at submit time as
-    // well, but cleaning state here keeps things consistent for any UI
-    // that reads image_prompt_type directly.
-    const currentParams = useStore.getState().params
-    const ipt = (currentParams.image_prompt_type as string) || ''
-    set({
-      continueVideo: null, continueVideoPath: '', continueVideoUrl: '', continueVideoDuration: 0,
-      params: {
-        ...currentParams,
-        video_source: undefined,
-        image_prompt_type: ipt.replace(/V/g, ''),
-      },
-    })
-  },
-  blendClipA: null, blendClipAPath: '', blendClipAUrl: '', blendClipADuration: 0,
-  blendClipB: null, blendClipBPath: '', blendClipBUrl: '', blendClipBDuration: 0,
-  blendTransitionSec: 5,
-  blendStrengthA: 1.0,
-  blendStrengthB: 0.7,
-  blendMotionPrefixSec: 1.0,
-  blendMotionSuffixSec: 1.0,
-  blendAnchorStrength: 0.7,
-  setBlendClipA: (file, path, url, duration) => set({
-    blendClipA: file, blendClipAPath: path, blendClipAUrl: url, blendClipADuration: duration,
-  }),
-  setBlendClipB: (file, path, url, duration) => set({
-    blendClipB: file, blendClipBPath: path, blendClipBUrl: url, blendClipBDuration: duration,
-  }),
-  clearBlendClipA: () => set({ blendClipA: null, blendClipAPath: '', blendClipAUrl: '', blendClipADuration: 0 }),
-  clearBlendClipB: () => set({ blendClipB: null, blendClipBPath: '', blendClipBUrl: '', blendClipBDuration: 0 }),
-  setBlendTransitionSec: (sec) => set({ blendTransitionSec: sec }),
-  setBlendStrengthA: (v) => set({ blendStrengthA: v }),
-  setBlendStrengthB: (v) => set({ blendStrengthB: v }),
-  setBlendMotionPrefixSec: (v) => set({ blendMotionPrefixSec: v }),
-  setBlendMotionSuffixSec: (v) => set({ blendMotionSuffixSec: v }),
-  setBlendAnchorStrength: (v) => set({ blendAnchorStrength: v }),
-  blendMode: 'overlap' as const,
-  blendOverlapSec: 3,
-  setBlendMode: (mode) => set({ blendMode: mode }),
-  setBlendOverlapSec: (sec) => set({ blendOverlapSec: sec }),
-  outpaintPadding: { top: 0, bottom: 0, left: 0, right: 0 },
-  setOutpaintPadding: (padding) => set({ outpaintPadding: padding }),
-  outpaintResolutionPreset: 'auto',
-  setOutpaintResolutionPreset: (preset) => set({ outpaintResolutionPreset: preset }),
-  // 'source' = canvas matches source aspect (no extension by default)
-  outpaintAspect: 'source',
-  setOutpaintAspect: (a) => set({ outpaintAspect: a }),
-  // Default video box: full canvas (no padding). Will be re-fitted by the
-  // OutpaintCanvas when the user picks a non-source aspect.
-  outpaintVideoBox: { x: 0, y: 0, w: 1, h: 1 },
-  setOutpaintVideoBox: (box) => set({ outpaintVideoBox: box }),
-  outpaintTrimStart: 0,
-  outpaintTrimEnd: 0,
-  setOutpaintTrimStart: (t) => set({ outpaintTrimStart: t }),
-  setOutpaintTrimEnd: (t) => set({ outpaintTrimEnd: t }),
-  outpaintSourcePreservation: 1.0,
-  setOutpaintSourcePreservation: (v) => set({ outpaintSourcePreservation: v }),
-  outpaintLoraStrength: 1.0,
-  setOutpaintLoraStrength: (v) => set({ outpaintLoraStrength: v }),
-  outpaintMaskPreserving: true,
-  setOutpaintMaskPreserving: (v) => set({ outpaintMaskPreserving: v }),
-  outpaintPreserveSourceAudio: true,
-  setOutpaintPreserveSourceAudio: (v) => set({ outpaintPreserveSourceAudio: v }),
-  outpaintLockSourcePixels: false,  // default OFF — visible rectangle seam outweighs benefit
-  setOutpaintLockSourcePixels: (v) => set({ outpaintLockSourcePixels: v }),
-  outpaintTrimSmear: true,  // default ON — fixes the 9-frame stutter at window 1→2 boundary
-  setOutpaintTrimSmear: (v) => set({ outpaintTrimSmear: v }),
-  outpaintWindowSize: 241,  // LTX-2 default (~10s @ 24fps)
-  setOutpaintWindowSize: (v) => set({ outpaintWindowSize: v }),
-  outpaintWindowOverlap: 9,  // LTX-2 default
-  setOutpaintWindowOverlap: (v) => set({ outpaintWindowOverlap: v }),
-  setEditVideoPath: (path) => set({ editVideoPath: path }),
-  setEditVideo: (file, path, url, duration, resolution) => set({
-    editVideoFile: file, editVideoPath: path, editVideoUrl: url,
-    editVideoDuration: duration, editVideoResolution: resolution,
-    editEndTime: duration,
-  }),
-  clearEditVideo: () => set({
-    editVideoFile: null, editVideoPath: '', editVideoUrl: '',
-    editVideoDuration: 0, editVideoResolution: '', editStartTime: 0, editEndTime: 5,
-    editMasksPath: null, editMaskPreview: null, editDetectedTarget: '',
-  }),
-  musicDescription: '',
-  setMusicDescription: (s) => set({ musicDescription: s }),
-  musicInstrumental: false,
-  setMusicInstrumental: (b) => set({ musicInstrumental: b }),
-  audioSubMode: 'speech' as import('../types').AudioSubMode,
-  selectedModelPerAudioSubMode: {} as Partial<Record<import('../types').AudioSubMode, string>>,
-  h3OptimizationPreferences: {
-    override_attention: '',
-    skip_steps_cache_type: '',
-  },
-  setAudioSubMode: (subMode) => {
-    const { audioSubMode: prevSub, params, models } = get()
-    if (subMode === prevSub) return
-    // Save current model for the sub-mode we're leaving
-    const savedModels = { ...get().selectedModelPerAudioSubMode, [prevSub]: params.model_type }
-    // Determine model for target sub-mode
-    const audioSubModeDefaults: Record<import('../types').AudioSubMode, string> = {
-      speech: 'kugelaudio_0_open',
-      // XL SFT LM_4B: the premium CFG variant + strongest LM — the
-      // quality default. Turbo variants remain enabled for speed.
-      music: 'ace_step_v1_5_xl_sft_lm_4b',
-      sfx: 'mmaudio_v2',
-      mixer: '',  // Mixer doesn't use a model — it's an ffmpeg-based tool
-      revoice: '',  // Revoice is a SeedVC post-processing tool
-    }
-    const saved = savedModels[subMode]
-    const targetModel = (saved && models.some(m => m.model_type === saved))
-      ? saved
-      : audioSubModeDefaults[subMode]
-    set({ audioSubMode: subMode, selectedModelPerAudioSubMode: savedModels })
-    if (targetModel && models.some(m => m.model_type === targetModel)) {
-      get().selectModel(targetModel)
-    }
-    _persistStickyStudioPreferences(get())
-  },
-  selectedModelPerMode: {},
-  savedLoraPerMode: {},
-  savedParamsPerMode: {},
-  savedPromptPerMode: {} as Partial<Record<string, string>>,
-
-  setGenerationMode: (mode) => {
-    // Tools is a non-generative post-processing area — it owns no model, so
-    // skip the per-mode model/LoRA/params RESTORE machinery entirely. We still
-    // SAVE the leaving mode's state (prompt / model / LoRAs / params snapshot)
-    // so returning to it restores correctly, leave `params` untouched (no model
-    // load, no defaults reset), and persist the *previous* real mode as the
-    // landing mode so a reload doesn't drop into Tools with no model loaded.
-    if (mode === 'tools') {
-      const s = get()
-      const prev = s.generationMode
-      if (prev === 'tools') { set({ generationMode: 'tools' }); return }
-      const paramsSnapshot = _snapshotModeParams(s.params)
-      const savedModels = { ...s.selectedModelPerMode, [prev]: s.params.model_type }
-      const savedParams = {
-        ...s.savedParamsPerMode,
-        [prev]: { ...paramsSnapshot, filmGrainIntensity: s.filmGrainIntensity, filmGrainSaturation: s.filmGrainSaturation, durationSeconds: s.durationSeconds },
-      }
-      const savedLoras = {
-        ...s.savedLoraPerMode,
-        [prev]: { activated_loras: s.params.activated_loras || [], loras_multipliers: s.params.loras_multipliers || '', loraWeights: s.loraWeights, availableLoras: s.availableLoras },
-      }
-      const savedPrompts = { ...s.savedPromptPerMode, [prev]: s.params.prompt }
-      set({
-        generationMode: 'tools',
-        selectedModelPerMode: savedModels,
-        savedParamsPerMode: savedParams,
-        savedLoraPerMode: savedLoras,
-        savedPromptPerMode: savedPrompts,
-      })
-      _saveSettings({ generationMode: prev, selectedModelPerMode: savedModels, savedParamsPerMode: savedParams, savedLoraPerMode: savedLoras, savedPromptPerMode: savedPrompts }, s.loraIdByFilename)
-      _persistStickyStudioPreferences(get())
-      return
-    }
-    const { families, models, enabledModels, generationMode: prevMode, params, selectedModelPerMode, savedLoraPerMode, savedParamsPerMode, loraWeights, availableLoras, savedPromptPerMode } = get()
-    // Save prompt for the mode we're leaving
-    const savedPrompts = { ...savedPromptPerMode, [prevMode]: params.prompt }
-    // Save current model + LoRA + params state for the mode we're leaving
-    const savedModels = { ...selectedModelPerMode, [prevMode]: params.model_type }
-    const savedLoras = {
-      ...savedLoraPerMode,
-      [prevMode]: {
-        activated_loras: params.activated_loras || [],
-        loras_multipliers: params.loras_multipliers || '',
-        loraWeights,
-        availableLoras,
-      },
-    }
-    // Save the FULL params snapshot for the leaving mode. Strip the
-    // fields that are tracked separately in their own per-mode state
-    // structures (model_type → selectedModelPerMode, prompt →
-    // savedPromptPerMode, activated_loras / loras_multipliers →
-    // savedLoraPerMode) to avoid double-bookkeeping. Everything else
-    // — including repeat_generation, negative_prompt, video_prompt_type,
-    // video_guide, image_refs, frames_positions, MMAudio_*, etc. — is
-    // captured here so it survives a switch-and-return AND doesn't
-    // leak into other modes.
-    const paramsSnapshot = _snapshotModeParams(params)
-    const savedParams = {
-      ...savedParamsPerMode,
-      [prevMode]: {
-        ...paramsSnapshot,
-        filmGrainIntensity: get().filmGrainIntensity,
-        filmGrainSaturation: get().filmGrainSaturation,
-        // Save durationSeconds per-mode so audio's 600/1800 (Kugel/Scenema
-        // slider max) doesn't leak into video on mode-switch back. Audio
-        // mode's loadModelOptions still overrides with the slider.max on
-        // model select, so this only matters for video/image/avatar.
-        durationSeconds: get().durationSeconds,
-      },
-    }
-    // Restore saved model for target mode, or fall back to default
-    const savedModel = savedModels[mode]
-    const restoredModel = savedModel
-      && enabledModels.has(savedModel)
-      && models.some(m => m.model_type === savedModel)
-      ? savedModel
-      : getDefaultModelForMode(mode, families, models, enabledModels)
-    const newModelType = restoredModel || params.model_type
-    // Restore saved LoRA state for target mode (if same model)
-    const restoredLora = savedLoras[mode]
-    const sameModel = restoredLora && savedModel === newModelType
-    // Restore the saved params snapshot for the target mode. If the
-    // user never visited this mode before, fall back to defaultParams
-    // (NOT the previous mode's params — that's what caused the leak).
-    const restoredSnapshot = savedParams[mode]
-    // Extract film grain from snapshot (top-level store state, not in params)
-    const restoredFilmGrain = restoredSnapshot
-      ? { filmGrainIntensity: restoredSnapshot.filmGrainIntensity ?? 0, filmGrainSaturation: restoredSnapshot.filmGrainSaturation ?? 0.5 }
-      : { filmGrainIntensity: 0, filmGrainSaturation: 0.5 }
-    // Restore durationSeconds for the target mode. Non-audio modes (video,
-    // avatar, image) fall back to 5s on first visit. Audio mode's
-    // durationSeconds gets overridden by loadModelOptions when it sees
-    // audio_only && duration_slider, so the snapshot value is mostly
-    // ignored there — it's still saved for symmetry.
-    const restoredDuration = restoredSnapshot && typeof restoredSnapshot.durationSeconds === 'number'
-      ? restoredSnapshot.durationSeconds as number
-      : 5
-    // Strip filmGrain + durationSeconds keys before applying — they don't belong in params
-    const restoredParams = _restoreModeParams(restoredSnapshot)
-    // Restore saved prompt for target mode (or empty for first visit)
-    const restoredPrompt = savedPrompts[mode] ?? ''
-    const restoredImageWorkflow = _normalizeStudioImageWorkflow(
-      restoredParams._studio_image_workflow,
-    ) ?? get().studioImageWorkflow
-    const restoredVideoModel = get().models.find(model => model.model_type === newModelType)
-    const restoredVideoWorkflow = _normalizeStudioVideoWorkflow(
-      restoredParams._studio_video_workflow,
-      restoredVideoModel,
-    ) ?? get().studioVideoWorkflow
-
-    set(() => ({
-      generationMode: mode,
-      selectedModelPerMode: savedModels,
-      savedLoraPerMode: savedLoras,
-      savedParamsPerMode: savedParams,
-      savedPromptPerMode: savedPrompts,
-      // Default to Auto resolution + aspect in image mode (matches reference image)
-      ...(mode === 'image' ? { resolutionPreset: 'auto' as ResolutionPreset, aspectRatio: 'auto' as AspectRatio } : {}),
-      ...(mode === 'image' ? { studioImageWorkflow: restoredImageWorkflow } : {}),
-      ...(mode === 'video' ? { studioVideoWorkflow: restoredVideoWorkflow } : {}),
-      ...restoredFilmGrain,
-      durationSeconds: restoredDuration,
-      // Build params from defaults + restored snapshot. We deliberately
-      // do NOT spread `...s.params` here — that's the line that caused
-      // every previous-mode field to leak into the new mode. Starting
-      // from defaults ensures only the restored snapshot's fields (the
-      // user's actual choices in this mode, or nothing on first visit)
-      // are present. Then layer model_type / prompt / LoRAs from their
-      // separate stores on top, plus the special image_mode logic.
-      params: {
-        ...defaultParams,
-        ...restoredParams,
-        // Sol / First Block are durable Video preferences, not project
-        // inputs. Reapply them when returning from Audio/Image after a
-        // restart even though general Advanced state starts clean.
-        ...(mode === 'video' ? get().h3OptimizationPreferences : {}),
-        model_type: newModelType,
-        prompt: restoredPrompt,
-        image_mode: mode === 'image'
-          ? (restoredImageWorkflow === 'inpaint' || restoredImageWorkflow === 'outpaint' ? 2 : 1)
-          : (restoredParams.image_mode ?? 0),
-        ...(mode === 'image' ? { _studio_image_workflow: restoredImageWorkflow } : {}),
-        ...(mode === 'video' ? { _studio_video_workflow: restoredVideoWorkflow } : {}),
-        activated_loras: sameModel ? restoredLora.activated_loras : [],
-        loras_multipliers: sameModel ? restoredLora.loras_multipliers : '',
-      },
-      h3WindowPlan: null,
-      loraWeights: sameModel ? restoredLora.loraWeights : {},
-      availableLoras: sameModel ? restoredLora.availableLoras : [],
-    }))
-    if (newModelType && !sfxModelTypes.has(newModelType)) {
-      if (!sameModel) {
-        get().loadLoras(newModelType)
-      }
-      get().loadModelOptions(newModelType)
-      // Mode switch counts as a model selection too — apply the new
-      // model's defaults so numeric primaries (steps, CFG, flow_shift,
-      // sample_solver) match what that model expects rather than what
-      // the previous mode's model was using. See _applyModelDefaults
-      // for the field list and rationale.
-      _applyModelDefaults(get, set, newModelType)
-    }
-    if (
-      mode === 'video'
-      && (get().studioVideoWorkflow === 'frames' || get().studioVideoWorkflow === 'references')
-    ) {
-      get().setStudioVideoCreateRoute(get().studioVideoCreateRoute)
-    }
-    // Persist to localStorage
-    _saveSettings({
-      generationMode: mode,
-      selectedModelPerMode: savedModels,
-      savedParamsPerMode: savedParams,
-      savedLoraPerMode: savedLoras,
-      savedPromptPerMode: savedPrompts,
-    }, get().loraIdByFilename)
-    _persistStickyStudioPreferences(get())
-  },
-
-  params: { ...defaultParams },
-  setParam: (key, value) => {
-    // Per-sub-mode isolation: remember the outgoing sub-mode BEFORE the
-    // param write flips image_mode (see videoSubModeStash).
-    const prevImageMode = key === 'image_mode' ? ((get().params.image_mode as number) ?? 0) : null
-    const invalidatesH3Plan = [
-      'prompt', 'model_type', 'resolution', 'image_start', 'image_end',
-      'image_mode', 'image_refs', 'frames_positions', 'video_prompt_type',
-      'minimax_h3_camera_coverage',
-      'minimax_h3_multi_window',
-      'minimax_h3_reference_sequence', 'minimax_h3_references',
-      'minimax_h3_sequence_prompt_mode',
-      'minimax_h3_sequence_continuity',
-      'minimax_h3_sequence_clip_frames',
-      'minimax_h3_sequence_memory_override',
-    ].includes(String(key))
-    set(s => {
-      const nextParams = { ...s.params, [key]: value }
-      if (key === 'prompt') {
-        delete nextParams._h3_original_prompt
-        const editedLines = typeof value === 'string'
-          ? value.replace(/\r\n?/g, '\n').split('\n').map(line => line.trim()).filter(Boolean)
-          : []
-        const reviewedLtxPlan = (
-          s.modelOptions?.multi_window_sequence_controls === true
-          && s.params.ltx_multi_window === true
-          && s.params.ltx_window_prompt_mode !== 'manual'
-          && Array.isArray(s.params.ltx_window_prompts)
-          && editedLines.length === s.params.ltx_window_prompts.length
-        )
-        if (reviewedLtxPlan) {
-          nextParams.ltx_window_prompts = editedLines
-        } else {
-          delete nextParams._ltx_original_prompt
-          delete nextParams.ltx_window_prompts
-        }
-      }
-      if (
-        key === 'ltx_multi_window'
-        || key === 'ltx_window_prompt_mode'
-        || key === 'model_type'
-      ) {
-        delete nextParams._ltx_original_prompt
-        delete nextParams.ltx_window_prompts
-      }
-      return {
-        params: nextParams,
-        ...(invalidatesH3Plan ? { h3WindowPlan: null } : {}),
-        ...(invalidatesH3Plan ? { promptEnhanceError: null } : {}),
-      }
-    })
-    // Auto-parse speaker names from prompt whenever audio mode has at least
-    // one voice slot. Previously gated on audio_prompt_type.includes('B')
-    // (multi-voice only), but the user expects single-voice ("Peter: hello")
-    // to populate voice slot 1 too. Voice-count gate covers both cases —
-    // ttsVoiceCount > 0 means at least one voice clone is active.
-    if (key === 'prompt' && typeof value === 'string' && get().generationMode === 'audio' && get().ttsVoiceCount > 0) {
-      get()._autoParseSpkeakerNames(value)
-    }
-    // Handle sub-mode transitions (Frames / Multi-Shot / Extend / Blend)
-    if (key === 'image_mode') {
-      // Each Studio Video sub-mode is an ISOLATED working set: stash the
-      // outgoing sub-mode's full state (prompt, input tiles, settings)
-      // and bring back the incoming one. A sub-mode visited for the
-      // first time keeps the generic settings but starts with blank
-      // inputs — so Extend opens clean while the Frames setup (injected
-      // keyframes and all) survives the round-trip untouched.
-      const s1 = get()
-      if (s1.generationMode === 'video' && typeof value === 'number' && prevImageMode !== null && value !== prevImageMode) {
-        const stash = { ...s1.videoSubModeStash, [prevImageMode]: captureVideoSubModeStash(s1) }
-        const saved = stash[value]
-        if (saved) {
-          set({
-            videoSubModeStash: stash,
-            // Model + LoRA selection stay shared across sub-modes — keep
-            // the live values, restore everything else.
-            params: {
-              ...saved.params,
-              image_mode: value,
-              model_type: s1.params.model_type,
-              activated_loras: s1.params.activated_loras,
-              loras_multipliers: s1.params.loras_multipliers,
-            },
-            startImage: saved.startImage,
-            endImage: saved.endImage,
-            continueVideo: saved.continueVideo,
-            continueVideoPath: saved.continueVideoPath,
-            continueVideoUrl: saved.continueVideoUrl,
-            continueVideoDuration: saved.continueVideoDuration,
-            audioGuideFilename: saved.audioGuideFilename,
-            imageRefs: saved.imageRefs,
-            imageRefType: saved.imageRefType,
-            removeBackgroundRefs: saved.removeBackgroundRefs,
-            durationSeconds: saved.durationSeconds,
-            slidingWindowSeconds: saved.slidingWindowSeconds,
-            slidingWindowOverlap: saved.slidingWindowOverlap,
-            clips: saved.clips,
-            singlePromptMode: saved.singlePromptMode,
-          })
-        } else {
-          set(s => ({
-            videoSubModeStash: stash,
-            params: { ...s.params, ...BLANK_VIDEO_INPUT_PARAMS },
-            startImage: null,
-            endImage: null,
-            continueVideo: null,
-            continueVideoPath: '',
-            continueVideoUrl: '',
-            continueVideoDuration: 0,
-            audioGuideFilename: null,
-            imageRefs: [],
-            imageRefType: '',
-            removeBackgroundRefs: false,
-            // durationSeconds + sliding window intentionally carry over:
-            // they're settings, not inputs — they diverge per sub-mode
-            // only after the user changes them there.
-          }))
-        }
-      }
-      // Multi-clip transitions (after the stash swap so syncClipCount
-      // sees the restored duration/params).
-      if (value === 2) {
-        get().syncClipCount()
-      } else {
-        set({ clips: [], singlePromptMode: false })
-      }
-    }
-    // Snapshot the changed param into the current mode's IN-MEMORY
-    // record so it survives a mode switch + return within this session.
-    // Skip keys that are tracked in their own per-mode structures
-    // (model_type, prompt, LoRA fields) to avoid double-bookkeeping.
-    // Everything else — repeat_generation, negative_prompt,
-    // num_inference_steps, video_prompt_type, video_guide, image_refs,
-    // frames_positions, MMAudio_*, etc. — gets snapshotted here.
-    //
-    // Deliberately NOT written to localStorage: a page refresh starts
-    // the working state (prompt, seed, LoRA selection, Advanced values)
-    // from the model's defaults. v1.2.0 persisted every edit across
-    // refreshes and users found the stale text/seeds surprising —
-    // in-session mode-switch persistence is the wanted behavior,
-    // refresh is a clean slate (see loadModels).
-    if (key !== 'model_type' && key !== 'prompt' && key !== 'activated_loras' && key !== 'loras_multipliers') {
-      const s = get()
-      const mode = s.generationMode
-      const paramsSnapshot = _snapshotModeParams(s.params)
-      const updatedSavedParams = {
-        ...s.savedParamsPerMode,
-        [mode]: {
-          ...paramsSnapshot,
-          filmGrainIntensity: s.filmGrainIntensity,
-          filmGrainSaturation: s.filmGrainSaturation,
-        },
-      }
-      set({ savedParamsPerMode: updatedSavedParams })
-    }
-    if (
-      key === 'minimax_h3_references'
-      || key === 'image_start'
-      || key === 'image_end'
-      || key === 'image_refs'
-      || key === 'frames_positions'
-      || key === 'audio_guide'
-      || key === 'audio_prompt_type'
-    ) {
-      get().reconcileStudioVideoCreateRoute('Inputs changed')
-    }
-    if (
-      key === 'override_attention'
-      || key === 'skip_steps_cache_type'
-      || key === 'skip_steps_multiplier'
-      || key === 'skip_steps_start_step_perc'
-    ) {
-      set(s => ({
-        h3OptimizationPreferences: {
-          ...s.h3OptimizationPreferences,
-          ...(key === 'override_attention' ? {
-            override_attention: (
-              value === 'sol' || value === 'sla' || value === 'sdpa'
-                ? value
-                : ''
-            ) as '' | 'sol' | 'sla' | 'sdpa',
-          } : {}),
-          ...(key === 'skip_steps_cache_type' ? {
-            skip_steps_cache_type: value === 'first_block' ? 'first_block' as const : '' as const,
-          } : {}),
-          ...(key === 'skip_steps_multiplier' && typeof value === 'number' ? {
-            skip_steps_multiplier: value,
-          } : {}),
-          ...(key === 'skip_steps_start_step_perc' && typeof value === 'number' ? {
-            skip_steps_start_step_perc: value,
-          } : {}),
-        },
-      }))
-      _persistStickyStudioPreferences(get())
-    }
-  },
-  setParams: (partial) => {
-    set(s => ({ params: { ...s.params, ...partial } }))
-  },
 
   settingsOpen: false,
   toggleSettings: () => get().setAppSection(get().appSection === 'configurations' ? 'director' : 'configurations'),
@@ -4759,387 +3927,30 @@ export const useStore = create<AppState>((set, get, store) => ({
 
     _civitDownloadPollTask = poll()
   },
-
-  // Models & families
-  families: [],
-  models: [],
-  modelsLoaded: false,
-  enabledModels: _loadEnabledModels() ?? new Set(DEFAULT_ENABLED_MODELS),
-  toggleModelEnabled: (modelType) => {
-    _markMatureModelsInitialized(get().models, [modelType])
-    set(s => {
-      const next = new Set(s.enabledModels)
-      if (next.has(modelType)) next.delete(modelType)
-      else next.add(modelType)
-      _saveEnabledModels(next)
-      return { enabledModels: next }
-    })
-  },
-  resetEnabledModels: () => {
-    _markMatureModelsInitialized(get().models)
-    const next = new Set(DEFAULT_ENABLED_MODELS)
-    _saveEnabledModels(next)
-    set({ enabledModels: next })
-  },
-  setAllModelsEnabled: (enabled) => {
-    _markMatureModelsInitialized(get().models)
-    if (enabled) {
-      const all = new Set(get().models.map(m => m.model_type))
-      _saveEnabledModels(all)
-      set({ enabledModels: all })
-    } else {
-      const empty = new Set<string>()
-      _saveEnabledModels(empty)
-      set({ enabledModels: empty })
-    }
-  },
-  setModelsEnabled: (modelTypes, enabled) => {
-    _markMatureModelsInitialized(get().models, modelTypes)
-    set(s => {
-      const next = new Set(s.enabledModels)
-      for (const mt of modelTypes) {
-        if (enabled) next.add(mt)
-        else next.delete(mt)
-      }
-      _saveEnabledModels(next)
-      return { enabledModels: next }
-    })
-  },
-  // Open Settings → Performance and ask the Enabled Models section to
-  // expand + scroll to the given mode (fired by the ModelSelector hint).
-  modelVisibilityFocus: null,
-  openModelVisibility: (mode) => set({
-    settingsOpen: true,
-    settingsTab: 'performance',
-    modelVisibilityFocus: mode,
+  ...createStudioModelSlice(set, get, {
+    _loadEnabledModels,
+    DEFAULT_ENABLED_MODELS,
+    _markMatureModelsInitialized,
+    _saveEnabledModels,
+    SFX_VIRTUAL_MODELS,
+    DEFAULTS_VERSION_KEY,
+    DEFAULTS_VERSION,
+    DEFAULTS_ADDED_IN,
+    _loadSettings,
+    _audioSubModeForModel,
+    _normalizeStudioImageWorkflow,
+    OLD_MUSIC_DEFAULT,
+    NEW_MUSIC_DEFAULT,
+    getDefaultModelForMode,
+    _normalizeStudioVideoWorkflow,
+    _isOmniVideoModel,
+    sfxModelTypes,
+    _applyModelDefaults,
+    _persistStickyStudioPreferences,
+    _enableUninitializedMatureModels,
+    _saveSettings,
+    resolveResolution
   }),
-  clearModelVisibilityFocus: () => set({ modelVisibilityFocus: null }),
-  loadModels: async () => {
-    try {
-      const shouldHydrateVisibility = !_modelVisibilityHydrated
-      const shouldHydrateH3WindowOverrides = !_h3WindowOverridesHydrated
-      const shouldHydrateStudioPreferences = !_studioPreferencesHydrated
-      const [data, visibility, h3WindowPreferences, studioPreferences] = await Promise.all([
-        api.fetchModels(),
-        shouldHydrateVisibility
-          ? api.fetchModelVisibility().catch(error => {
-              console.warn('Failed to load model visibility:', error)
-              return null
-            })
-          : Promise.resolve(null),
-        shouldHydrateH3WindowOverrides
-          ? api.fetchH3WindowOverrides().catch(error => {
-              console.warn('Failed to load H3 window overrides:', error)
-              return null
-            })
-          : Promise.resolve(null),
-        shouldHydrateStudioPreferences
-          ? api.fetchStudioPreferences().catch(error => {
-              console.warn('Failed to load Studio preferences:', error)
-              return null
-            })
-          : Promise.resolve(null),
-      ])
-      const families = data.families
-      // Keep the complete backend capability record and inject virtual
-      // SFX models through the pure catalog boundary. Director metadata
-      // must survive normalization.
-      const models = composeModelCatalog(data.models, SFX_VIRTUAL_MODELS)
-
-      if (shouldHydrateH3WindowOverrides && h3WindowPreferences) {
-        _h3WindowOverridesHydrated = true
-        set({ h3WindowOverrides: h3WindowPreferences.overrides || {} })
-      }
-      if (shouldHydrateStudioPreferences && studioPreferences) {
-        _studioPreferencesHydrated = true
-      }
-
-      // Pinokio can assign a different web-server port on every launch.
-      // Browser localStorage is origin-bound, so hydrate durable visibility
-      // once from the server config and keep localStorage only as a
-      // migration/cache layer.
-      if (shouldHydrateVisibility && visibility) {
-        let restoredModels: Set<string>
-        if (visibility.configured) {
-          restoredModels = new Set(visibility.enabled_models)
-          _initializedMatureModels = new Set(
-            visibility.initialized_mature_models,
-          )
-          _modelVisibilityDefaultsVersion = (
-            visibility.defaults_version || 1
-          )
-        } else {
-          const legacyModels = _loadEnabledModels()
-          restoredModels = legacyModels ?? new Set(DEFAULT_ENABLED_MODELS)
-          const legacyDefaultsVersion = parseInt(
-            localStorage.getItem(DEFAULTS_VERSION_KEY) || '',
-            10,
-          )
-          _modelVisibilityDefaultsVersion = legacyModels
-            ? (legacyDefaultsVersion || 1)
-            : DEFAULTS_VERSION
-          // An existing browser whitelist is an explicit snapshot. Mark the
-          // current Mature entries initialized so migration cannot re-enable
-          // one the user deliberately disabled.
-          _initializedMatureModels = legacyModels
-            ? new Set(
-                models
-                  .filter(model => model.nsfw_only)
-                  .map(model => model.model_type),
-              )
-            : new Set()
-        }
-        _modelVisibilityHydrated = true
-        set({ enabledModels: restoredModels })
-        if (!visibility.configured) _saveEnabledModels(restoredModels)
-      }
-
-      // One-time curated-defaults upgrade for existing installs (see
-      // DEFAULTS_VERSION). Fresh installs already start from the full
-      // DEFAULT_ENABLED_MODELS list; for them this only stamps the
-      // version key.
-      let migrateMusicDefault = false
-      try {
-        const storedVer = _modelVisibilityHydrated
-          ? _modelVisibilityDefaultsVersion
-          : (
-              parseInt(
-                localStorage.getItem(DEFAULTS_VERSION_KEY) || '1',
-                10,
-              ) || 1
-            )
-        if (storedVer < DEFAULTS_VERSION) {
-          const additions: string[] = []
-          for (let v = storedVer + 1; v <= DEFAULTS_VERSION; v++) {
-            additions.push(...(DEFAULTS_ADDED_IN[v] || []))
-          }
-          const present = additions.filter(id => models.some(m => m.model_type === id))
-          if (present.length > 0) {
-            set(s => {
-              const next = new Set(s.enabledModels)
-              present.forEach(id => next.add(id))
-              _saveEnabledModels(next)
-              return { enabledModels: next }
-            })
-          }
-          migrateMusicDefault = storedVer < 2
-          _modelVisibilityDefaultsVersion = DEFAULTS_VERSION
-          localStorage.setItem(DEFAULTS_VERSION_KEY, String(DEFAULTS_VERSION))
-          _saveEnabledModels(get().enabledModels)
-        }
-      } catch { /* localStorage blocked — defaults only apply this session */ }
-
-      // Hydrate persisted per-mode settings from localStorage.
-      //
-      // Deliberately PARTIAL: only navigation, per-mode model selections,
-      // and H3 Sol/First Block preferences survive a page refresh. The working
-      // state — prompt text and Advanced settings (seed, steps, LoRA
-      // selection, …) — starts fresh from the model's defaults on every
-      // load. The per-mode snapshots (savedParamsPerMode /
-      // savedLoraPerMode / savedPromptPerMode) still carry edits across
-      // MODE SWITCHES within a session, in-memory only. v1.2.0 restored
-      // them here on refresh; stale text/seeds/LoRAs re-appearing after
-      // a reload felt wrong, so a refresh is a clean slate again.
-      const saved = _loadSettings()
-      const durableConfigured = studioPreferences?.configured === true
-      let selectedModelPerMode: Partial<Record<GenerationMode, string>> = {
-        ...(saved?.selectedModelPerMode || {}),
-        ...(durableConfigured
-          ? studioPreferences.selected_model_per_mode as Partial<Record<GenerationMode, string>>
-          : {}),
-      }
-      let selectedModelPerAudioSubMode: Partial<Record<import('../types').AudioSubMode, string>> = {
-        ...(saved?.selectedModelPerAudioSubMode || {}),
-        ...(durableConfigured
-          ? studioPreferences.selected_model_per_audio_sub_mode as Partial<Record<import('../types').AudioSubMode, string>>
-          : {}),
-      }
-      const rememberedAudioModel = selectedModelPerMode.audio || ''
-      const requestedAudioSubMode = durableConfigured
-        ? studioPreferences.audio_sub_mode
-        : saved?.audioSubMode
-      const restoredAudioSubMode: import('../types').AudioSubMode = (
-        requestedAudioSubMode === 'speech'
-        || requestedAudioSubMode === 'music'
-        || requestedAudioSubMode === 'sfx'
-        || requestedAudioSubMode === 'mixer'
-        || requestedAudioSubMode === 'revoice'
-      ) ? requestedAudioSubMode : _audioSubModeForModel(rememberedAudioModel)
-      const requestedVideoWorkflow = durableConfigured
-        ? studioPreferences.studio_video_workflow
-        : saved?.studioVideoWorkflow
-      const requestedImageWorkflow = durableConfigured
-        ? studioPreferences.studio_image_workflow
-        : saved?.studioImageWorkflow
-      const restoredImageWorkflow = _normalizeStudioImageWorkflow(requestedImageWorkflow)
-        ?? get().studioImageWorkflow
-      const h3Preferences = durableConfigured
-        ? studioPreferences.h3_optimizations
-        : saved?.h3OptimizationPreferences
-      const restoredH3Attention: '' | 'sol' | 'sla' | 'sdpa' = (
-        h3Preferences?.override_attention === 'sol'
-        || h3Preferences?.override_attention === 'sla'
-        || h3Preferences?.override_attention === 'sdpa'
-      ) ? h3Preferences.override_attention : ''
-      const restoredH3OptimizationPreferences = {
-        override_attention: restoredH3Attention,
-        skip_steps_cache_type: h3Preferences?.skip_steps_cache_type === 'first_block'
-          ? 'first_block' as const
-          : '' as const,
-        ...(typeof h3Preferences?.skip_steps_multiplier === 'number'
-          ? { skip_steps_multiplier: h3Preferences.skip_steps_multiplier }
-          : {}),
-        ...(typeof h3Preferences?.skip_steps_start_step_perc === 'number'
-          ? { skip_steps_start_step_perc: h3Preferences.skip_steps_start_step_perc }
-          : {}),
-      }
-      // v2 migration: users whose saved audio model IS the old music
-      // default follow it to the new default (see NEW_MUSIC_DEFAULT).
-      // (The old-model-params concern the migration used to handle is
-      // gone: saved params no longer rehydrate, and the defaults
-      // hydration below runs on every boot.)
-      if (migrateMusicDefault && selectedModelPerMode.audio === OLD_MUSIC_DEFAULT
-          && models.some(m => m.model_type === NEW_MUSIC_DEFAULT)) {
-        selectedModelPerMode = { ...selectedModelPerMode, audio: NEW_MUSIC_DEFAULT }
-        if (selectedModelPerAudioSubMode.music === OLD_MUSIC_DEFAULT) {
-          selectedModelPerAudioSubMode = {
-            ...selectedModelPerAudioSubMode,
-            music: NEW_MUSIC_DEFAULT,
-          }
-        }
-      }
-      let mode = get().generationMode
-      let initialModelType: string
-
-      if (saved || durableConfigured) {
-        // Restore saved generation mode
-        mode = (
-          durableConfigured
-            ? studioPreferences.generation_mode
-            : saved?.generationMode
-        ) || mode
-        // Validate saved model for this mode still exists
-        const savedModel = mode === 'audio'
-          ? selectedModelPerAudioSubMode[restoredAudioSubMode] || selectedModelPerMode.audio
-          : selectedModelPerMode[mode]
-        initialModelType = savedModel
-          && get().enabledModels.has(savedModel)
-          && models.some(m => m.model_type === savedModel)
-          ? savedModel
-          : getDefaultModelForMode(mode, families, models, get().enabledModels)
-        const bootedIntoRecast = mode === 'avatar'
-          && (initialModelType === 'scail2_14B_recast_fast' || initialModelType === 'scail2_14B')
-        const bootedIntoRepaint = mode === 'avatar'
-          && initialModelType === 'scail2_14B_fast'
-        const initialModel = models.find(model => model.model_type === initialModelType)
-        const restoredVideoWorkflow = _normalizeStudioVideoWorkflow(
-          requestedVideoWorkflow,
-          initialModel,
-        ) ?? (_isOmniVideoModel(initialModel) ? 'references' : get().studioVideoWorkflow)
-
-        set(s => ({
-          families,
-          models,
-          modelsLoaded: true,
-          generationMode: mode,
-          ...(bootedIntoRecast
-            ? { editSubMode: 'recast' as const }
-            : bootedIntoRepaint
-              ? { editSubMode: 'restyle' as const }
-              : {}),
-          // Seed the VALIDATED boot model into the map (the saved entry
-          // may point at a removed model) — _applyModelDefaults' race
-          // guard compares against selectedModelPerMode[mode].
-          selectedModelPerMode: { ...selectedModelPerMode, [mode]: initialModelType },
-          selectedModelPerAudioSubMode,
-          studioVideoWorkflow: restoredVideoWorkflow,
-          studioImageWorkflow: restoredImageWorkflow,
-          audioSubMode: restoredAudioSubMode,
-          h3OptimizationPreferences: restoredH3OptimizationPreferences,
-          // Mode-shaping mirrored from setGenerationMode: booting into
-          // image mode needs image_mode 1 + Auto resolution. These used
-          // to arrive via the restored params snapshot.
-          ...(mode === 'image' ? { resolutionPreset: 'auto' as ResolutionPreset, aspectRatio: 'auto' as AspectRatio } : {}),
-          params: {
-            ...s.params,
-            model_type: initialModelType || s.params.model_type,
-            ...(mode === 'image' ? {
-              image_mode: restoredImageWorkflow === 'inpaint' || restoredImageWorkflow === 'outpaint' ? 2 : 1,
-              _studio_image_workflow: restoredImageWorkflow,
-            } : {}),
-            ...(mode === 'video' ? {
-              image_mode: restoredVideoWorkflow === 'extend' ? 3 : restoredVideoWorkflow === 'blend' ? 4 : 0,
-              _studio_video_workflow: restoredVideoWorkflow,
-            } : {}),
-            ...restoredH3OptimizationPreferences,
-          },
-        }))
-      } else {
-        initialModelType = getDefaultModelForMode(
-          mode,
-          families,
-          models,
-          get().enabledModels,
-        )
-        set(s => ({
-          families,
-          models,
-          modelsLoaded: true,
-          selectedModelPerMode: { [mode]: initialModelType },
-          ...(mode === 'image' ? { resolutionPreset: 'auto' as ResolutionPreset, aspectRatio: 'auto' as AspectRatio } : {}),
-          params: {
-            ...s.params,
-            model_type: initialModelType || s.params.model_type,
-            ...(mode === 'image' ? { image_mode: 1 } : {}),
-          },
-        }))
-      }
-
-      // Load LoRAs, model options, and tuned defaults for the initial
-      // model. The defaults hydration (steps, guidance, LM sampling…)
-      // must run on every boot now that saved params don't rehydrate —
-      // without it the sliders would show INITIAL_PARAMS' generic values
-      // instead of the model's.
-      const mt = initialModelType || get().params.model_type
-      if (mt && !sfxModelTypes.has(mt)) {
-        get().loadLoras(mt)
-        get().loadModelOptions(mt)
-        _applyModelDefaults(get, set, mt)
-      }
-      if (
-        mode === 'video'
-        && (get().studioVideoWorkflow === 'frames' || get().studioVideoWorkflow === 'references')
-      ) {
-        get().setStudioVideoCreateRoute(get().studioVideoCreateRoute)
-      }
-      // Migrate browser-only preferences to the durable server record and
-      // refresh its validated model selections after defaults/fallbacks.
-      _persistStickyStudioPreferences(get())
-      // Refresh the lora_id ↔ filename map from /installed and reconcile
-      // any filename renames since save (LoRA version updates land here
-      // transparently — saved weights/activations carry over to the new
-      // filename without user intervention).
-      get().refreshLoraIdMap()
-
-      // Auto-enable each Mature model once, then preserve an explicit
-      // disable. The initialized IDs live in the same server-side visibility
-      // record, so a changing Pinokio port cannot reset this decision.
-      const cfg = get().servicesConfig
-      if (cfg?.nsfw_mode && _modelVisibilityHydrated) {
-        set(s => {
-          const next = _enableUninitializedMatureModels(
-            models,
-            s.enabledModels,
-          )
-          if (!next) return s
-          _saveEnabledModels(next)
-          return { enabledModels: next }
-        })
-      }
-    } catch (e) {
-      console.error('Failed to load models:', e)
-    }
-  },
 
   resolutionPreset: '720p',
   setResolutionPreset: (preset) => {
@@ -8308,317 +7119,6 @@ export const useStore = create<AppState>((set, get, store) => ({
     }
   },
 
-  // LoRA state
-  availableLoras: [],
-  lorasLoading: false,
-  loraWeights: {},
-  loraIdByFilename: {},
-  filenameByLoraId: {},
-
-  /**
-   * Refresh the lora_id ↔ filename maps from /api/v1/loras/installed.
-   * Called once at boot (from loadModels) and again whenever LoRAs may
-   * have been added/removed (after CivitAI download, scan, etc.).
-   *
-   * Side effect: runs reconciliation against the persisted savedLoraPerMode.
-   * If a saved filename no longer exists on disk but the snapshot lora_id
-   * resolves to a different filename in the fresh map, the rename is
-   * applied transparently — that's the LoRA-version-update flow.
-   */
-  refreshLoraIdMap: async () => {
-    try {
-      const { loras } = await api.fetchInstalledLoras()
-      const byFilename: Record<string, string> = {}
-      const byLoraId: Record<string, string> = {}
-      for (const l of loras) {
-        if (!l.lora_id || !l.filename) continue
-        byFilename[l.filename] = l.lora_id
-        // If two files share a lora_id (rare — user kept v1 + v2 side by
-        // side), the last one wins. Reconciliation will prefer whichever
-        // matches the saved filename.
-        byLoraId[l.lora_id] = l.filename
-      }
-      // Reconcile: rewrite stale filenames in savedLoraPerMode using the
-      // snapshot loaded from localStorage (lora_id → filename-at-save-time).
-      const s = get()
-      const snapshot = s._loraFilenameSnapshotAtLoad || {}
-      const reconciled: typeof s.savedLoraPerMode = {}
-      let changed = false
-      for (const [mode, blob] of Object.entries(s.savedLoraPerMode)) {
-        if (!blob) continue
-        const renameFilename = (fname: string): string | null => {
-          if (byFilename[fname]) return fname  // still on disk, no change
-          // Stale: look up its lora_id in snapshot, then current filename in fresh map.
-          // Walk snapshot backwards (lora_id → fname) to find the lora_id this filename had.
-          let foundId: string | null = null
-          for (const [id, snapFname] of Object.entries(snapshot)) {
-            if (snapFname === fname) { foundId = id; break }
-          }
-          if (foundId && byLoraId[foundId]) {
-            changed = true
-            return byLoraId[foundId]  // renamed
-          }
-          // LoRA was deleted entirely.
-          changed = true
-          return null
-        }
-        const newActivated = (blob.activated_loras || [])
-          .map(renameFilename)
-          .filter((x): x is string => x !== null)
-        const newWeights: Record<string, number[]> = {}
-        for (const [fname, w] of Object.entries(blob.loraWeights || {})) {
-          const renamed = renameFilename(fname)
-          if (renamed) newWeights[renamed] = w
-        }
-        const newAvailable = (blob.availableLoras || [])
-          .map(renameFilename)
-          .filter((x): x is string => x !== null)
-        reconciled[mode as GenerationMode] = {
-          ...blob,
-          activated_loras: newActivated,
-          loraWeights: newWeights,
-          availableLoras: newAvailable,
-        }
-      }
-      if (changed) {
-        // Also rewrite the in-memory runtime state if its keys are stale
-        const renameRuntimeFilename = (fname: string): string | null => {
-          if (byFilename[fname]) return fname
-          let foundId: string | null = null
-          for (const [id, snapFname] of Object.entries(snapshot)) {
-            if (snapFname === fname) { foundId = id; break }
-          }
-          if (foundId && byLoraId[foundId]) return byLoraId[foundId]
-          return null
-        }
-        const curActivated = (s.params.activated_loras || [])
-          .map(renameRuntimeFilename)
-          .filter((x): x is string => x !== null)
-        const curWeights: Record<string, number[]> = {}
-        for (const [fname, w] of Object.entries(s.loraWeights || {})) {
-          const renamed = renameRuntimeFilename(fname)
-          if (renamed) curWeights[renamed] = w
-        }
-        set(state => ({
-          loraIdByFilename: byFilename,
-          filenameByLoraId: byLoraId,
-          savedLoraPerMode: reconciled,
-          params: { ...state.params, activated_loras: curActivated },
-          loraWeights: curWeights,
-        }))
-        // Persist the reconciled state so next boot doesn't need to redo it.
-        const ns = get()
-        _saveSettings({
-          generationMode: ns.generationMode,
-          selectedModelPerMode: ns.selectedModelPerMode,
-          savedParamsPerMode: ns.savedParamsPerMode,
-          savedLoraPerMode: ns.savedLoraPerMode,
-          savedPromptPerMode: ns.savedPromptPerMode,
-        }, byFilename)
-      } else {
-        set({ loraIdByFilename: byFilename, filenameByLoraId: byLoraId })
-      }
-      // Fire-and-forget: kick off an update check, debounced server-side
-      // by a 24h staleness window. If the manifest is fresh, the backend
-      // returns immediately without hitting CivitAI; if stale, it walks
-      // the library and refreshes badges in the background. The user's
-      // current LoraSelector instance will pick up new badges on its
-      // next /details fetch (mode change or refresh).
-      api.checkLoraUpdates(false).catch(() => {
-        // Network failures here are non-fatal — the manual "Check" button
-        // in the LoraSelector remains available for retries.
-      })
-    } catch {
-      // Non-fatal. Persistence will keep using filename-keyed legacy shape
-      // until the map populates on a subsequent attempt.
-    }
-  },
-
-  loadLoras: async (modelType) => {
-    set({ lorasLoading: true })
-    try {
-      const data = await api.fetchLoras(modelType)
-      set({ availableLoras: data.loras, lorasLoading: false })
-    } catch {
-      set({ availableLoras: [], lorasLoading: false })
-    }
-  },
-
-  toggleLora: (filename) => {
-    const { params, loraWeights, modelOptions, generationMode, editSubMode } = get()
-    const phases = loraPhaseCount(modelOptions, generationMode, editSubMode)
-    const managedTurboFilenames = new Set(
-      modelOptions?.minimax_h3_turbo?.presets?.map(preset => preset.filename)
-      || (modelOptions?.minimax_h3_turbo?.filename
-        ? [modelOptions.minimax_h3_turbo.filename]
-        : []),
-    )
-    const removedTurboPreset = params.activated_loras.includes(filename) && managedTurboFilenames.has(filename)
-    const toggled = toggleLoraState(params.activated_loras, loraWeights, filename, phases)
-    const { activatedLoras: current, weights: newWeights, multipliers } = toggled
-
-    set(s => ({
-      loraWeights: newWeights,
-      params: {
-        ...s.params,
-        activated_loras: current,
-        loras_multipliers: multipliers,
-        ...(removedTurboPreset ? { minimax_h3_turbo_mode: false } : {}),
-      },
-    }))
-    // Persist LoRA state
-    const s = get()
-    const mode = s.generationMode
-    const updatedLoraPerMode = {
-      ...s.savedLoraPerMode,
-      [mode]: { activated_loras: current, loras_multipliers: multipliers, loraWeights: newWeights, availableLoras: s.availableLoras },
-    }
-    const updatedParamsPerMode = removedTurboPreset
-      ? {
-          ...s.savedParamsPerMode,
-          [mode]: {
-            ...(s.savedParamsPerMode[mode] || {}),
-            minimax_h3_turbo_mode: false,
-          },
-        }
-      : s.savedParamsPerMode
-    set({
-      savedLoraPerMode: updatedLoraPerMode,
-      savedParamsPerMode: updatedParamsPerMode,
-    })
-    _saveSettings({ generationMode: mode, selectedModelPerMode: s.selectedModelPerMode, savedParamsPerMode: updatedParamsPerMode, savedLoraPerMode: updatedLoraPerMode, savedPromptPerMode: s.savedPromptPerMode }, s.loraIdByFilename)
-  },
-
-  ensureTransitionLoraForBlend: async () => {
-    const state = get()
-    const modelType = state.params.model_type as string
-    // Only applies to LTX-2 family models — the LoRA is trained for LTX-2.3
-    if (!modelType || !modelType.startsWith('ltx2')) return
-
-    const HF_URL = 'https://huggingface.co/valiantcat/LTX-2.3-Transition-LORA'
-    const matchesTransitionLora = (name: string) => /transition/i.test(name)
-
-    try {
-      // Step 1: check if already installed
-      let { loras } = await api.fetchLoras(modelType)
-      let transitionFilename = loras.find(matchesTransitionLora)
-
-      // Step 2: if not installed, trigger HF download
-      if (!transitionFilename) {
-        console.log('[Blend] Transition LoRA not found locally — downloading from HuggingFace')
-        let result: { filename: string } | null = null
-        try {
-          result = await api.importHuggingFaceLora(HF_URL)
-        } catch (e) {
-          console.error('[Blend] Transition LoRA download request failed:', e)
-          return
-        }
-        // Poll the LoRA list until the new file appears (download runs in
-        // a backend thread). Cap at ~3 min total.
-        const expectedFilename = result?.filename
-        for (let i = 0; i < 90; i++) {
-          await new Promise(r => setTimeout(r, 2000))
-          const refreshed = await api.fetchLoras(modelType)
-          loras = refreshed.loras
-          const found = expectedFilename
-            ? loras.find(l => l === expectedFilename || matchesTransitionLora(l))
-            : loras.find(matchesTransitionLora)
-          if (found) { transitionFilename = found; break }
-        }
-        if (!transitionFilename) {
-          console.warn('[Blend] Transition LoRA download did not complete in time — skipping auto-activation')
-          return
-        }
-        console.log(`[Blend] Transition LoRA ready: ${transitionFilename}`)
-        // Refresh the in-store available LoRA list so the UI shows the new file
-        try { await get().loadLoras(modelType) } catch { /* non-fatal */ }
-      }
-
-      // Step 3: ensure it's in activated_loras (but don't toggle-off if it
-      // happens to already be there)
-      const activated = (get().params.activated_loras as string[]) || []
-      if (!activated.includes(transitionFilename)) {
-        get().toggleLora(transitionFilename)
-        console.log(`[Blend] Auto-activated transition LoRA: ${transitionFilename}`)
-      }
-    } catch (e) {
-      console.error('[Blend] ensureTransitionLoraForBlend failed:', e)
-    }
-  },
-
-  ensureEditAnythingLora: async () => {
-    const state = get()
-    const modelType = state.params.model_type as string
-    if (!modelType || !modelType.startsWith('ltx2')) return
-
-    const HF_URL = 'https://huggingface.co/Alissonerdx/LTX-LoRAs'
-    // Must match EDIT_ANYTHING_LORA_FILENAME in app/launch.py. The endpoint
-    // will activate this server-side regardless of the client's LoRA list,
-    // so we only need to ensure the file is present on disk before the
-    // user hits Generate.
-    const EDIT_ANYTHING_FILENAME =
-      'ltx23_edit_anything_global_rank128_v1_9000steps_adamw.safetensors'
-    const matchesEditAnything = (name: string) =>
-      name === EDIT_ANYTHING_FILENAME ||
-      /edit_anything.*9000steps/i.test(name)
-
-    try {
-      const { loras } = await api.fetchLoras(modelType)
-      const already = loras.find(matchesEditAnything)
-      if (already) return
-
-      console.log('[EditAnything] LoRA not found locally — downloading from HuggingFace')
-      try {
-        await api.importHuggingFaceLora(HF_URL, undefined, EDIT_ANYTHING_FILENAME)
-      } catch (e) {
-        console.error('[EditAnything] LoRA download request failed:', e)
-        return
-      }
-      // Poll every 2s until the file appears (up to ~3 min)
-      for (let i = 0; i < 90; i++) {
-        await new Promise(r => setTimeout(r, 2000))
-        const refreshed = await api.fetchLoras(modelType)
-        if (refreshed.loras.find(matchesEditAnything)) {
-          console.log(`[EditAnything] LoRA ready: ${EDIT_ANYTHING_FILENAME}`)
-          try { await get().loadLoras(modelType) } catch { /* non-fatal */ }
-          return
-        }
-      }
-      console.warn('[EditAnything] LoRA download did not complete in time')
-    } catch (e) {
-      console.error('[EditAnything] ensureEditAnythingLora failed:', e)
-    }
-  },
-
-  setLoraWeight: (filename, phaseIndex, value) => {
-    const { params, loraWeights, modelOptions, generationMode, editSubMode } = get()
-    const phases = loraPhaseCount(modelOptions, generationMode, editSubMode)
-    const updated = updateLoraWeight(
-      params.activated_loras,
-      loraWeights,
-      filename,
-      phaseIndex,
-      value,
-      phases,
-    )
-    if (!updated) return
-    const { weights: newWeights, multipliers } = updated
-
-    set(s => ({
-      loraWeights: newWeights,
-      params: { ...s.params, loras_multipliers: multipliers },
-    }))
-    // Persist LoRA state
-    const s = get()
-    const mode = s.generationMode
-    const updatedLoraPerMode = {
-      ...s.savedLoraPerMode,
-      [mode]: { activated_loras: s.params.activated_loras, loras_multipliers: multipliers, loraWeights: newWeights, availableLoras: s.availableLoras },
-    }
-    set({ savedLoraPerMode: updatedLoraPerMode })
-    _saveSettings({ generationMode: mode, selectedModelPerMode: s.selectedModelPerMode, savedParamsPerMode: s.savedParamsPerMode, savedLoraPerMode: updatedLoraPerMode, savedPromptPerMode: s.savedPromptPerMode }, s.loraIdByFilename)
-  },
-
   // Presets
   presets: [],
   presetsLoading: false,
@@ -8681,296 +7181,6 @@ export const useStore = create<AppState>((set, get, store) => ({
       set(s => ({ presets: s.presets.filter(p => p.id !== id) }))
     } catch (e) {
       console.error('Failed to delete preset:', e)
-    }
-  },
-
-  // Model options
-  modelOptions: null,
-  modelOptionsLoading: false,
-
-  loadModelOptions: async (modelType) => {
-    const seq = ++_modelOptionsSeq
-    set({ modelOptionsLoading: true })
-    try {
-      const options = await api.fetchModelOptions(modelType)
-      // Staleness guard: a newer loadModelOptions call was issued while this
-      // fetch was in flight (rapid model switching, or a settings restore
-      // that jumped models). Applying a superseded response would clobber
-      // params (default steps/guidance) and modelOptions with the WRONG
-      // model's values — last requested wins.
-      if (seq !== _modelOptionsSeq) return
-      const activeState = get()
-      const { durationSeconds, slidingWindowSeconds } = activeState
-      const fps = options.fps || 16
-      // Set overlap from model defaults
-      const swDefaults = (options as unknown as Record<string, unknown>).sliding_window_defaults as Record<string, number> | undefined
-      const overlapDefault = swDefaults?.overlap_default ?? 5
-      const discardDefault = swDefaults?.discard_last_frames ?? 0
-      const minimumDuration = Math.max(1, (options.frames_minimum || fps) / fps)
-      const nativeMaximumDuration = options.frames_maximum
-        ? options.frames_maximum / fps
-        : null
-      const h3ReferenceSequence = (
-        options.omni_reference === true
-        && activeState.params.minimax_h3_reference_sequence === true
-      )
-      const isH3 = String(options.architecture || '').startsWith('minimax_h3')
-      const maximumDuration = options.omni_reference === true
-        ? (nativeMaximumDuration && !h3ReferenceSequence
-            ? nativeMaximumDuration
-            : Number.POSITIVE_INFINITY)
-        : (!options.sliding_window && nativeMaximumDuration
-            ? nativeMaximumDuration
-            : Number.POSITIVE_INFINITY)
-      let nextDurationSeconds = Math.min(
-        maximumDuration,
-        Math.max(minimumDuration, durationSeconds),
-      )
-      if (
-        options.sliding_window
-        && nativeMaximumDuration
-        && nextDurationSeconds <= Math.round(nativeMaximumDuration * 10) / 10
-      ) {
-        // H3's native ceiling is 14.375s but the UI displays one decimal.
-        // Treat displayed 14.4s as that same one-window endpoint instead of
-        // scheduling a second minimum-size pass for one rounded frame.
-        nextDurationSeconds = Math.min(
-          nextDurationSeconds,
-          nativeMaximumDuration,
-        )
-      }
-      let nextWindowFrames = Math.round(slidingWindowSeconds * fps)
-      if (options.sliding_window && swDefaults?.window_default != null) {
-        nextWindowFrames = swDefaults.window_default
-      }
-      if (options.sliding_window && swDefaults) {
-        nextWindowFrames = Math.max(
-          swDefaults.window_min ?? 1,
-          Math.min(swDefaults.window_max ?? nextWindowFrames, nextWindowFrames),
-        )
-      } else if (!options.sliding_window) {
-        nextWindowFrames = h3ReferenceSequence && options.frames_maximum
-          ? options.frames_maximum
-          : Math.round(nextDurationSeconds * fps)
-      }
-      let nextWindowSeconds = nextWindowFrames / fps
-      let nextWindowLocked = false
-      const paramUpdates: Record<string, unknown> = {
-        guidance_phases: options.guidance_max_phases,
-        video_length: Math.round(nextDurationSeconds * fps),
-        sliding_window_size: nextWindowFrames,
-        sliding_window_overlap: overlapDefault,
-        sliding_window_discard_last_frames: discardDefault,
-      }
-      let nextResolutionPreset = activeState.resolutionPreset
-      let nextAspectRatio = activeState.aspectRatio
-      const modelPresetOrder = options.resolution_preset_order || []
-      if (modelPresetOrder.length > 0) {
-        if (!modelPresetOrder.includes(nextResolutionPreset)) {
-          // A model-specific list can contain an expensive experimental tier
-          // at the end. Select its ordinary 720p tier when the previous
-          // model's preset is unavailable instead of silently jumping to the
-          // largest canvas.
-          nextResolutionPreset = modelPresetOrder.includes('720p')
-            ? '720p'
-            : modelPresetOrder[0]
-        }
-        if (nextAspectRatio === 'auto' && !options.supports_auto_aspect) {
-          nextAspectRatio = '16:9'
-        }
-        const selectedPresetValues = options.resolution_presets?.[nextResolutionPreset]?.values
-        if (nextAspectRatio === '21:9' && !selectedPresetValues?.['21:9']) {
-          nextAspectRatio = '16:9'
-        }
-        paramUpdates.resolution = resolveResolution(
-          options,
-          nextResolutionPreset,
-          nextAspectRatio,
-        )
-      } else if (
-        nextAspectRatio === 'auto'
-        && activeState.generationMode !== 'image'
-        && !options.supports_auto_aspect
-      ) {
-        nextAspectRatio = '16:9'
-        paramUpdates.resolution = resolveResolution(
-          options,
-          nextResolutionPreset,
-          nextAspectRatio,
-        )
-      }
-      if (isH3) {
-        const selectedResolution = String(
-          paramUpdates.resolution || activeState.params.resolution || '',
-        )
-        const overrideKey = h3WindowOverrideKey(modelType, selectedResolution)
-        const savedOverride = activeState.h3WindowOverrides[overrideKey]
-        const memoryPolicy = options.omni_reference === true
-          ? options.omni_sequence_memory_policy
-          : options.sliding_window_memory_policy
-        const recommendation = h3ReferenceSequence
-          ? recommendedH3OmniSequenceProfile(
-              memoryPolicy,
-              selectedResolution,
-              activeState.systemStats?.gpu.vram_total_gb ?? 0,
-              options.frames_minimum ?? 124,
-              options.frames_maximum ?? 345,
-              options.frames_steps ?? 17,
-            )
-          : recommendedH3PassProfile(
-              memoryPolicy,
-              selectedResolution,
-              activeState.systemStats?.gpu.vram_total_gb ?? 0,
-            )
-        const selectedFrames = savedOverride ?? recommendation?.frames
-        if (selectedFrames != null) {
-          nextWindowFrames = normalizeH3NativeFrames(
-            selectedFrames,
-            options.frames_minimum ?? 124,
-            options.frames_maximum ?? 345,
-            options.frames_steps ?? 17,
-          )
-          nextWindowSeconds = nextWindowFrames / fps
-          paramUpdates.sliding_window_size = nextWindowFrames
-        }
-        nextWindowLocked = savedOverride != null
-        paramUpdates.sliding_window_memory_override = nextWindowLocked
-        if (options.omni_reference === true) {
-          paramUpdates.minimax_h3_sequence_memory_override = nextWindowLocked
-          if (h3ReferenceSequence) {
-            paramUpdates.minimax_h3_sequence_clip_frames = nextWindowFrames
-          }
-        }
-        const multiWindowEnabled = options.omni_reference === true
-          ? h3ReferenceSequence
-          : activeState.params.minimax_h3_multi_window === true
-        if (!multiWindowEnabled) {
-          nextDurationSeconds = Math.min(nextDurationSeconds, nextWindowSeconds)
-          paramUpdates.video_length = Math.round(nextDurationSeconds * fps)
-        }
-      }
-      // Apply model defaults for inference steps and guidance scale
-      if (options.default_num_inference_steps != null) {
-        paramUpdates.num_inference_steps = options.default_num_inference_steps
-      }
-      if (options.default_guidance_scale != null) {
-        paramUpdates.guidance_scale = options.default_guidance_scale
-      }
-      if (options.minimax_h3_text_encoder_choices?.length) {
-        const currentEncoder = get().params.minimax_h3_text_encoder
-        const valid = options.minimax_h3_text_encoder_choices.some(
-          choice => choice.value === currentEncoder
-        )
-        if (!valid) {
-          paramUpdates.minimax_h3_text_encoder = (
-            options.minimax_h3_text_encoder_default
-            || options.minimax_h3_text_encoder_choices[0].value
-          )
-        }
-      }
-      if (options.ltx25_video_vae_choices?.length) {
-        const currentVideoVae = get().params.ltx25_video_vae
-        const valid = options.ltx25_video_vae_choices.some(
-          choice => choice.value === currentVideoVae
-        )
-        if (!valid) {
-          paramUpdates.ltx25_video_vae = (
-            options.ltx25_video_vae_default
-            || options.ltx25_video_vae_choices[0].value
-          )
-        }
-      }
-      if (options.sla_attention) {
-        const requestedAttention = get().params.override_attention
-        paramUpdates.override_attention = requestedAttention === 'sdpa'
-          ? 'sdpa'
-          : 'sla'
-        // This checkpoint's acceleration adapters are already fused into
-        // its transformer. Never inherit an independent cache recipe across
-        // a model switch.
-        paramUpdates.skip_steps_cache_type = ''
-      } else if (
-        get().params.override_attention === 'sla'
-        || get().params.override_attention === 'sdpa'
-      ) {
-        paramUpdates.override_attention = ''
-      }
-      if (options.minimax_h3_turbo) {
-        const turboPresets = options.minimax_h3_turbo.presets?.length
-          ? options.minimax_h3_turbo.presets
-          : [{
-              id: options.minimax_h3_turbo.preset_id,
-              filename: options.minimax_h3_turbo.filename,
-              steps: options.minimax_h3_turbo.steps,
-            }]
-        const requestedPresetId = get().params.minimax_h3_turbo_preset
-        const selectedPreset = (
-          turboPresets.find(preset => preset.id === requestedPresetId)
-          || turboPresets.find(preset => preset.id === options.minimax_h3_turbo?.preset_id)
-          || turboPresets[0]
-        )
-        paramUpdates.minimax_h3_turbo_preset = selectedPreset.id
-        // A restored Turbo preset always displays the same step count the
-        // backend will enforce. This also closes a race where model defaults
-        // (20 steps) arrive after the user checks Turbo (currently 8-step PDD).
-        if (get().params.minimax_h3_turbo_mode === true) {
-          paramUpdates.num_inference_steps = selectedPreset.steps
-        }
-      } else {
-        // Model switches preserve most Studio params. Never carry the Full-H3
-        // Turbo flag invisibly into a Pruned H3 or unrelated model.
-        paramUpdates.minimax_h3_turbo_mode = false
-        paramUpdates.minimax_h3_turbo_preset = undefined
-      }
-      // TTS default duration. Prefer the model's declared `default` (DramaBox
-      // uses 0 = auto-derive from prompt); fall back to `max` (legacy behavior
-      // for older TTS models that didn't declare a default), then 600.
-      const ttsDefaults: Record<string, unknown> = {}
-      if (options.audio_only && options.duration_slider) {
-        const ds = options.duration_slider
-        ttsDefaults.durationSeconds = ds.default ?? ds.max ?? 600
-      }
-      // Clamp current voice count to the new model's max_voice_count (e.g.
-      // user had 5 voices on Kugel, switches to Scenema which caps at 2 —
-      // trim slots 3-5 so the UI doesn't show ghost voices that the backend
-      // would silently ignore).
-      const newMaxVoiceCount = ((options as { max_voice_count?: number }).max_voice_count) ?? 6
-      const currentVoiceCount = get().ttsVoiceCount
-      if (currentVoiceCount > newMaxVoiceCount) {
-        const trimmedVoices = get().ttsVoices.slice(0, newMaxVoiceCount)
-        ttsDefaults.ttsVoiceCount = newMaxVoiceCount
-        ttsDefaults.ttsVoices = trimmedVoices
-        // Re-derive audio_prompt_type from the clamped count using the new
-        // model's selection list.
-        const selection = (options.audio_prompt_type_sources?.selection as string[] | undefined) || ['', 'A', 'AB']
-        const audioType = selection[Math.min(newMaxVoiceCount, selection.length - 1)]
-        paramUpdates.audio_prompt_type = audioType
-      }
-      set(s => ({
-        ...ttsDefaults,
-        modelOptions: options,
-        modelOptionsLoading: false,
-        durationSeconds: (
-          typeof ttsDefaults.durationSeconds === 'number'
-            ? ttsDefaults.durationSeconds
-            : nextDurationSeconds
-        ),
-        slidingWindowSeconds: nextWindowSeconds,
-        slidingWindowOverlap: overlapDefault,
-        slidingWindowLocked: nextWindowLocked,
-        resolutionPreset: nextResolutionPreset,
-        aspectRatio: nextAspectRatio,
-        params: {
-          ...s.params,
-          ...paramUpdates,
-        },
-      }))
-    } catch {
-      // Same staleness rule as the success path — a superseded request's
-      // failure must not null out the newer request's options.
-      if (seq === _modelOptionsSeq) {
-        set({ modelOptions: null, modelOptionsLoading: false })
-      }
     }
   },
 
@@ -9039,7 +7249,7 @@ export const useStore = create<AppState>((set, get, store) => ({
       set({ servicesConfig: config, servicesConfigLoading: false })
       if (
         config.nsfw_mode
-        && _modelVisibilityHydrated
+        && studioModelRuntime.visibilityHydrated
         && get().models.length > 0
       ) {
         set(s => {
@@ -9063,7 +7273,7 @@ export const useStore = create<AppState>((set, get, store) => ({
       get().loadServicesConfig()
       // Newly-discovered Mature models appear once when Mature Mode is
       // enabled. Previously initialized models retain the user's whitelist.
-      if (partial.nsfw_mode === true && _modelVisibilityHydrated) {
+      if (partial.nsfw_mode === true && studioModelRuntime.visibilityHydrated) {
         set(s => {
           const next = _enableUninitializedMatureModels(
             s.models,
@@ -10596,13 +8806,15 @@ export const useStore = create<AppState>((set, get, store) => ({
       // ?? not || — an explicit user-toggled `false` must be respected
       // (legacy v1 path); only fall back to true when servicesConfig
       // hasn't loaded yet or the field is undefined.
-      const useV2 = get().servicesConfig?.use_director_v2 ?? true
+      const selectedSkill = get().directorSkill || 'music_video'
+      const useV2 = (get().servicesConfig?.use_director_v2 ?? true)
+        || !['music_video', 'short_film'].includes(selectedSkill)
       let plans: Array<{ video_prompt: string; image_prompt: string }>
 
       if (useV2) {
         // Director v2: structured planning → rendering → validation
         const result = await api.directorV2Plan({
-          skill_type: 'music_video',
+          skill_type: get().directorSkill || 'music_video',
           clips: directorPlannedClips,
           scene_description: directorSceneDescription,
           lyrics: directorAnalysis?.lyrics ?? undefined,
@@ -11435,37 +9647,6 @@ export const useStore = create<AppState>((set, get, store) => ({
       console.error('Short film story planning failed:', e)
       set({ directorLoading: false, directorError: msg, directorStep: 'style' })
     }
-  },
-
-  selectModel: (modelType) => {
-    const currentMode = get().generationMode
-    set(s => ({
-      params: {
-        ...s.params,
-        model_type: modelType,
-        activated_loras: [],
-        loras_multipliers: '',
-        minimax_h3_turbo_mode: false,
-        minimax_h3_turbo_preset: undefined,
-      },
-      selectedModelPerMode: { ...s.selectedModelPerMode, [currentMode]: modelType },
-      ...(currentMode === 'audio' ? {
-        selectedModelPerAudioSubMode: {
-          ...s.selectedModelPerAudioSubMode,
-          [s.audioSubMode]: modelType,
-        },
-      } : {}),
-      h3WindowPlan: null,
-      loraWeights: {},
-      availableLoras: [],
-    }))
-    // Virtual SFX models don't have backend model options or LoRAs
-    if (!sfxModelTypes.has(modelType)) {
-      get().loadLoras(modelType)
-      get().loadModelOptions(modelType)
-      _applyModelDefaults(get, set, modelType)
-    }
-    _persistStickyStudioPreferences(get())
   },
 
   ...createWorkspaceSlice(set, get, store),
@@ -13556,6 +11737,7 @@ export const useStore = create<AppState>((set, get, store) => ({
 
     const pipelineParams: Record<string, unknown> = {
       pipeline_type: pipelineType,
+      skill_type: state.directorSkill || (pipelineType.startsWith('short_film') ? 'short_film' : 'music_video'),
       // Queueing never changes the user's approval policy.
       auto_mode: directorAutoMode,
       workspace: get().activeWorkspace,

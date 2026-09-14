@@ -85,7 +85,7 @@ globalThis.fetch = async (url, options) => {
   }
   return new Response(JSON.stringify({}))
 }
-useStore.setState({ activeWorkspace: 'fixture', directorSceneDescription: 'A quiet station' })
+useStore.setState({ activeWorkspace: 'fixture', directorSceneDescription: 'A quiet station', directorSkill: 'demo_local_skill' })
 useStore.getState().applyWorkspaceSetup({
   video_model: 'fixture-video', image_model: 'fixture-image',
   music_source: 'generate', music_model: 'fixture-music',
@@ -95,6 +95,7 @@ useStore.getState().applyWorkspaceSetup({
     loraWeights: { 'actor.safetensors': [0.7] } },
 })
 await useStore.getState().startDirectorPipeline()
+assert.equal(submitted.skill_type, 'demo_local_skill')
 assert.equal(submitted.video_film_grain_intensity, 0.2)
 assert.equal(submitted.video_params.num_inference_steps, 12)
 assert.equal(submitted.video_self_refiner, 2)
@@ -109,4 +110,26 @@ assert.equal(useStore.getState().directorVideoFilmGrainIntensity, 0)
 assert.equal(useStore.getState().directorVideoInferenceStepsByModel['fixture-video'], undefined)
 assert.equal(useStore.getState().directorMusicModel, original.directorMusicModel)
 useStore.setState(original, true)
-console.log('Store contracts passed: workspace races, late saves, progress lifecycle, LoRA phases and plugin identity.')
+// Round-trip the real mode-switch action without model/network initialization.
+globalThis.fetch = async () => new Response('{}')
+globalThis.localStorage = { getItem: () => null, setItem: () => {} }
+useStore.setState({ params: { ...original.params, model_type: '', prompt: 'Video prompt', seed: 101 },
+  models: [], families: [], enabledModels: new Set() })
+useStore.getState().setGenerationMode('image')
+useStore.getState().setParam('prompt', 'Image prompt')
+useStore.getState().setParam('seed', 202)
+useStore.getState().setGenerationMode('video')
+assert.equal(useStore.getState().params.prompt, 'Video prompt')
+assert.equal(useStore.getState().params.seed, 101)
+useStore.getState().setGenerationMode('image')
+assert.equal(useStore.getState().params.prompt, 'Image prompt')
+assert.equal(useStore.getState().params.seed, 202)
+useStore.getState().setStudioImageWorkflow('outpaint')
+assert.equal(useStore.getState().params.image_mode, 2)
+useStore.getState().setStudioImageWorkflow('upscale')
+assert.equal(useStore.getState().generationMode, 'tools')
+assert.equal(useStore.getState().toolsUpscaleMedia, 'image')
+useStore.getState().setGenerationMode('image')
+assert.equal(useStore.getState().params.seed, 202)
+useStore.setState(original, true)
+console.log('Store contracts passed: workspace races, late saves, progress lifecycle, LoRA phases, plugin identity, mode snapshots and workflow routing.')

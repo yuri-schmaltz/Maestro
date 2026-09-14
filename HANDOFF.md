@@ -14,6 +14,17 @@ Studio/Director/routers permanecem abertas. Nenhum reinício do backend real
 foi realizado nesta etapa.
 
 
+### Validação da segunda etapa
+
+O shell Chromium passou em sete abas e cinco larguras, com revisão de produção,
+histórico do Editor e CRUD sob interceptação de gravações. Criação/edição e
+reabertura de setup também passaram; criar um projeto agora aplica os defaults
+antes de entrar no Director. Dashboard e revisão de produções pausadas foram
+conectados aos componentes existentes. A API foi testada com um plugin local
+real descoberto após o import do orquestrador; seu ID chega ao planner correto.
+Build, lint, contratos UI e 162 testes Python passaram. Geração/exportação
+reais e a refatoração estrutural completa continuam pendentes.
+
 ## Estado e escopo
 
 Fork local baseado em `Blizaine/Maestro v2.0.1`, executado por scripts Bash e

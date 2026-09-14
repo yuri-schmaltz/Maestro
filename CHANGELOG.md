@@ -16,6 +16,12 @@
 All notable changes to Maestro are documented here. The upstream WanGP
 pipeline's own history lives in [app/docs/CHANGELOG.md](app/docs/CHANGELOG.md).
 
+- Criação de projeto aplica imediatamente o setup; edição atualiza o cartão e
+  a reabertura do formulário sem reutilizar defaults antigos.
+- Aba Dashboard renderizada e revisão de produção pausada acessível no Director.
+- Skills locais chegam ao orquestrador por resolução dinâmica de registry.
+- Shell Chromium validado em sete abas/cinco larguras e teste de setup adicionado.
+
 ## [Unreleased]
 
 ### Stabilization round (post-2.0.1 review)
