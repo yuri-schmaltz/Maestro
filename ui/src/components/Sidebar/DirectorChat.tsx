@@ -966,26 +966,21 @@ export function DirectorChat() {
 
 
         {/* Style step */}
-        {(atStep('style') || pastStep('style')) && (
-          <>
-            {/* Story path: show reference image + characters + duration here (since no upload step) */}
-            {isStoryPath && atStep('style') && (
-              <SystemBubble>
-                <p className="text-xs text-text-secondary mb-2">
-                  {directorUsesOmniManifest
-                    ? 'Set up your short film with ordered H3 Omni image, video, and audio references, then set the target duration.'
-                    : 'Set up your short film. Upload a reference photo, name your characters, and set the target duration.'}
-                </p>
-                <div className="space-y-3">
+        {isStoryPath && (atStep('style') || pastStep('style')) && (
+          <SystemBubble>
+            <p className="text-xs text-text-secondary mb-2">
+              {directorUsesOmniManifest
+                ? 'Set up your short film with ordered H3 Omni image, video, and audio references, then set the target duration.'
+                : 'Set up your short film. Upload a reference photo, name your characters, and set the target duration.'}
+            </p>
+            <div className="space-y-3">
+              {atStep('style') && (
+                <>
                   <DirectorReferenceInputs
                     referenceImage={referenceImage}
                     refImagePreview={refImagePreview}
                     setReferenceImage={setReferenceImage}
                   />
-                  <ScriptAttachCard onLoaded={({ text }) => {
-                    setSceneDescription(text)
-                    setChatInput(text)
-                  }} />
                   {referenceImage && (
                     <CharacterNaming
                       characters={shortFilmCharacters}
@@ -1007,21 +1002,39 @@ export function DirectorChat() {
                       </p>
                     </div>
                   </label>
-                </div>
-              </SystemBubble>
-            )}
-            {/* Story-path echo of the chosen reference + duration is
-                retained because the plan column doesn't show that info
-                for the story path (no audio clip structure to mirror). */}
-            {isStoryPath && pastStep('style') && referenceImage && refImagePreview && (
-              <UserBubble>
-                <div className="flex items-center gap-2 text-xs text-text-primary">
-                  <img src={refImagePreview} alt="Ref" className="w-8 h-8 object-cover rounded border border-border" />
-                  <span>{shortFilmTargetDuration}s film</span>
-                </div>
-              </UserBubble>
-            )}
-          </>
+                </>
+              )}
+              <ScriptAttachCard onLoaded={({ text }) => {
+                setSceneDescription(text)
+                setChatInput(text)
+                // Past the style step (e.g. a story session restored from an
+                // earlier save), loading a script rewinds the plan to style
+                // so Send becomes actionable again — but only when no
+                // pipeline is running or paused, to avoid detaching from
+                // live work.
+                const pipelineActive = !!(pipelineStatus &&
+                  ['running', 'paused', 'queued', 'starting'].includes(pipelineStatus.status))
+                if (pastStep('style') && !loading && !pipelineActive) {
+                  useStore.setState({
+                    directorStep: 'style',
+                    directorPlannedClips: [],
+                    directorClipPlans: [],
+                    directorClipImages: [],
+                    directorImageGenProgress: null,
+                    directorLoadingMessage: null,
+                  })
+                }
+              }} />
+            </div>
+          </SystemBubble>
+        )}
+        {isStoryPath && pastStep('style') && referenceImage && refImagePreview && (
+          <UserBubble>
+            <div className="flex items-center gap-2 text-xs text-text-primary">
+              <img src={refImagePreview} alt="Ref" className="w-8 h-8 object-cover rounded border border-border" />
+              <span>{shortFilmTargetDuration}s film</span>
+            </div>
+          </UserBubble>
         )}
 
         {/* Plan / review / generate steps (StyleForm textarea + speakers,
