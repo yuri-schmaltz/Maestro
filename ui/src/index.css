@@ -850,8 +850,8 @@ input[type="range"]::-webkit-slider-thumb {
    intrinsic content size without overflowing. */
 .shell-search { display:flex; align-items:center; gap:10px; flex:1 1 320px; max-width:560px; min-width:0; border:1px solid var(--color-border); border-radius:8px; padding:9px 12px; color:var(--color-text-muted); background:var(--color-bg-secondary); }
 .shell-search input { min-width:0; width:100%; outline:none; font-size: var(--text-sm); color:var(--color-text-primary); }
-.projects-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
-.project-card { min-width:0; padding:24px; border:1px solid var(--color-border); border-radius:14px; background:var(--color-bg-secondary); }
+.projects-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:16px; }
+.project-card { min-width:0; padding:18px; border:1px solid var(--color-border); border-radius:14px; background:var(--color-bg-secondary); }
 .project-card.is-current { border-color:color-mix(in srgb,var(--color-accent-blue) 40%,var(--color-border)); }
 .project-card.is-pinned { border-color:color-mix(in srgb,var(--color-accent-blue) 45%,var(--color-border)); box-shadow:inset 3px 0 0 var(--color-accent-blue); }
 /* Identity banner: cover image when uploaded, otherwise a
@@ -996,8 +996,10 @@ input[type="range"]::-webkit-slider-thumb {
 .status-telemetry > span { display:flex; align-items:center; gap:6px; white-space:nowrap; }
 .status-telemetry .status-model { margin-left:auto; min-width:0; max-width:35%; }
 .hardware-details { position:absolute; bottom:calc(100% + 8px); right:16px; width:min(560px,calc(100vw - 32px)); padding:16px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); box-shadow:0 12px 40px #0005; }
-@media(max-width:1100px) { .application-header { padding-inline:16px; } .application-tab { padding-inline:12px; } .projects-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:1400px) { .projects-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media(max-width:1100px) { .application-header { padding-inline:16px; } .application-tab { padding-inline:10px; } .projects-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 @media(max-width:800px) {
+  .projects-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
  .application-header { grid-template-columns:1fr auto; min-height:0; padding:12px 16px 0; gap:10px; }
  .application-navigation { grid-column:1/-1; grid-row:2; justify-self:center; max-width:100%; padding-bottom:10px; }
  .application-actions { grid-column:2; grid-row:1; }
