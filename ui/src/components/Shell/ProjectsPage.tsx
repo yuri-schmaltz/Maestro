@@ -204,7 +204,7 @@ export function ProjectsPage() {
   }
 
   return (
-    <div className="section-scroll">
+    <div className="section-scroll projects-page">
       <div className="section-container">
         <div className="projects-toolbar">
           <label className="shell-search"><Search size={15} /><input aria-label="Search projects" placeholder="Search projects…" value={query} onChange={e => setQuery(e.target.value)} /></label>
