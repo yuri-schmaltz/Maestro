@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowRight, Check, Clapperboard, Copy, Film, FolderOpen, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Trash2 } from 'lucide-react'
+import { Check, Clapperboard, Copy, Film, FolderOpen, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Trash2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useWorkspaceSlice } from '../../stores/workspaceSelectors'
 import type { AppSection, ProjectSetupDefaults } from '../../types'
@@ -265,11 +265,9 @@ export function ProjectsPage() {
                 </p>
               )}
               <div className="project-card-actions">
-                <button disabled={busy !== null} onClick={() => void open(workspace.name, 'director')} className="project-open">
-                  {busy === workspace.name ? <Loader2 size={14} className="animate-spin" /> : <Clapperboard size={14} />}Open Director<ArrowRight size={14} />
+                <button disabled={busy !== null} onClick={() => void open(workspace.name, 'director')} title="Open Director" aria-label={`Open ${workspace.name} in Director`} className="project-open-icon">
+                  {busy === workspace.name ? <Loader2 size={15} className="animate-spin" /> : <Clapperboard size={15} />}
                 </button>
-              </div>
-              <div className="project-card-actions-manage">
                 <button disabled={busy !== null} onClick={() => void open(workspace.name, 'editor')} title={`Edit ${workspace.name}`} aria-label={`Edit ${workspace.name}`} className="shell-icon-button"><Film size={15} /></button>
                 <button disabled={busy !== null} onClick={() => void open(workspace.name, 'medias')} title={`Browse ${workspace.name}`} aria-label={`Browse ${workspace.name}`} className="shell-icon-button"><Images size={15} /></button>
                 <button disabled={busy !== null} onClick={() => openDuplicate(workspace)} title={`Duplicate ${workspace.name} setup`} aria-label={`Duplicate ${workspace.name} setup`} className="shell-icon-button"><Copy size={14} /></button>
