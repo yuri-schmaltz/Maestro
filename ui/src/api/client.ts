@@ -2154,6 +2154,28 @@ export async function uploadAudio(file: File): Promise<{
   return res.json()
 }
 
+/** Extract plain text from an attached story script (.txt/.md/.pdf) so
+ *  the Director can inject it into the story description that feeds
+ *  /api/v1/director/plan-short-film-script. */
+export async function readDirectorScript(file: File): Promise<{
+  filename: string
+  text: string
+  char_count: number
+  truncated: boolean
+}> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${BASE}/api/v1/director/script/read`, {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Could not read script' }))
+    throw new Error(err.detail || 'Script read failed')
+  }
+  return res.json()
+}
+
 export async function analyzeAudio(params: {
   audio_path: string
   transcribe?: boolean

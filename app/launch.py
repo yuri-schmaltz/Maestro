@@ -9683,6 +9683,73 @@ async def director_plan_short_film_script(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+MAX_SCRIPT_UPLOAD_BYTES = 2 * 1024 * 1024      # 2 MB of raw text source
+MAX_SCRIPT_CHARS = 80_000                     # ~20k words of story text passed to the LLM
+
+
+def _extract_script_text(data: bytes, ext: str) -> str:
+    """Return plain text from an attached script/roteiro (.txt/.md/.pdf)."""
+    if ext == ".pdf":
+        import io
+        from pypdf import PdfReader
+
+        reader = PdfReader(io.BytesIO(data))
+        pages = []
+        for page in reader.pages:
+            try:
+                pages.append(page.extract_text() or "")
+            except Exception:
+                continue
+        return "\n\n".join(pages).strip()
+
+    # Plain text: honor BOMs, then try the common encodings in order.
+    if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        return data.decode("utf-16")
+    for encoding in ("utf-8-sig", "utf-8", "latin-1"):
+        try:
+            return data.decode(encoding).strip()
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return data.decode("utf-8", errors="replace").strip()
+
+
+@api.post("/api/v1/director/script/read")
+async def director_script_read(request: Request, file: UploadFile = File(...)):
+    """Extract plain text from an attached story script (.txt/.md/.pdf)
+    so the Director can plan a short film directly from it. The returned
+    text is meant to be injected into the story description that feeds
+    /api/v1/director/plan-short-film-script."""
+    name = file.filename or "script.txt"
+    ext = os.path.splitext(name)[1].lower()
+    if ext not in (".txt", ".md", ".markdown", ".pdf"):
+        raise HTTPException(status_code=415, detail="Only .txt, .md and .pdf scripts are supported.")
+
+    cl = request.headers.get("content-length")
+    if cl and cl.isdigit() and int(cl) > MAX_SCRIPT_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Script too large (max 2 MB).")
+    content = await file.read()
+    if len(content) > MAX_SCRIPT_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Script too large (max 2 MB).")
+    try:
+        text = _extract_script_text(content, ext)
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=422, detail=f"Could not read script: {e}")
+    if not text:
+        raise HTTPException(status_code=422, detail="No readable text found in the script.")
+
+    truncated = False
+    if len(text) > MAX_SCRIPT_CHARS:
+        text = text[:MAX_SCRIPT_CHARS]
+        truncated = True
+    return {
+        "filename": name,
+        "text": text,
+        "char_count": len(text),
+        "truncated": truncated,
+    }
+
+
 # ── Director Pipeline Endpoints ─────────────────────────────────────────
 
 @api.get("/api/v1/director/queue")

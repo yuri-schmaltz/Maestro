@@ -113,6 +113,11 @@ wetext==0.1.2
 # from these very common Gemma / Qwen JSON output bugs.
 json_repair==0.59.5
 
+# Script/roteiro attachment — extracts plain text from attached .pdf
+# story files so the Director can plan a short film directly from it.
+# .txt/.md scripts are read natively without any dependency.
+pypdf==6.18.1
+
 # Optional / commented out
 # transformers==4.46.3  # for llamallava pre-patch
 # rembg==2.0.65         # non-GPU fallback

@@ -12,7 +12,7 @@ import { DurationPresetControl } from './DurationPresetControl'
 import { LONG_FORM_MAX_SECONDS, formatDuration } from '../../lib/durationPlanning'
 import type { DirectorShotImageGuidance, DirectorSkill, ModelOptions, ShortFilmCharacter, ShortFilmPath } from '../../types'
 import { DIRECTOR_SKILL_OPTIONS, canonicalDirectorSkill } from '../../types'
-import { fetchDirectorSkills } from '../../api/client'
+import { fetchDirectorSkills, readDirectorScript } from '../../api/client'
 
 // AUDIO_ACCEPT lists both audio formats AND video formats. When a video
 // file is uploaded, the backend's /api/v1/upload-audio endpoint extracts
@@ -21,6 +21,11 @@ import { fetchDirectorSkills } from '../../api/client'
 // the soundtrack analyzed without converting first.
 const AUDIO_ACCEPT = '.wav,.mp3,.flac,.ogg,.m4a,.mp4,.mov,.mkv,.webm,.avi,.m4v'
 const IMAGE_ACCEPT = '.png,.jpg,.jpeg,.webp,.bmp'
+// Story scripts/roteiros the Short Film → Story path accepts. .txt/.md
+// are read as plain text; .pdf goes through the backend extractor
+// (/api/v1/director/script/read, backed by pypdf). The extracted text
+// is injected into the story description before planning.
+const SCRIPT_ACCEPT = '.txt,.md,.markdown,.pdf'
 
 
 function DirectorTargetDurationControl() {
@@ -977,6 +982,10 @@ export function DirectorChat() {
                     refImagePreview={refImagePreview}
                     setReferenceImage={setReferenceImage}
                   />
+                  <ScriptAttachCard onLoaded={({ text }) => {
+                    setSceneDescription(text)
+                    setChatInput(text)
+                  }} />
                   {referenceImage && (
                     <CharacterNaming
                       characters={shortFilmCharacters}
@@ -1529,6 +1538,76 @@ function ReferenceImageUpload({
           Generation Options column so the chat column stays focused
           on input affordances. The slider itself is rendered by
           <ReferenceImageStrengthSlider/> in DirectorGenerationOptions. */}
+    </div>
+  )
+}
+
+function ScriptAttachCard({ onLoaded }: {
+  onLoaded: (info: { filename: string; text: string; charCount: number; truncated: boolean }) => void
+}) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [attached, setAttached] = useState<{ filename: string; charCount: number; truncated: boolean } | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = useCallback(async (file: File) => {
+    setError('')
+    setLoading(true)
+    try {
+      const result = await readDirectorScript(file)
+      const info = { filename: result.filename, text: result.text, charCount: result.char_count, truncated: result.truncated }
+      setAttached({ filename: info.filename, charCount: info.charCount, truncated: info.truncated })
+      onLoaded(info)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not read script')
+    } finally {
+      setLoading(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }, [onLoaded])
+
+  return (
+    <div className="space-y-1.5">
+      <span className="text-xs text-text-muted uppercase tracking-wider block">Script / Roteiro</span>
+      {attached ? (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-2.5 py-2">
+          <FileText size={14} className="text-accent-blue shrink-0" />
+          <span className="text-xs text-text-primary truncate min-w-0">{attached.filename}</span>
+          <span className="text-2xs text-text-muted shrink-0">
+            {attached.charCount.toLocaleString()} chars{attached.truncated ? ' · truncated' : ''}
+          </span>
+          <button
+            type="button"
+            onClick={() => { setAttached(null); setError('') }}
+            aria-label="Remove script"
+            title="Remove script"
+            className="ml-auto shrink-0 p-0.5 rounded hover:bg-bg-hover transition-colors"
+          >
+            <X size={12} className="text-text-muted" />
+          </button>
+        </div>
+      ) : (
+        <label className={`flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 cursor-pointer transition-colors ${loading ? 'opacity-60 pointer-events-none' : 'border-border hover:border-accent-blue'}`}>
+          {loading
+            ? <Loader2 size={14} className="animate-spin text-accent-blue" />
+            : <FileText size={14} className="text-accent-blue/70" />}
+          <span className="text-xs text-text-secondary">{loading ? 'Reading script…' : 'Attach a script (.txt, .md, .pdf)'}</span>
+          <input
+            ref={inputRef}
+            type="file"
+            accept={SCRIPT_ACCEPT}
+            className="hidden"
+            disabled={loading}
+            onChange={e => { const f = e.target.files?.[0]; if (f) void handleFile(f) }}
+          />
+        </label>
+      )}
+      {attached && (
+        <p className="text-2xs text-text-muted">
+          Loaded into the story description — check the composer below and press Send to plan the film.
+        </p>
+      )}
+      {error && <p className="text-2xs text-red-400" role="alert">{error}</p>}
     </div>
   )
 }
