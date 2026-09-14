@@ -228,7 +228,6 @@ export function ProjectsPage() {
           {visible.map(workspace => {
             const skill = workspace.setup?.director_skill === 'short_film' ? 'short_film' : 'music_video'
             const SkillIcon = skill === 'short_film' ? Film : Music
-            const skillLabel = skill === 'short_film' ? 'Short Film' : 'Music Video'
             const summary = ProjectSetupSummary({ setup: workspace.setup })
             const files = workspace.file_count ?? 0
             const updated = formatUpdated(workspace.modified)
@@ -246,13 +245,12 @@ export function ProjectsPage() {
                 ) : (
                   <div className="project-placeholder" aria-hidden="true"><SkillIcon size={34} strokeWidth={1.25} /></div>
                 )}
-                <span className="project-skill-chip"><SkillIcon size={11} />{skillLabel}</span>
+                <span className="project-name-chip" title={workspace.name}>{workspace.name}</span>
                 <div className="project-banner-badges">
                   {workspace.setup?.pinned && <span className="project-pin-badge" title="Pinned project"><Pin size={12} /></span>}
                   {workspace.name === active && <span className="project-current"><Check size={12} />Active</span>}
                 </div>
               </div>
-              <h2 title={workspace.name}>{workspace.name}</h2>
               {workspace.setup?.description && (
                 <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">{workspace.setup.description}</p>
               )}
