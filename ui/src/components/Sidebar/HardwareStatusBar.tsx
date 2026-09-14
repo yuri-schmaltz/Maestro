@@ -45,7 +45,6 @@ function MiniGauge({ label, percent, value, fill, title }: MiniGaugeProps) {
  * tab is hidden).
  */
 export function HardwareStatusBar({ leftSlot }: { leftSlot?: React.ReactNode } = {}) {
-  const total = useStore(s => s.outputsTotal)
   const stats = useStore(s => s.systemStats)
   const loadSystemStats = useStore(s => s.loadSystemStats)
   const llmStatus = useStore(s => s.llmStatus)
@@ -107,21 +106,18 @@ export function HardwareStatusBar({ leftSlot }: { leftSlot?: React.ReactNode } =
   return (
     <footer className="global-status-bar" aria-label="System status">
       <div className="global-status-summary">
-        {/* leftSlot renders before the project-count cell when a parent
+        {/* leftSlot renders in the grid's "auto" column when a parent
             (e.g. DirectorPage) wants to inject a workflow toggle that
-            belongs at the bottom of the workspace. The slot takes the
-            "auto" column of the underlying grid, so it sits flush
-            with the rest of the status content. Falls back to the
-            stock project count when no slot is provided. */}
+            belongs at the bottom of the workspace. Other tabs leave the
+            slot unset — an empty placeholder keeps the column so the
+            gauges stay centered. (The old "N items" project count that
+            used to live here was removed.) */}
         {leftSlot ? (
           <div className="status-project" aria-label="Workspace actions">
             {leftSlot}
-            <span className="status-project-count ml-3">{total} {total === 1 ? 'item' : 'items'}</span>
           </div>
         ) : (
-          <div className="status-project" aria-label="Active project items">
-            <span className="status-project-count">{total} {total === 1 ? 'item' : 'items'}</span>
-          </div>
+          <div className="status-project" aria-hidden="true" />
         )}
 
         <div className="status-gauges" role="group" aria-label="Hardware telemetry">

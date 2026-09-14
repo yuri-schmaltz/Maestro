@@ -66,8 +66,7 @@ function App() {
       {/* The Director Planning/Studio toggle lives in the bottom
           status bar's leftSlot instead of a section toolbar above the
           workspace — that move gives the workspace the full vertical
-          height back. Other tabs leave leftSlot unset so the original
-          "N items" cell renders alone. */}
+          height back. Other tabs leave leftSlot unset. */}
       <HardwareStatusBar leftSlot={section === 'director' ? <DirectorStageToggle /> : undefined} />
       <LoraBrowser />
       <DirectorDashboard />
