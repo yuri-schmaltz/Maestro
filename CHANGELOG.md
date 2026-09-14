@@ -2,8 +2,14 @@
 
 ## Retomada de estabilização — 2026-09-13 (working tree)
 
+- Extraída a camada de persistência do Studio para `ui/src/stores/studioPersistence.ts`
+  (localStorage per-modo + espelho de preferências no servidor): `saveModeSettings`,
+  `loadModeSettings`, tradução lora_id/filename, strip de campos efêmeros e a fila
+  serializada de `persistStickyStudioPreferences`. A store raiz conserva wrappers
+  compatíveis; os contratos agora exercitam o módulo isolado no `test:store`.
 - Corrigido build oficial TypeScript, incluindo inicialização do DirectorChat,
-  contratos de preferências e composição dos slices.
+  contratos de preferências, composição dos slices e um import morto deixado pela
+  extração do `studioModelSlice`.
 - Coleta pytest e smoke do CI corrigidos; lint e contratos UI adicionados ao CI.
 - Launcher preserva processos alheios, interpreta fallback numérico e mantém
   outras configurações de `.env.local`; Vite lê a porta efetiva com `loadEnv`.

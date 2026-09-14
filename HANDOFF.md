@@ -226,6 +226,18 @@ mais segura para começar porque reduz acoplamento sem mudar a API do store.
   Outpaint e as rotas de Tools continuam com os mesmos nomes públicos; o
   callback de persistência é injetado, enquanto o modo-switch completo
   permanece no root por ainda compartilhar os snapshots por modo.
+- A persistência do Studio foi extraída para `ui/src/stores/studioPersistence.ts`:
+  `saveModeSettings`/`loadModeSettings` (chave, versão, tradução lora_id/filename,
+  disambiguation `#`, strip de campos efêmeros e heal do sufixo `T`) e
+  `persistStickyStudioPreferences` (durable generation mode, payload do servidor e
+  fila serializada resistente a falha). A store raiz mantém `_saveSettings`/
+  `_loadSettings` como aliases e `_persistStickyStudioPreferences` como wrapper,
+  então consumidores antigos (inclusive slices via `dependencies`) não migram.
+  Os contratos do `test:store` passaram a exercitar o módulo isolado com um
+  localStorage fake: round-trip efêmero/legado/lora_id, sticky preservation e a
+  fila de preferências. Esta era a próxima extração "persistência primeiro" do
+  estúdio; o catálogo (`studioModelSlice`) e o modo (`studioModeSlice`) já tinham
+  saído.
 
 ## Verificação visual da nova interface
 

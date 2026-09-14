@@ -7,13 +7,14 @@ const result = await build({
     contents: `export { useStore } from './src/stores/useStore';
       export { trackAnalysisProgress } from './src/stores/analysisProgress';
       export { toggleLoraState, updateLoraWeight } from './src/stores/loraState';
-      export { canonicalDirectorSkill } from './src/types';`,
+      export { canonicalDirectorSkill } from './src/types';
+      export { saveModeSettings, loadModeSettings, persistStickyStudioPreferences, modeBlobToLoraIdKeyed, modeBlobToFilenameKeyed, stripEphemeralParams } from './src/stores/studioPersistence';`,
     resolveDir: process.cwd(), loader: 'ts',
   },
   bundle: true, write: false, format: 'esm', platform: 'node',
   define: { 'import.meta.hot': 'undefined' },
 })
-const { useStore, trackAnalysisProgress, toggleLoraState, updateLoraWeight, canonicalDirectorSkill } =
+const { useStore, trackAnalysisProgress, toggleLoraState, updateLoraWeight, canonicalDirectorSkill, saveModeSettings, loadModeSettings, persistStickyStudioPreferences, modeBlobToLoraIdKeyed, modeBlobToFilenameKeyed, stripEphemeralParams } =
   await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`)
 const original = useStore.getState()
 const pending = []
@@ -133,3 +134,124 @@ useStore.getState().setGenerationMode('image')
 assert.equal(useStore.getState().params.seed, 202)
 useStore.setState(original, true)
 console.log('Store contracts passed: workspace races, late saves, progress lifecycle, LoRA phases, plugin identity, mode snapshots and workflow routing.')
+
+// --- Persistence contracts (studioPersistence, no store instance) ---
+let memory = new Map()
+globalThis.localStorage = {
+  getItem: key => (memory.has(key) ? memory.get(key) : null),
+  setItem: (key, value) => memory.set(key, String(value)),
+  removeItem: key => memory.delete(key),
+  clear: () => memory.clear(),
+}
+assert.equal(loadModeSettings(), null, 'empty storage loads null')
+saveModeSettings({
+  generationMode: 'video',
+  selectedModelPerMode: { video: 'ltx-2' },
+  savedParamsPerMode: {
+    video: { prompt: 'kept', video_source: '/app/uploads/ghost.mp4', video_prompt_type: 'OBN' },
+  },
+  savedLoraPerMode: {},
+})
+let loaded = loadModeSettings()
+assert.equal(loaded.generationMode, 'video')
+assert.equal(loaded.savedParamsPerMode.video.prompt, 'kept')
+assert.equal(loaded.savedParamsPerMode.video.video_source, undefined, 'ephemeral media must not round-trip')
+assert.equal(loaded.savedParamsPerMode.video.video_prompt_type, 'OBN', 'non-T flag preserved')
+memory.clear()
+saveModeSettings({
+  generationMode: 'video',
+  selectedModelPerMode: { video: 'wan' },
+  savedParamsPerMode: {
+    video: { video_prompt_type: 'TVG', video_source: '/x.mp4' },
+  },
+  savedLoraPerMode: {},
+})
+loaded = loadModeSettings()
+assert.equal(loaded.savedParamsPerMode.video.video_prompt_type, 'TVG', 'internal T control letter preserved')
+assert.equal(loaded.savedParamsPerMode.video.video_source, undefined)
+memory.clear()
+saveModeSettings({
+  generationMode: 'video',
+  selectedModelPerMode: { video: 'wan' },
+  savedParamsPerMode: {
+    video: { video_prompt_type: 'WAN2_T' },
+  },
+  savedLoraPerMode: {},
+})
+loaded = loadModeSettings()
+assert.equal(loaded.savedParamsPerMode.video.video_prompt_type, 'WAN2_', 'trailing lone T flag stripped')
+// Legacy save (no lora map) writes filename-keyed storage; load returns raw shape.
+assert.equal(stripEphemeralParams({ video: { seed: 1, video_mask: '/m.png' } }).video.seed, 1)
+assert.equal(stripEphemeralParams({ video: { video_mask: '/m.png' } }).video.video_mask, undefined)
+// LoRA lora_id round-trip with a shared civitai id across two file versions.
+memory.clear()
+saveModeSettings({
+  generationMode: 'video',
+  selectedModelPerMode: { video: 'h3' },
+  savedParamsPerMode: {},
+  savedLoraPerMode: {
+    video: {
+      activated_loras: ['actor_v1.safetensors'],
+      loras_multipliers: '0.70',
+      loraWeights: { 'actor_v1.safetensors': [0.7], 'actor_v2.safetensors': [1.0] },
+      availableLoras: ['actor_v1.safetensors', 'actor_v2.safetensors'],
+    },
+  },
+}, { 'actor_v1.safetensors': 'civitai:555', 'actor_v2.safetensors': 'civitai:555' })
+loaded = loadModeSettings()
+assert.deepEqual(loaded.savedLoraPerMode.video.activated_loras, ['actor_v1.safetensors'])
+assert.deepEqual([...loaded.savedLoraPerMode.video.availableLoras].sort(), ['actor_v1.safetensors', 'actor_v2.safetensors'])
+assert.deepEqual(loaded.savedLoraPerMode.video.loraWeights['actor_v2.safetensors'], [1.0], 'multi-version A/B weights survive the round trip')
+assert.equal(loaded.savedLoraPerMode.video.loras_multipliers, '0.70')
+assert.equal(
+  modeBlobToLoraIdKeyed({ activated_loras: ['x.safetensors'], loras_multipliers: '1', loraWeights: {}, availableLoras: [] }, { 'x.safetensors': 'civitai:1' }).activated_loras[0],
+  'civitai:1')
+// Sticky UI fields survive a later partial (LoRA-only) save.
+memory.clear()
+saveModeSettings({
+  generationMode: 'image', selectedModelPerMode: {}, savedParamsPerMode: {}, savedLoraPerMode: {},
+  savedPromptPerMode: { image: 'p' },
+  studioVideoWorkflow: 'create', studioImageWorkflow: 'generate', audioSubMode: 'speech',
+  selectedModelPerAudioSubMode: { speech: 'kugel' },
+  h3OptimizationPreferences: { override_attention: 'sla' },
+}, {})
+saveModeSettings({ generationMode: 'image', selectedModelPerMode: {}, savedParamsPerMode: {}, savedLoraPerMode: {} }, {})
+loaded = loadModeSettings()
+assert.equal(loaded.studioVideoWorkflow, 'create')
+assert.equal(loaded.audioSubMode, 'speech')
+assert.equal(loaded.h3OptimizationPreferences.override_attention, 'sla')
+// Sticky preferences: durable tools→image generation mode, server payload, failed-save resilience.
+const persisted = []
+const updates = []
+persistStickyStudioPreferences(
+  {
+    generationMode: 'tools', toolsUpscaleMedia: 'image',
+    selectedModelPerMode: {}, audioSubMode: 'speech',
+    selectedModelPerAudioSubMode: {}, h3OptimizationPreferences: {},
+    studioVideoWorkflow: 'create', studioImageWorkflow: 'generate',
+    savedParamsPerMode: {}, savedLoraPerMode: {}, loraIdByFilename: {},
+  },
+  settings => persisted.push(settings.generationMode),
+  async update => { updates.push(update); throw new Error('offline') },
+)
+persistStickyStudioPreferences(
+  {
+    generationMode: 'video', toolsUpscaleMedia: 'video',
+    selectedModelPerMode: { video: 'h3' }, audioSubMode: 'music',
+    selectedModelPerAudioSubMode: { music: 'ace_step_v1_5_xl_sft_lm_4b' }, h3OptimizationPreferences: {},
+    studioVideoWorkflow: 'create', studioImageWorkflow: 'generate',
+    savedParamsPerMode: {}, savedLoraPerMode: {}, loraIdByFilename: { 'a.safetensors': 'civitai:1' },
+  },
+  settings => persisted.push(settings.generationMode),
+  async update => { updates.push(update) },
+)
+await new Promise(resolve => setTimeout(resolve, 0))
+await new Promise(resolve => setTimeout(resolve, 0))
+assert.deepEqual(persisted, ['image', 'video'], 'tools mode persists as its durable image workflow')
+assert.equal(updates[0].generation_mode, 'image')
+assert.equal(updates[1].generation_mode, 'video')
+assert.equal(updates[1].selected_model_per_mode.video, 'h3')
+assert.equal(updates[1].audio_sub_mode, 'music')
+assert.equal(updates[1].selected_model_per_audio_sub_mode.music, 'ace_step_v1_5_xl_sft_lm_4b')
+assert.equal(updates.length, 2, 'a failed preference save must not poison the queue')
+console.log('Persistence contracts passed: ephemeral strip, legacy/lora_id shapes, sticky preservation and queued preference mirror.')

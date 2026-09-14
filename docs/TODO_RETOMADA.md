@@ -8,7 +8,48 @@ somente diagnóstica; as implementações subsequentes pertencem ao outro agente
 Nesta rodada foram executadas verificações e criado este TODO, sem corrigir
 código de aplicação nem reiniciar a instância existente.
 
-## Execução em andamento — 2026-09-13
+## Execução em andamento — 2026-09-13 (extração de persistência)
+
+Esta etapa extraiu a camada de persistência do Studio e ampliou os contratos.
+
+Entregue nesta etapa (verificado com os gates abaixo):
+
+- `ui/src/stores/studioPersistence.ts` novo: `saveModeSettings`, `loadModeSettings`,
+  `modeBlobToLoraIdKeyed`/`modeBlobToFilenameKeyed`, `stripEphemeralParams` e
+  `persistStickyStudioPreferences` (fila serializada de preferências no servidor).
+  `useStore.ts` conserva `_saveSettings`/`_loadSettings` como aliases e
+  `_persistStickyStudioPreferences` como wrapper; slices seguem recebendo-os via
+  `dependencies`.
+- Corrigido o build oficial, quebrado por um import morto do `studioModelSlice`
+  (`recommendedH3OmniSequenceProfile`). `npm run build`, `npm run lint`,
+  `npm run test:store` e `npm run test:control` terminam com código zero.
+- `test:store` passou a exercitar o módulo de persistência isolado (localStorage
+  fake): strip de campos efêmeros em save e load, formato legado vs versionado,
+  round-trip lora_id/filename com disambiguation multi-versão, sticky preservation
+  e resiliência da fila a falha. Execução repetida 5/5 estável.
+- `directorAnalyzeProgress` confirmado alimentado nos dois pollings de análise
+  (`useStore.ts`, aprox. linhas 8366 e 9317) com reset por sequência — item P1
+  historico concluído; atualizar os checklists abaixo.
+- Defaults avançados confirmados aplicados ao payload efetivo: o `test:store`
+  exercita `applyWorkspaceSetup` + `startDirectorPipeline` e assere precedência
+  de overrides por take e limpeza de chaves desconhecidas.
+
+Evidências atuais desta etapa:
+
+| Verificação | Resultado |
+| --- | --- |
+| `npm run build` | Aprovado |
+| `npm run lint` | Aprovado |
+| `npm run test:store` | Aprovado (0=exit), 5 execuções consecutivas |
+| `npm run test:control` | Aprovado |
+| Python leve (setup, style bible, cli, cinema, registry) | 106 passed, 6 skipped |
+
+Próximas ações: contratos de comportamento para `studioModelSlice`/`studioModeSlice`
+(visibilidade, hidratação e LoRAs); extrair os campos de finishing/advanced que ainda
+vivem no root; savas dos routers backend; CI em ambiente limpo; geração/exportação
+reais. O backend do usuário não foi reiniciado.
+
+## Execução em andamento — historico (etapas anteriores)
 
 Esta seção atualiza o diagnóstico histórico abaixo. O objetivo completo continua
 ativo: esta etapa restaura os gates básicos e corrige parte das integrações;
@@ -153,21 +194,28 @@ terminam com código zero, seguidos de uma verificação visual do Director.
 
 ## P1 — Concluir correções funcionais
 
-- [ ] Alimentar `directorAnalyzeProgress` nos dois pollings de análise
+- [x] Alimentar `directorAnalyzeProgress` nos dois pollings de análise
   (`useStore.ts`, aproximadamente linhas 10153 e 11094). Hoje atualizam apenas
   `directorLoadingMessage`; o setter novo não tem consumidores. Cobrir início,
   avanço, sucesso, erro e reset, inclusive respostas atrasadas após conclusão.
-- [ ] Aplicar os defaults avançados ao payload efetivo de geração/planning.
+  *Verificado nesta etapa: ambos os pollings alimentam `directorAnalyzeProgress`
+  via `trackAnalysisProgress` com sequência/reset; os contratos de análise
+  passam no `test:store`.*
+- [x] Aplicar os defaults avançados ao payload efetivo de geração/planning.
   `directorAdvancedDefaults` é inicializado e recebe `setup.advanced`, mas não
   é lido por quem cria os pedidos. Definir precedência entre defaults,
   overrides por take e snapshots de produções salvas; não espalhar chaves
   arbitrárias diretamente em pedidos sem um contrato explícito.
+  *Verificado: `test:store` exercita `applyWorkspaceSetup` + `startDirectorPipeline`
+  e assere aplicação, precedência do override por take e rejeição de chaves
+  desconhecidas.*
 - [ ] Validar Project Setup de ponta a ponta: salvar, reabrir, trocar projeto,
   iniciar planejamento e comparar os parâmetros enviados. Incluir música,
   LoRAs, opções avançadas e a semântica de valores vazios.
-- [ ] Proteger `loadWorkspaceSetup` contra respostas fora de ordem ao alternar
+- [x] Proteger `loadWorkspaceSetup` contra respostas fora de ordem ao alternar
   rapidamente entre projetos. Hoje aplica qualquer resposta recebida sem
   conferir se o workspace continua ativo. Verificar também saves pendentes.
+  *Coberto pelos contratos de corrida/atraso do `test:store`.*
 - [x] Validar uma skill local desde a listagem até o planner correspondente;
   a correção do canonicalizador, isoladamente, não comprova todo o fluxo.
 
@@ -211,6 +259,10 @@ terminam com código zero, seguidos de uma verificação visual do Director.
 - [ ] Criar testes de contrato para os slices e helpers extraídos: troca de
   workflow, restauração por modo, persistência e LoRAs por fase. O gauntlet
   atual exercita quatro helpers de timeline/review/plano, não essas extrações.
+  *Progresso nesta etapa: além da troca de workflow/modo já exercitada, o
+  `test:store` passou a cobrir a persistência em `studioPersistence.ts`
+  (round-trip, sticky, fila). Faltam os contratos de visibilidade/hidratação
+  de modelos e de LoRAs do `studioModelSlice`.*
 
 ## P2 — Retomar a refatoração planejada após os gates verdes
 
@@ -218,6 +270,12 @@ terminam com código zero, seguidos de uma verificação visual do Director.
   modelos, opções, hidratação, parâmetros, snapshots, troca de modo e efeitos
   de LoRAs com testes de comportamento entre cada corte. Preservar `useStore`
   como API pública e evitar inicialização duplicada.
+  *Já extraído: `studioModelSlice` (catálogo/hidratação/seleção/LoRAs),
+  `studioModeSlice` (route, edição, sub-modes), `studioWorkflowSlice` (rotas de
+  workflow) e, nesta etapa, `studioPersistence` (persistência por modo + sticky).
+  Permanecem no root: `setParam`/`params`, snapshots e troca de modo
+  (`setGenerationMode`), campos de finishing (upsampling/film grain/sel-reifier)
+  do Studio e do Director, efeitos de download de LoRAs e preferências de visibilidade.
 - [ ] Extrair slices reais do Director; seletores/namespace não equivalem a
   mover a implementação de ações/estado para um domínio separado.
 - [ ] Extrair grupos backend de modelos/LoRAs, Director/pipeline e mídias,
