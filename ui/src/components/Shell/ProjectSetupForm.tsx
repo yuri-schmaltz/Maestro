@@ -1,11 +1,33 @@
 /* eslint-disable react-refresh/only-export-components -- shared options between
    ProjectSetup form chips and the Director right-column override live here
    so the two surfaces stay in lockstep. */
-import { useEffect, useMemo, useState } from 'react'
-import { Film, ImagePlus, Music, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Film, Music } from 'lucide-react'
 import type { ProjectSetupDefaults, AspectRatio, ResolutionPreset, GenerationMode } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
-import { fetchModels, workspaceCoverUrl, type ApiModel } from '../../api/client'
+import { fetchModels, type ApiModel } from '../../api/client'
+
+/** Speed/quality tier shown as a text suffix in the model pickers
+ *  ("LTX-2 22B Distilled · Fastest"). Native <select> options can't
+ *  carry badges or colors, so the classification lives in the label.
+ *
+ *  Heuristic from naming signals only — the catalog exposes no
+ *  measured benchmarks. Fast variants name themselves (distilled,
+ *  turbo, schnell, lightning, lite, klein-4B, 1.3B-class); quality
+ *  variants too (dev, pro, max, ultra, radiance, XL/full, 14B+).
+ *  Anything else is Balanced. Fastest wins ties (a "14B turbo" is
+ *  still built for speed). */
+export type ModelSpeedTier = 'Fastest' | 'Balanced' | 'Best quality'
+
+const FAST_MODEL_RE = /(distill|turbo|schnell|lightning|flash|hyper|lite|klein[_-]?4b|(^|[\s_.-])1[._]3b\b|_1b\b)/
+const QUALITY_MODEL_RE = /(^|[\s_.-])(dev|pro|max|ultra|radiance|xl|full)(?=[\s_.-]|$)|(^|[\s_.-])(1[49]|19|20|22|25)b\b/
+
+export function modelSpeedTier(model: ApiModel): ModelSpeedTier {
+  const haystack = `${model.name || ''} ${model.model_type || ''} ${model.architecture || ''}`.toLowerCase()
+  if (FAST_MODEL_RE.test(haystack)) return 'Fastest'
+  if (QUALITY_MODEL_RE.test(haystack)) return 'Best quality'
+  return 'Balanced'
+}
 
 /** AspectRatio options surfaced in the project-setup form. Mirrors
  *  `DirectorAspectRatioSelector` so the two surfaces pick from the
@@ -48,15 +70,6 @@ export interface ProjectSetupFormProps {
   /** Render compact version (less spacing) — used inside the small
    *  Edit setup modal so it fits next to other controls. */
   compact?: boolean
-  /** Workspace name used to preview an already-uploaded cover. Omit
-   *  when the workspace doesn't exist yet (New project dialog) — a
-   *  picked file is then held locally and reported via
-   *  `onPendingCover` so the parent can upload it at save time. */
-  workspaceName?: string | null
-  /** Called with a picked-but-unsaved cover File (null when cleared).
-   *  The parent uploads it on submit and writes the returned filename
-   *  into `cover_image`. */
-  onPendingCover?: (file: File | null) => void
 }
 
 /**
@@ -74,13 +87,9 @@ export function ProjectSetupForm({
   onChange,
   disabled = false,
   compact = false,
-  workspaceName = null,
-  onPendingCover,
 }: ProjectSetupFormProps) {
   const safeValue: ProjectSetupDefaults = { ...DEFAULT_PROJECT_SETUP, ...value }
   const [models, setModels] = useState<ApiModel[]>([])
-  const [pendingCover, setPendingCover] = useState<File | null>(null)
-  const [coverError, setCoverError] = useState('')
   const update = (patch: Partial<ProjectSetupDefaults>) => onChange({ ...safeValue, ...patch })
 
   useEffect(() => {
@@ -93,101 +102,26 @@ export function ProjectSetupForm({
     return () => { cancelled = true }
   }, [])
 
-  const pendingCoverUrl = useMemo(
-    () => (pendingCover ? URL.createObjectURL(pendingCover) : null),
-    [pendingCover],
-  )
-  useEffect(() => () => { if (pendingCoverUrl) URL.revokeObjectURL(pendingCoverUrl) }, [pendingCoverUrl])
-
-  const pickCover = (file: File | null) => {
-    setCoverError('')
-    if (!file) {
-      setPendingCover(null)
-      onPendingCover?.(null)
-      if (safeValue.cover_image) update({ cover_image: '' })
-      return
-    }
-    const ext = (file.name.split('.').pop() || '').toLowerCase()
-    if (!['png', 'jpg', 'jpeg', 'webp', 'bmp'].includes(ext)) {
-      setCoverError('Cover must be a .png, .jpg, .jpeg, .webp or .bmp file.')
-      return
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setCoverError('Cover image too large (max 10 MB).')
-      return
-    }
-    setPendingCover(file)
-    onPendingCover?.(file)
-  }
-  const coverPreview = pendingCoverUrl
-    || (safeValue.cover_image && workspaceName ? workspaceCoverUrl(workspaceName, safeValue.cover_image) : null)
-
   const supportsUltraWide = (safeValue.video_model || '').toLowerCase().startsWith('minimax_h3')
   const aspectOptions = PROJECT_SETUP_ASPECT_RATIOS.filter(opt => opt.value !== '21:9' || supportsUltraWide)
 
   // Both pickers list the full installed catalog (deduplicated, sorted
-  // by display name) — every available model shows up. Empty string
-  // means "use whatever the Studio already has", which lets the form
-  // stay usable when the model catalog isn't loaded yet (offline /
-  // first paint).
+  // by display name) — every available model shows up, each tagged with
+  // its speed tier. Empty string means "use whatever the Studio already
+  // has", which lets the form stay usable when the model catalog isn't
+  // loaded yet (offline / first paint).
   const modelOptions = [
     { value: '', label: 'Use last selected' },
     ...[...models]
       .filter((m, i, arr) => arr.findIndex(o => o.model_type === m.model_type) === i)
       .sort((a, b) => (a.name || a.model_type).localeCompare(b.name || b.model_type))
-      .map(m => ({ value: m.model_type, label: m.name || m.model_type })),
+      .map(m => ({ value: m.model_type, label: `${m.name || m.model_type} · ${modelSpeedTier(m)}` })),
   ]
 
   const sectionCls = compact ? 'space-y-1.5' : 'space-y-2'
 
   return (
     <div className={`text-sm ${compact ? 'space-y-2.5' : 'space-y-3'}`}>
-      {/* Cover — the project card thumbnail. The file is only uploaded
-          when the parent saves (the workspace may not exist yet in the
-          New project dialog), so a picked file is held locally and
-          previewed until submit. */}
-      <fieldset className={sectionCls} aria-label="Project cover">
-        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Cover</legend>
-        {coverPreview ? (
-          <div className="relative">
-            <img
-              src={coverPreview}
-              alt="Project cover preview"
-              className="w-full h-28 object-contain bg-bg-tertiary rounded-lg border border-border"
-              onError={e => { e.currentTarget.style.display = 'none' }}
-            />
-            <button
-              type="button"
-              onClick={() => pickCover(null)}
-              disabled={disabled}
-              aria-label="Remove cover image"
-              title="Remove cover image"
-              className="absolute top-1.5 right-1.5 bg-bg-primary/80 rounded-full p-1 hover:bg-bg-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <X size={12} className="text-text-muted" />
-            </button>
-            {pendingCover && (
-              <span className="absolute bottom-1.5 left-1.5 text-2xs text-white/80 bg-black/50 px-1.5 py-0.5 rounded">
-                {pendingCover.name} · uploads on save
-              </span>
-            )}
-          </div>
-        ) : (
-          <label className={`flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 cursor-pointer transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'border-border hover:border-accent-blue'}`}>
-            <ImagePlus size={14} className="text-accent-blue/70 shrink-0" />
-            <span className="text-xs text-text-secondary">Upload a cover image (.png, .jpg, .webp, .bmp)</span>
-            <input
-              type="file"
-              accept=".png,.jpg,.jpeg,.webp,.bmp"
-              className="hidden"
-              disabled={disabled}
-              onChange={e => { pickCover(e.target.files?.[0] || null); e.target.value = '' }}
-            />
-          </label>
-        )}
-        {coverError && <p className="text-2xs text-red-400" role="alert">{coverError}</p>}
-      </fieldset>
-
       {/* Skill — which Director workflow this project plans with.
           Chosen once here so the Director chat never asks again;
           changing it later re-syncs the Director through
@@ -319,28 +253,30 @@ export function ProjectSetupForm({
           the bottom so the technical defaults stay the focus. */}
       <fieldset className={sectionCls} aria-label="About this project">
         <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">About</legend>
-        <label className="block">
-          <span className="text-xs text-text-secondary block mb-1">Description</span>
-          <textarea
-            value={safeValue.description || ''}
-            onChange={e => update({ description: e.target.value })}
-            disabled={disabled}
-            rows={2}
-            placeholder="What is this project about?"
-            className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary resize-none disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
-          />
-        </label>
-        <label className="block">
-          <span className="text-xs text-text-secondary block mb-1">Tags</span>
-          <input
-            type="text"
-            value={(safeValue.tags || []).join(', ')}
-            onChange={e => update({ tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
-            disabled={disabled}
-            placeholder="film, draft, reel"
-            className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
-          />
-        </label>
+        <div className="grid grid-cols-2 gap-2 items-start">
+          <label className="block min-w-0">
+            <span className="text-xs text-text-secondary block mb-1">Description</span>
+            <textarea
+              value={safeValue.description || ''}
+              onChange={e => update({ description: e.target.value })}
+              disabled={disabled}
+              rows={2}
+              placeholder="What is this project about?"
+              className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary resize-none disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
+            />
+          </label>
+          <label className="block min-w-0">
+            <span className="text-xs text-text-secondary block mb-1">Tags</span>
+            <input
+              type="text"
+              value={(safeValue.tags || []).join(', ')}
+              onChange={e => update({ tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
+              disabled={disabled}
+              placeholder="film, draft, reel"
+              className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
+            />
+          </label>
+        </div>
       </fieldset>
     </div>
   )

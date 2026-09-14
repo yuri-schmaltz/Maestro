@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Check, Clapperboard, Copy, Film, FolderOpen, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Check, Clapperboard, Copy, Film, FolderOpen, ImagePlus, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Trash2, X } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useWorkspaceSlice } from '../../stores/workspaceSelectors'
 import type { AppSection, ProjectSetupDefaults } from '../../types'
@@ -42,6 +42,41 @@ function formatUpdated(timestamp?: number | null): string | null {
   return new Date(timestamp * 1000).toLocaleDateString()
 }
 
+const COVER_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'bmp']
+
+/** Square cover picker shown next to the project name (New dialog) or
+ *  the dialog title (Edit setup). Shows the stored cover or the pending
+ *  file thumbnail; the file itself only uploads on save. */
+function CoverSquareButton({ workspaceName, coverImage, pendingFile, pendingUrl, disabled, onPick, onClear }: {
+  workspaceName: string | null
+  coverImage: string
+  pendingFile: File | null
+  pendingUrl: string | null
+  disabled?: boolean
+  onPick: (file: File) => void
+  onClear: () => void
+}) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const src = pendingUrl || (coverImage && workspaceName ? workspaceCoverUrl(workspaceName, coverImage) : null)
+  const failed = failedSrc !== null && failedSrc === src
+  if (src && !failed) {
+    return (
+      <span className="relative shrink-0" title={pendingFile ? `${pendingFile.name} · uploads on save` : 'Project cover · click × to remove'}>
+        <img src={src} alt="Project cover" className="block h-10 w-10 rounded-lg border border-border object-cover" onError={() => setFailedSrc(src)} />
+        <button type="button" onClick={onClear} disabled={disabled} aria-label="Remove cover image" className="absolute -top-1.5 -right-1.5 rounded-full border border-border bg-bg-primary p-0.5 hover:bg-bg-hover transition-colors disabled:opacity-50">
+          <X size={10} className="text-text-muted" />
+        </button>
+      </span>
+    )
+  }
+  return (
+    <label title="Upload a cover image (.png, .jpg, .webp, .bmp)" className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-dashed transition-colors ${disabled ? 'cursor-not-allowed opacity-50' : 'border-border hover:border-accent-blue'}`}>
+      <ImagePlus size={16} className="text-text-muted" />
+      <input type="file" accept=".png,.jpg,.jpeg,.webp,.bmp" className="hidden" disabled={disabled} onChange={e => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = '' }} />
+    </label>
+  )
+}
+
 export function ProjectsPage() {
   const workspaces = useWorkspaceSlice('workspaces')
   const active = useWorkspaceSlice('activeWorkspace')
@@ -65,6 +100,27 @@ export function ProjectsPage() {
   // project workspace doesn't exist until submit). Uploaded as part of
   // create/saveEdit, then cleared.
   const [pendingCover, setPendingCover] = useState<File | null>(null)
+  const [coverError, setCoverError] = useState('')
+  const pendingCoverUrl = useMemo(() => pendingCover ? URL.createObjectURL(pendingCover) : null, [pendingCover])
+  useEffect(() => () => { if (pendingCoverUrl) URL.revokeObjectURL(pendingCoverUrl) }, [pendingCoverUrl])
+  const handlePickCover = (file: File) => {
+    const ext = (file.name.split('.').pop() || '').toLowerCase()
+    if (!COVER_FILE_EXTENSIONS.includes(ext)) {
+      setCoverError('Cover must be a .png, .jpg, .jpeg, .webp or .bmp file.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setCoverError('Cover image too large (max 10 MB).')
+      return
+    }
+    setCoverError('')
+    setPendingCover(file)
+  }
+  const handleClearCover = () => {
+    setCoverError('')
+    setPendingCover(null)
+    setSetup(prev => (prev.cover_image ? { ...prev, cover_image: '' } : prev))
+  }
   // Cover filename the dialog started with — used to detect a removal
   // that must also delete the stored file on save.
   const [initialCover, setInitialCover] = useState('')
@@ -113,6 +169,7 @@ export function ProjectsPage() {
       setCreating(false); setName('')
       setSetup(DEFAULT_PROJECT_SETUP)
       setPendingCover(null)
+      setCoverError('')
       setInitialCover('')
       setDestination('director')
       navigate(destination)
@@ -126,6 +183,7 @@ export function ProjectsPage() {
     // file, so the reference must not carry over either.
     setSetup({ ...DEFAULT_PROJECT_SETUP, ...(workspace.setup || {}), pinned: false, cover_image: '' })
     setPendingCover(null)
+    setCoverError('')
     setInitialCover('')
     setName(`${workspace.name.trim().replace(/\s+/g, '-')}-copy`)
     setDestination('director')
@@ -170,6 +228,7 @@ export function ProjectsPage() {
       await useStore.getState().loadWorkspaces()
       setEditing(null)
       setPendingCover(null)
+      setCoverError('')
       setInitialCover('')
     }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save project setup.') }
@@ -179,6 +238,7 @@ export function ProjectsPage() {
     const card = workspaces.find(w => w.name === workspace)
     setSetup(card?.setup ?? DEFAULT_PROJECT_SETUP)
     setPendingCover(null)
+    setCoverError('')
     setInitialCover(card?.setup?.cover_image || '')
     setEditing(workspace)
   }
@@ -198,6 +258,7 @@ export function ProjectsPage() {
     setError(null)
     setSetup(DEFAULT_PROJECT_SETUP)
     setPendingCover(null)
+    setCoverError('')
     setInitialCover('')
     setName('')
     setDestination('director')
@@ -305,12 +366,22 @@ export function ProjectsPage() {
                 if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus() }
               }
             }}>
-            <h2 id="project-dialog-title" className="mb-2 text-lg font-semibold">
-              {creating ? 'New project' : `Edit ${editing} setup`}
-            </h2>
+            <div className="mb-2 flex items-center gap-2">
+              <h2 id="project-dialog-title" className="text-lg font-semibold">
+                {creating ? 'New project' : `Edit ${editing} setup`}
+              </h2>
+              {!creating && editing && (
+                <CoverSquareButton workspaceName={editing} coverImage={setup.cover_image || ''} pendingFile={pendingCover} pendingUrl={pendingCoverUrl} disabled={busy !== null} onPick={handlePickCover} onClear={handleClearCover} />
+              )}
+            </div>
+            {coverError && <p role="alert" className="mb-2 text-xs text-red-400">{coverError}</p>}
             {creating ? (
               <>
-                <label className="block text-xs text-text-secondary">Project name<input autoFocus required value={name} onChange={e => setName(e.target.value)} className="mt-2 w-full rounded-lg border border-border bg-bg-primary px-3 py-2.5 text-sm text-text-primary" placeholder="my-new-film" /></label>
+                <div className="flex items-end gap-2">
+                  <label className="block flex-1 min-w-0 text-xs text-text-secondary">Project name<input autoFocus required value={name} onChange={e => setName(e.target.value)} className="mt-2 w-full rounded-lg border border-border bg-bg-primary px-3 py-2.5 text-sm text-text-primary" placeholder="my-new-film" /></label>
+                  <CoverSquareButton workspaceName={null} coverImage={setup.cover_image || ''} pendingFile={pendingCover} pendingUrl={pendingCoverUrl} disabled={busy !== null} onPick={handlePickCover} onClear={handleClearCover} />
+                </div>
+                {coverError && <p role="alert" className="mt-1.5 text-xs text-red-400">{coverError}</p>}
                 <p className="mt-2 text-xs text-text-muted">A new folder named <code className="text-text-secondary">{name.trim().replace(/\s+/g, '-') || 'project-name'}</code> will be created under <code className="text-text-secondary">outputs/</code>.</p>
                 <div className="mt-4">
                   <span className="text-xs text-text-secondary block mb-1.5">Start from a template</span>
@@ -359,13 +430,13 @@ export function ProjectsPage() {
                   ))}
                 </div>
                 <div className="mt-4 border-t border-border/40 pt-3">
-                  <ProjectSetupForm value={setup} onChange={setSetup} workspaceName={null} onPendingCover={setPendingCover} />
+                  <ProjectSetupForm value={setup} onChange={setSetup} />
                 </div>
               </>
             ) : (
               <>
                 <div>
-                  <ProjectSetupForm value={setup} onChange={setSetup} compact workspaceName={editing} onPendingCover={setPendingCover} />
+                  <ProjectSetupForm value={setup} onChange={setSetup} compact />
                 </div>
               </>
             )}
