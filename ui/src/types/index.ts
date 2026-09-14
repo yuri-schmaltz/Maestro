@@ -48,6 +48,10 @@ export interface ProjectSetupDefaults {
   tags?: string[]
   /** Pin the project card to the top of the projects list. */
   pinned?: boolean
+  /** Which Director skill this project plans with. Chosen on the
+   *  project creation/setup screen (Music Video / Short Film cards);
+   *  the Director chat no longer asks — it follows the project. */
+  director_skill?: DirectorSkill
 }
 
 export const PROJECT_SETUP_LATEST_SCHEMA = 1
@@ -68,6 +72,7 @@ export const DEFAULT_PROJECT_SETUP: ProjectSetupDefaults = {
   description: '',
   tags: [],
   pinned: false,
+  director_skill: 'music_video',
 }
 
 export type DirectorPipelineType = 'music_video' | 'short_film_audio' | 'short_film_story'

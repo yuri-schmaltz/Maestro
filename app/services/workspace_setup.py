@@ -39,6 +39,7 @@ DEFAULT_PROJECT_SETUP: dict[str, Any] = {
     "description": "",
     "tags": [],
     "pinned": False,
+    "director_skill": "music_video",
     "schema_version": 1,
 }
 
@@ -117,6 +118,10 @@ def _validate_setup(name: str, setup: dict[str, Any]) -> dict[str, Any]:
         elif key == "music_source":
             if value not in {"upload", "generate"}:
                 raise WorkspaceSetupError(400, "music_source must be 'upload' or 'generate'.")
+            sanitized[key] = value
+        elif key == "director_skill":
+            if value not in {"music_video", "short_film"}:
+                raise WorkspaceSetupError(400, "director_skill must be 'music_video' or 'short_film'.")
             sanitized[key] = value
         elif key in _LIST_STRING_FIELDS:
             if not isinstance(value, list) or not all(isinstance(tag, str) for tag in value):

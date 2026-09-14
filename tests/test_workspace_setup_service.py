@@ -45,14 +45,30 @@ class WorkspaceSetupServiceTests(unittest.TestCase):
                 "description": "My short film",
                 "tags": ["film", "draft"],
                 "pinned": True,
+                "director_skill": "short_film",
             })
             self.assertEqual(stored["description"], "My short film")
             self.assertEqual(stored["tags"], ["film", "draft"])
             self.assertTrue(stored["pinned"])
+            self.assertEqual(stored["director_skill"], "short_film")
             loaded = load_setup(root, "project_1")
             self.assertEqual(loaded["description"], "My short film")
             self.assertEqual(loaded["tags"], ["film", "draft"])
             self.assertTrue(loaded["pinned"])
+            self.assertEqual(loaded["director_skill"], "short_film")
+
+    def test_legacy_setup_without_skill_defaults_to_music_video(self):
+        with tempfile.TemporaryDirectory() as root:
+            stored = persist_setup(root, "project_1", {"resolution": "1080p"})
+            self.assertEqual(stored.get("director_skill", "music_video"), "music_video")
+            loaded = load_setup(root, "project_1")
+            self.assertEqual(loaded["director_skill"], DEFAULT_PROJECT_SETUP["director_skill"])
+
+    def test_invalid_skill_is_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            with self.assertRaises(WorkspaceSetupError) as context:
+                persist_setup(root, "project_1", {"director_skill": "podcast"})
+            self.assertEqual(context.exception.status_code, 400)
 
     def test_invalid_tags_are_rejected(self):
         with tempfile.TemporaryDirectory() as root:

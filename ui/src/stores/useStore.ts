@@ -7962,6 +7962,12 @@ export const useStore = create<AppState>((set, get, store) => ({
 
   openDirectorStage: () => {
     set({ appSection: 'director', sidebarMode: 'workspace', workspaceStage: 'director', sidebarOpen: false, settingsOpen: false })
+    // The skill is a project-level choice — the chat no longer asks.
+    // Fall back to the active project's setup, then music_video.
+    if (!get().directorSkill) {
+      const setupSkill = get().activeWorkspaceSetup?.director_skill
+      get().setDirectorSkill(setupSkill === 'short_film' ? 'short_film' : 'music_video')
+    }
     void get().loadDirectorQueue()
   },
 
@@ -7986,13 +7992,16 @@ export const useStore = create<AppState>((set, get, store) => ({
 
   /**
    * Reset only the Director skill selection, leaving the rest of the
-   * Stage state intact. Wired to the "Choose different skill" button
-   * in the DirectorStage header.
+   * Stage state intact.
+   *
+   * The skill is a project-level choice now (picked on the project
+   * creation/setup screen), so this restores the active project's
+   * skill instead of unsetting it — there is no in-chat picker left
+   * to recover from a null skill.
    *
    * What this clears:
-   *   - directorSkill (back to null so the SkillSelector reappears)
-   *   - shortFilmPath (irrelevant once skill is unset)
-   *   - directorStep (back to 'upload' so the new skill starts fresh)
+   *   - shortFilmPath (irrelevant once skill is re-applied)
+   *   - directorStep (back to 'upload' so the skill starts fresh)
    *
    * What this preserves:
    *   - audioFile / audioPath / analysis / sceneDescription /
@@ -8001,8 +8010,9 @@ export const useStore = create<AppState>((set, get, store) => ({
    *     when the user just wants to switch workflows.
    */
   resetDirectorSkillOnly: () => {
+    const setupSkill = get().activeWorkspaceSetup?.director_skill
     set({
-      directorSkill: null,
+      directorSkill: setupSkill === 'short_film' ? 'short_film' : 'music_video',
       shortFilmPath: null,
       directorStep: 'upload',
       directorError: null,
@@ -8959,7 +8969,7 @@ export const useStore = create<AppState>((set, get, store) => ({
       directorSeamless: false,
       directorShotImageGuidance: 'auto' as DirectorShotImageGuidance,
       directorLlmLog: [],
-      directorSkill: null,
+      directorSkill: get().activeWorkspaceSetup?.director_skill === 'short_film' ? 'short_film' : 'music_video',
       directorMusicSource: null,
       directorSongDescription: '',
       directorSongInstrumental: false,

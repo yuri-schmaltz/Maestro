@@ -2,6 +2,7 @@
    ProjectSetup form chips and the Director right-column override live here
    so the two surfaces stay in lockstep. */
 import { useState } from 'react'
+import { Film, Music } from 'lucide-react'
 import type { ProjectSetupDefaults, AspectRatio, ResolutionPreset, GenerationMode } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
 import { fetchModels, type ApiModel } from '../../api/client'
@@ -127,6 +128,41 @@ export function ProjectSetupForm({
 
   return (
     <div className={`text-sm ${compact ? 'space-y-3' : 'space-y-4'}`}>
+      {/* Skill — which Director workflow this project plans with.
+          Chosen once here so the Director chat never asks again;
+          changing it later re-syncs the Director through
+          applyWorkspaceSetup. */}
+      <fieldset className={sectionCls} aria-label="Director skill">
+        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Skill</legend>
+        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Director skill">
+          {([
+            { id: 'music_video' as const, label: 'Music Video', desc: 'Automated music video from audio', Icon: Music },
+            { id: 'short_film' as const, label: 'Short Film', desc: 'Dialogue-driven scenes from audio', Icon: Film },
+          ]).map(({ id, label, desc, Icon }) => {
+            const active = (safeValue.director_skill || 'music_video') === id
+            return (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                disabled={disabled}
+                onClick={() => update({ director_skill: id })}
+                className={`p-3 rounded-lg border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                  active
+                    ? 'border-accent-blue/60 bg-accent-blue/5'
+                    : 'border-border hover:border-border-light'
+                }`}
+              >
+                <Icon size={16} className={active ? 'text-accent-blue mb-1.5' : 'text-text-muted mb-1.5'} />
+                <div className="text-xs font-medium text-text-primary">{label}</div>
+                <div className="text-2xs text-text-muted mt-0.5">{desc}</div>
+              </button>
+            )
+          })}
+        </div>
+      </fieldset>
+
       {/* Output — aspect + resolution. Always visible because every
           project needs a render format and "use whatever was last"
           is the worst possible default for a fresh project. */}
@@ -277,7 +313,7 @@ function FormSelect({
   )
 }
 
-/** Compact summary used in the Project card chip ("16:9 · 720p · LTX-2"). */
+/** Compact summary used in the Project card chip ("Music Video · 16:9 · 720p · LTX-2"). */
 export function ProjectSetupSummary({
   setup, videoModelLabel, imageModelLabel,
 }: {
@@ -287,6 +323,9 @@ export function ProjectSetupSummary({
 }): string {
   if (!setup) return 'Default settings'
   const parts: string[] = []
+  const skillLabel = setup.director_skill === 'short_film' ? 'Short Film'
+    : setup.director_skill === 'music_video' ? 'Music Video' : undefined
+  if (skillLabel) parts.push(skillLabel)
   if (setup.aspect_ratio) parts.push(setup.aspect_ratio)
   if (setup.resolution) parts.push(setup.resolution)
   if (setup.video_model) parts.push(videoModelLabel || shortModelLabel(setup.video_model))

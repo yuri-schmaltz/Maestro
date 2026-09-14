@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Film, Mic, Sparkles, Send, Users, FileText, ListVideo } from 'lucide-react'
+import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Mic, Send, Users, FileText, ListVideo } from 'lucide-react'
 import { useStore, directorModelUsesFixedMediaStrength, resolveResolution } from '../../stores/useStore'
 import { fetchModelOptions, getFileUrl } from '../../api/client'
 import { DirectorLoraSelector } from '../SettingsDrawer/DirectorLoraSelector'
@@ -10,9 +10,8 @@ import { OmniReferenceSection } from './OmniReferenceSection'
 import { formatSeconds, recommendedWindowProfile } from './DurationSlider'
 import { DurationPresetControl } from './DurationPresetControl'
 import { LONG_FORM_MAX_SECONDS, formatDuration } from '../../lib/durationPlanning'
-import type { DirectorShotImageGuidance, DirectorSkill, ModelOptions, ShortFilmCharacter, ShortFilmPath } from '../../types'
-import { DIRECTOR_SKILL_OPTIONS, canonicalDirectorSkill } from '../../types'
-import { fetchDirectorSkills, readDirectorScript } from '../../api/client'
+import type { DirectorShotImageGuidance, ModelOptions, ShortFilmCharacter, ShortFilmPath } from '../../types'
+import { readDirectorScript } from '../../api/client'
 
 // AUDIO_ACCEPT lists both audio formats AND video formats. When a video
 // file is uploaded, the backend's /api/v1/upload-audio endpoint extracts
@@ -449,7 +448,6 @@ export function DirectorChat() {
   void useStore(s => s.directorInsertSpeakerMention)
   const autoMode = useStore(s => s.directorAutoMode)
   const skill = useStore(s => s.directorSkill)
-  const setSkill = useStore(s => s.setDirectorSkill)
   const musicSource = useStore(s => s.directorMusicSource)
   const setMusicSource = useStore(s => s.setDirectorMusicSource)
   const songDescription = useStore(s => s.directorSongDescription)
@@ -721,9 +719,7 @@ export function DirectorChat() {
     return () => window.removeEventListener('keydown', onDirectorShortcut)
   }, [chatInputEnabled, handleQueueDraft, handleChatSubmit, step, loading, generateStartImages])
 
-  const chatInputPlaceholder = !skill
-    ? 'Choose a skill above...'
-    : mvGenerateSetup
+  const chatInputPlaceholder = mvGenerateSetup
     ? 'Describe your music video — subject, vibe, mood, setting…'
     : isShortFilm && !shortFilmPath
     ? 'Choose a path above...'
@@ -745,16 +741,18 @@ export function DirectorChat() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 min-w-0">
-      {/* The chat column is now strictly inputs (skill chooser, path
-          chooser, audio upload, reference uploads) + the composer at the
-          bottom. Removed: the skill name / BPM / duration / Start-Over
-          header (informational), the welcome bubble (informational), the
-          user-bubble echoes of past choices (the controls below already
-          reflect the current selection), and the pipeline progress banner
-          (status info, belongs elsewhere if needed). The parent
-          .director-stage-chat provides the 16px padding so children don't
-          add their own horizontal padding — that previously left uneven
-          gutters against the card border. */}
+      {/* The chat column is now strictly inputs (path chooser,
+          audio upload, reference uploads, script attach) + the composer
+          at the bottom. The Director skill itself is a project-level
+          choice made on the project creation/setup screen, so there is
+          no skill picker here. Removed: the skill name / BPM / duration
+          / Start-Over header (informational), the welcome bubble
+          (informational), the user-bubble echoes of past choices (the
+          controls below already reflect the current selection), and
+          the pipeline progress banner (status info, belongs elsewhere
+          if needed). The parent .director-stage-chat provides the 16px
+          padding so children don't add their own horizontal padding —
+          that previously left uneven gutters against the card border. */}
       {/* Chat scroll container used to own overflow-y-auto, which painted
           a scrollbar that covered the upload/reference cards next door.
           The user asked to keep the bar visible only on the additional
@@ -765,9 +763,6 @@ export function DirectorChat() {
           is still maintained because the chat anchors scrolling
           programmatically on new messages / errors. */}
       <div ref={scrollContainerRef} className="flex-1 min-h-0 space-y-3">
-        {/* Skill selector */}
-        {!skill && <SkillSelector onSelect={setSkill} />}
-
         {/* Short Film path chooser — render the prompt directly, no
             surrounding bubble, since the bubble was just decorative text. */}
         {isShortFilm && skill && !shortFilmPath && (
@@ -792,29 +787,7 @@ export function DirectorChat() {
           <>
             {!audioFile && !pastStep('analyze') ? (
               <SystemBubble>
-                {/* The first thing a new project shows is a "Skills prontas"
-                    catalog (active skills registered on the backend).
-                    Clicking a skill selects it without forcing the user
-                    to scroll back to the initial picker; once a skill is
-                    chosen the upload affordance below (track for Music
-                    Video, dialogue for Short Film, etc.) takes over.
-                    Past-step ("already analyzed") projects skip the
-                    skill chooser and go straight to upload — the user
-                    already committed to a skill earlier in the session. */}
                 <div className="space-y-3">
-                  <SkillsReadyCatalog
-                    activeSkill={skill}
-                    onSelect={(next) => {
-                      setSkill(next)
-                      // Reset the music source only when switching to a
-                      // different skill family — keeping the previous
-                      // choice avoids re-prompting on accidental
-                      // re-clicks of the same card.
-                      if (next !== 'music_video' && !isShortFilm) {
-                        setMusicSource('upload')
-                      }
-                    }}
-                  />
                   {/* Music Video: upload a track OR generate one with the selected music model. */}
                   {!isShortFilm && (
                     <div className="flex gap-1.5 p-1 bg-bg-tertiary rounded-lg border border-border">
@@ -1215,181 +1188,6 @@ function CharacterNaming({
       </span>
     </div>
   )
-}
-
-function SkillSelector({ onSelect }: { onSelect: (skill: DirectorSkill) => void }) {
-  const [skills, setSkills] = useState(DIRECTOR_SKILL_OPTIONS)
-
-  useEffect(() => {
-    let cancelled = false
-    fetchDirectorSkills()
-      .then((next) => {
-        if (!cancelled && next.length) {
-          setSkills(next.map(entry => ({
-            id: canonicalDirectorSkill(entry.id) as DirectorSkill,
-            label: entry.label,
-            desc: entry.desc || 'Director skill',
-            icon: (entry.icon as 'music' | 'film' | 'podcast' | 'viral') || 'music',
-            active: Boolean(entry.active),
-          })))
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setSkills(DIRECTOR_SKILL_OPTIONS)
-      })
-    return () => { cancelled = true }
-  }, [])
-
-  const skillIcons = {
-    music: Music,
-    film: Film,
-    podcast: Mic,
-    viral: Sparkles,
-    sparkles: Sparkles,
-  } as const
-
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {skills.map((s) => {
-        const Icon = (skillIcons as Record<string, typeof Music>)[s.icon] || Music
-        const skillId = canonicalDirectorSkill(s.id)
-        return (
-          <button
-            key={s.id}
-            onClick={() => s.active && onSelect(skillId)}
-            disabled={!s.active}
-            className={`relative p-3 rounded-lg border text-left transition-all ${
-              s.active
-                ? 'border-accent-blue/30 bg-bg-tertiary/50 hover:border-accent-blue hover:bg-accent-blue/5 cursor-pointer'
-                : 'border-border/30 bg-bg-tertiary/20 opacity-50 cursor-not-allowed'
-            }`}
-          >
-            <Icon size={16} className={s.active ? 'text-accent-blue mb-1.5' : 'text-text-muted mb-1.5'} />
-            <div className="text-xs font-medium text-text-primary">{s.label}</div>
-            <div className="text-2xs text-text-muted mt-0.5">{s.desc}</div>
-            {!s.active && (
-              <span className="absolute top-1.5 right-1.5 text-2xs bg-bg-hover text-text-muted px-1.5 py-0.5 rounded-full">
-                Soon
-              </span>
-            )}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-/**
- * SkillsReadyCatalog — the compact "Skills prontas" gallery shown in
- * the upload-step SystemBubble. Reuses the same `/api/v1/director/skills`
- * payload the first-screen SkillSelector renders, but in a denser
- * 3-column grid optimised for inline display inside the chat column.
- *
- * Only ACTIVE skills are listed (the registry's `active: true` flag).
- * Inactive entries are intentionally hidden — the user's intent here
- * is to pick something they can actually run, not to see a roadmap.
- * Use the first-screen SkillSelector if you want the full list with
- * "Soon" cards.
- */
-function SkillsReadyCatalog({
-  activeSkill,
-  onSelect,
-}: {
-  activeSkill: DirectorSkill
-  onSelect: (skill: DirectorSkill) => void
-}) {
-  const [ready, setReady] = useState<DirectorSkill[]>([])
-
-  useEffect(() => {
-    let cancelled = false
-    fetchDirectorSkills()
-      .then((entries) => {
-        if (cancelled) return
-        const ids = entries
-          .filter((entry) => entry.active)
-          .map((entry) => canonicalDirectorSkill(entry.id))
-        // De-duplicate and preserve the registry's order. We always
-        // include the active skill even if the registry hasn't caught
-        // up yet (cold start / partial backend response) so the user
-        // can see why their in-flight pipeline was committed.
-        const dedup: DirectorSkill[] = []
-        for (const id of ids) {
-          if (!dedup.includes(id as DirectorSkill)) dedup.push(id as DirectorSkill)
-        }
-        if (!dedup.includes(activeSkill)) dedup.unshift(activeSkill)
-        setReady(dedup)
-      })
-      .catch(() => {
-        if (cancelled) return
-        // Best-effort fallback: keep the currently-active skill visible
-        // so the upload affordance below still makes sense.
-        setReady([activeSkill])
-      })
-    return () => { cancelled = true }
-  }, [activeSkill])
-
-  // Per-skill copy. Keep keys aligned with the canonical skill ids so
-  // the lookup doesn't accidentally fall through to the generic
-  // default if the backend introduces a new id between releases.
-  const SKILL_BLURB: Record<string, { icon: 'music' | 'film' | 'podcast' | 'viral' | 'sparkles'; tag: string }> = {
-    music_video: { icon: 'music', tag: 'Audio' },
-    short_film: { icon: 'film', tag: 'Audio' },
-    short_film_audio: { icon: 'film', tag: 'Audio' },
-    short_film_story: { icon: 'film', tag: 'Story' },
-  }
-
-  const skillIcons = {
-    music: Music,
-    film: Film,
-    podcast: Mic,
-    viral: Sparkles,
-    sparkles: Sparkles,
-  } as const
-
-  if (ready.length === 0) return null
-
-  return (
-    <div className="space-y-1.5">
-      <span className="text-2xs text-text-muted uppercase tracking-wider block">Skills prontas</span>
-      <div className="grid grid-cols-3 gap-1.5">
-        {ready.map((id) => {
-          const meta = SKILL_BLURB[id] || { icon: 'sparkles', tag: 'Skill' }
-          const Icon = (skillIcons as Record<string, typeof Music>)[meta.icon] || Sparkles
-          const active = id === activeSkill
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onSelect(id)}
-              className={`relative flex flex-col items-start gap-1 px-2 py-2 rounded-lg border text-left transition-all ${
-                active
-                  ? 'border-accent-blue bg-accent-blue/10'
-                  : 'border-border bg-bg-tertiary/30 hover:border-border-light hover:bg-bg-tertiary/60'
-              }`}
-              aria-pressed={active}
-            >
-              <Icon size={12} className={active ? 'text-accent-blue' : 'text-text-secondary'} />
-              <span className="text-2xs font-medium text-text-primary leading-tight">
-                {labelForSkill(id)}
-              </span>
-              <span className="text-2xs text-text-muted leading-tight">{meta.tag}</span>
-              {active && (
-                <span className="absolute top-1 right-1 text-2xs text-accent-blue" aria-hidden>✓</span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function labelForSkill(id: DirectorSkill): string {
-  // Single source of truth for catalog labels. Falls back to the id
-  // for skills the static DIRECTOR_SKILL_OPTIONS doesn't know about
-  // (e.g. plugin-supplied demos loaded at runtime).
-  const entry = DIRECTOR_SKILL_OPTIONS.find((opt) => opt.id === id)
-  return entry?.label || id.replace(/_/g, ' ')
 }
 
 function PathChooser({ onSelect }: { onSelect: (path: ShortFilmPath) => void }) {

@@ -89,6 +89,16 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     if (typeof setup.music_model === 'string') {
       patch.directorMusicModel = setup.music_model || 'ace_step_v1_5_xl_sft_lm_4b'
     }
+    // The Director skill is a project-level choice (picked on the project
+    // creation/setup screen). Sync it here so the chat never asks again.
+    // A changed skill restarts the flow (path/step) but preserves media
+    // and analysis — same contract as the old in-chat skill switch.
+    const setupSkill = setup.director_skill === 'music_video' || setup.director_skill === 'short_film'
+      ? setup.director_skill : undefined
+    if (setupSkill && setupSkill !== get().directorSkill) {
+      get().setDirectorSkill(setupSkill)
+      set({ shortFilmPath: null, directorStep: 'upload', directorError: null })
+    }
     const advanced = setup.advanced && typeof setup.advanced === 'object' && !Array.isArray(setup.advanced)
       ? setup.advanced : {}
     const videoModel = setup.video_model || get().selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
