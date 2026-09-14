@@ -7,28 +7,6 @@ import type { ProjectSetupDefaults, AspectRatio, ResolutionPreset, GenerationMod
 import { DEFAULT_PROJECT_SETUP } from '../../types'
 import { fetchModels, workspaceCoverUrl, type ApiModel } from '../../api/client'
 
-/** Architectures that produce video output. Used to filter the model
- *  catalog into a video picker and an image picker without needing a
- *  per-model `kind` tag. Keep in sync with the architectures WanGP
- *  knows about — losing video models out of the picker would silently
- *  disable a route the user already used, which is worse UX than
- *  showing a model that picks the wrong picker row. */
-const VIDEO_ARCHITECTURE_PREFIXES = ['ltx', 'wan', 'hunyuan', 'minimax', 'svd', 'h3']
-
-/** Architectures that produce image output. The "everything else"
- *  fallback would also work, but an explicit allowlist catches
- *  audio/TTS models that shouldn't show in either picker. */
-const IMAGE_ARCHITECTURE_PREFIXES = ['flux', 'sdxl', 'sd3', 'sd_', 'stablediffusion', 'klein', 'ace_step']
-
-function isVideoModel(model: ApiModel): boolean {
-  const arch = (model.architecture || '').toLowerCase()
-  return VIDEO_ARCHITECTURE_PREFIXES.some(prefix => arch.startsWith(prefix))
-}
-function isImageModel(model: ApiModel): boolean {
-  const arch = (model.architecture || '').toLowerCase()
-  return IMAGE_ARCHITECTURE_PREFIXES.some(prefix => arch.startsWith(prefix))
-}
-
 /** AspectRatio options surfaced in the project-setup form. Mirrors
  *  `DirectorAspectRatioSelector` so the two surfaces pick from the
  *  same set; ultra-wide (21:9) only shows when the project's video
@@ -66,11 +44,6 @@ export const PROJECT_SETUP_TEMPLATES: ReadonlyArray<{ value: string; label: stri
 export interface ProjectSetupFormProps {
   value: ProjectSetupDefaults
   onChange: (next: ProjectSetupDefaults) => void
-  /** When true (default) only surface video models whose director
-   *  capability matrix shows at least one compatible pipeline type,
-   *  so a project created against a model that Director can't drive
-   *  fails fast at creation time instead of first generation. */
-  filterDirectorCapable?: boolean
   disabled?: boolean
   /** Render compact version (less spacing) — used inside the small
    *  Edit setup modal so it fits next to other controls. */
@@ -99,7 +72,6 @@ export interface ProjectSetupFormProps {
 export function ProjectSetupForm({
   value,
   onChange,
-  filterDirectorCapable = true,
   disabled = false,
   compact = false,
   workspaceName = null,
@@ -153,17 +125,18 @@ export function ProjectSetupForm({
   const supportsUltraWide = (safeValue.video_model || '').toLowerCase().startsWith('minimax_h3')
   const aspectOptions = PROJECT_SETUP_ASPECT_RATIOS.filter(opt => opt.value !== '21:9' || supportsUltraWide)
 
-  const videoModels = models.filter(m => {
-    if (!isVideoModel(m)) return false
-    if (!filterDirectorCapable) return true
-    // A model that has at least one "compatible: true" Director
-    // capability is usable for at least one pipeline. Without this
-    // check, models that the backend blocks for every pipeline type
-    // would silently show as a project option and the user would
-    // hit the "model not supported" wall at first generation.
-    return Boolean(m.director && Object.values(m.director).some(value => value && typeof value === 'object' && 'compatible' in (value as object) && (value as { compatible?: boolean }).compatible))
-  })
-  const imageModels = models.filter(m => isImageModel(m))
+  // Both pickers list the full installed catalog (deduplicated, sorted
+  // by display name) — every available model shows up. Empty string
+  // means "use whatever the Studio already has", which lets the form
+  // stay usable when the model catalog isn't loaded yet (offline /
+  // first paint).
+  const modelOptions = [
+    { value: '', label: 'Use last selected' },
+    ...[...models]
+      .filter((m, i, arr) => arr.findIndex(o => o.model_type === m.model_type) === i)
+      .sort((a, b) => (a.name || a.model_type).localeCompare(b.name || b.model_type))
+      .map(m => ({ value: m.model_type, label: m.name || m.model_type })),
+  ]
 
   const sectionCls = compact ? 'space-y-1.5' : 'space-y-2'
 
@@ -283,35 +256,40 @@ export function ProjectSetupForm({
           creator opted in. */}
       <fieldset className={sectionCls} aria-label="Workflow defaults">
         <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Workflow</legend>
-        <div className="flex flex-wrap items-center gap-4">
-          <label className={`flex items-center gap-1.5 select-none ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+        <div className="grid grid-cols-2 gap-2">
+          <label className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 select-none transition-all ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${safeValue.seamless ? 'border-accent-blue/60 bg-accent-blue/5' : 'border-border hover:border-border-light'}`}>
             <input
               type="checkbox"
               checked={Boolean(safeValue.seamless)}
               disabled={disabled}
               onChange={e => update({ seamless: e.target.checked })}
-              className="accent-accent-blue w-3 h-3"
+              className="accent-accent-blue w-3 h-3 shrink-0"
             />
-            <span className="text-xs text-text-secondary">Seamless</span>
-            <span className="text-2xs text-text-muted">(continuous sliding window)</span>
+            <span className="min-w-0">
+              <span className="text-xs text-text-secondary block leading-tight">Seamless</span>
+              <span className="text-2xs text-text-muted block leading-tight truncate">continuous sliding window</span>
+            </span>
           </label>
-          <label className={`flex items-center gap-1.5 select-none ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+          <label className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 select-none transition-all ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${safeValue.auto_mode ? 'border-red-500/60 bg-red-500/5' : 'border-border hover:border-border-light'}`}>
             <input
               type="checkbox"
               checked={Boolean(safeValue.auto_mode)}
               disabled={disabled}
               onChange={e => update({ auto_mode: e.target.checked })}
-              className="accent-red-500 w-3 h-3"
+              className="accent-red-500 w-3 h-3 shrink-0"
             />
-            <span className={`text-xs ${safeValue.auto_mode ? 'text-red-400' : 'text-text-secondary'}`}>Auto</span>
-            <span className="text-2xs text-text-muted">(skip review steps)</span>
+            <span className="min-w-0">
+              <span className={`text-xs block leading-tight ${safeValue.auto_mode ? 'text-red-400' : 'text-text-secondary'}`}>Auto</span>
+              <span className="text-2xs text-text-muted block leading-tight truncate">skip review steps</span>
+            </span>
           </label>
         </div>
       </fieldset>
 
       {/* Models — picked once at project creation so every take
-          starts from a known baseline. Empty string means "use whatever
-          the Studio already has", which lets the form stay usable when
+          starts from a known baseline. Both pickers list the full
+          installed catalog. Empty string means "use whatever the
+          Studio already has", which lets the form stay usable when
           the model catalog isn't loaded yet (offline / first paint). */}
       <fieldset className={sectionCls} aria-label="Default models">
         <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Models</legend>
@@ -321,10 +299,7 @@ export function ProjectSetupForm({
               label="Video model"
               value={safeValue.video_model || ''}
               onChange={next => update({ video_model: next })}
-              options={[
-                { value: '', label: 'Use last selected' },
-                ...videoModels.map(m => ({ value: m.model_type, label: m.name || m.model_type })),
-              ]}
+              options={modelOptions}
               disabled={disabled}
             />
           </div>
@@ -333,10 +308,7 @@ export function ProjectSetupForm({
               label="Image model"
               value={safeValue.image_model || ''}
               onChange={next => update({ image_model: next })}
-              options={[
-                { value: '', label: 'Use last selected' },
-                ...imageModels.map(m => ({ value: m.model_type, label: m.name || m.model_type })),
-              ]}
+              options={modelOptions}
               disabled={disabled}
             />
           </div>

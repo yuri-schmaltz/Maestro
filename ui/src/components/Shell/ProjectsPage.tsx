@@ -310,9 +310,11 @@ export function ProjectsPage() {
             </h2>
             {creating ? (
               <>
-                <div>
+                <label className="block text-xs text-text-secondary">Project name<input autoFocus required value={name} onChange={e => setName(e.target.value)} className="mt-2 w-full rounded-lg border border-border bg-bg-primary px-3 py-2.5 text-sm text-text-primary" placeholder="my-new-film" /></label>
+                <p className="mt-2 text-xs text-text-muted">A new folder named <code className="text-text-secondary">{name.trim().replace(/\s+/g, '-') || 'project-name'}</code> will be created under <code className="text-text-secondary">outputs/</code>.</p>
+                <div className="mt-4">
                   <span className="text-xs text-text-secondary block mb-1.5">Start from a template</span>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="grid grid-cols-4 gap-1.5">
                     {PROJECT_SETUP_TEMPLATES.map(tmpl => {
                       const activeT = setup.aspect_ratio === tmpl.setup.aspect_ratio && setup.resolution === tmpl.setup.resolution
                       return (
@@ -321,23 +323,21 @@ export function ProjectsPage() {
                           type="button"
                           onClick={() => setSetup({ ...DEFAULT_PROJECT_SETUP, ...tmpl.setup })}
                           disabled={busy !== null}
-                          className={`px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
+                          className={`min-w-0 px-2 py-1.5 rounded-lg border text-xs text-center leading-tight transition-all ${
                             activeT
                               ? 'border-accent-blue bg-accent-blue/10 text-text-primary'
                               : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
-                          <span className="font-medium">{tmpl.label}</span>
-                          <span className="ml-1 text-2xs opacity-60">{tmpl.desc}</span>
+                          <span className="font-medium block truncate">{tmpl.label}</span>
+                          <span className="text-2xs opacity-60 block truncate">{tmpl.desc}</span>
                         </button>
                       )
                     })}
                   </div>
                 </div>
-                <label className="block mt-4 text-xs text-text-secondary">Project name<input autoFocus required value={name} onChange={e => setName(e.target.value)} className="mt-2 w-full rounded-lg border border-border bg-bg-primary px-3 py-2.5 text-sm text-text-primary" placeholder="my-new-film" /></label>
-                <p className="mt-2 text-xs text-text-muted">A new folder named <code className="text-text-secondary">{name.trim().replace(/\s+/g, '-') || 'project-name'}</code> will be created under <code className="text-text-secondary">outputs/</code>.</p>
-                <div className="mt-3 flex items-center gap-1.5">
-                  <span className="text-xs text-text-secondary">Open in</span>
+                <div className="mt-3 grid grid-cols-3 gap-1.5">
+                  <span className="text-xs text-text-secondary col-span-3">Open in</span>
                   {([
                     { value: 'director', label: 'Director' },
                     { value: 'editor', label: 'Editor' },
@@ -348,7 +348,7 @@ export function ProjectsPage() {
                       type="button"
                       disabled={busy !== null}
                       onClick={() => setDestination(opt.value)}
-                      className={`px-2.5 py-1 rounded-lg border text-xs transition-all ${
+                      className={`px-2.5 py-1 rounded-lg border text-xs text-center transition-all ${
                         destination === opt.value
                           ? 'border-accent-blue bg-accent-blue/10 text-text-primary'
                           : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
