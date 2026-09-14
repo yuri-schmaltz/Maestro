@@ -36,12 +36,16 @@ DEFAULT_PROJECT_SETUP: dict[str, Any] = {
     "default_image_loras": {},
     "default_video_loras": {},
     "advanced": {},
+    "description": "",
+    "tags": [],
+    "pinned": False,
     "schema_version": 1,
 }
 
 _WORKSPACE_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
-_STRING_FIELDS = {"aspect_ratio", "resolution", "video_model", "image_model", "music_model"}
-_BOOL_FIELDS = {"seamless", "auto_mode"}
+_STRING_FIELDS = {"aspect_ratio", "resolution", "video_model", "image_model", "music_model", "description"}
+_BOOL_FIELDS = {"seamless", "auto_mode", "pinned"}
+_LIST_STRING_FIELDS = {"tags"}
 _OBJECT_FIELDS = {"default_image_loras", "default_video_loras", "advanced"}
 
 
@@ -113,6 +117,10 @@ def _validate_setup(name: str, setup: dict[str, Any]) -> dict[str, Any]:
         elif key == "music_source":
             if value not in {"upload", "generate"}:
                 raise WorkspaceSetupError(400, "music_source must be 'upload' or 'generate'.")
+            sanitized[key] = value
+        elif key in _LIST_STRING_FIELDS:
+            if not isinstance(value, list) or not all(isinstance(tag, str) for tag in value):
+                raise WorkspaceSetupError(400, f"{key} must be an array of strings.")
             sanitized[key] = value
         elif key in _OBJECT_FIELDS:
             if value is None or isinstance(value, dict):

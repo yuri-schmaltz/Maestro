@@ -39,6 +39,27 @@ class WorkspaceSetupServiceTests(unittest.TestCase):
             path = Path(root) / "project_1" / "setup.json"
             self.assertNotIn("unknown", path.read_text(encoding="utf-8"))
 
+    def test_metadata_fields_round_trip(self):
+        with tempfile.TemporaryDirectory() as root:
+            stored = persist_setup(root, "project_1", {
+                "description": "My short film",
+                "tags": ["film", "draft"],
+                "pinned": True,
+            })
+            self.assertEqual(stored["description"], "My short film")
+            self.assertEqual(stored["tags"], ["film", "draft"])
+            self.assertTrue(stored["pinned"])
+            loaded = load_setup(root, "project_1")
+            self.assertEqual(loaded["description"], "My short film")
+            self.assertEqual(loaded["tags"], ["film", "draft"])
+            self.assertTrue(loaded["pinned"])
+
+    def test_invalid_tags_are_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            with self.assertRaises(WorkspaceSetupError) as context:
+                persist_setup(root, "project_1", {"tags": "not-a-list"})
+            self.assertEqual(context.exception.status_code, 400)
+
     def test_invalid_payload_has_http_compatible_error(self):
         with tempfile.TemporaryDirectory() as root:
             with self.assertRaises(WorkspaceSetupError) as context:

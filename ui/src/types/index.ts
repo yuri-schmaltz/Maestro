@@ -42,6 +42,12 @@ export interface ProjectSetupDefaults {
    *  breaking the schema — readers should fall back to defaults on
    *  unknown values. */
   schema_version?: number
+  /** Optional human-readable description shown on the project card. */
+  description?: string
+  /** Optional free-form labels shown on the project card. */
+  tags?: string[]
+  /** Pin the project card to the top of the projects list. */
+  pinned?: boolean
 }
 
 export const PROJECT_SETUP_LATEST_SCHEMA = 1
@@ -59,6 +65,9 @@ export const DEFAULT_PROJECT_SETUP: ProjectSetupDefaults = {
   default_video_loras: {},
   advanced: {},
   schema_version: PROJECT_SETUP_LATEST_SCHEMA,
+  description: '',
+  tags: [],
+  pinned: false,
 }
 
 export type DirectorPipelineType = 'music_video' | 'short_film_audio' | 'short_film_story'

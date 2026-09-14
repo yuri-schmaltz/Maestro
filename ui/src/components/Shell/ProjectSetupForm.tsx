@@ -2,7 +2,6 @@
    ProjectSetup form chips and the Director right-column override live here
    so the two surfaces stay in lockstep. */
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Sparkles, Layers } from 'lucide-react'
 import type { ProjectSetupDefaults, AspectRatio, ResolutionPreset, GenerationMode } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
 import { fetchModels, type ApiModel } from '../../api/client'
@@ -21,9 +20,6 @@ const VIDEO_ARCHITECTURE_PREFIXES = ['ltx', 'wan', 'hunyuan', 'minimax', 'svd', 
  *  audio/TTS models that shouldn't show in either picker. */
 const IMAGE_ARCHITECTURE_PREFIXES = ['flux', 'sdxl', 'sd3', 'sd_', 'stablediffusion', 'klein', 'ace_step']
 
-/** Architectures that produce audio (used when music_source = generate). */
-const AUDIO_ARCHITECTURE_PREFIXES = ['ace', 'musicgen', 'audioldm', 'tts']
-
 function isVideoModel(model: ApiModel): boolean {
   const arch = (model.architecture || '').toLowerCase()
   return VIDEO_ARCHITECTURE_PREFIXES.some(prefix => arch.startsWith(prefix))
@@ -31,10 +27,6 @@ function isVideoModel(model: ApiModel): boolean {
 function isImageModel(model: ApiModel): boolean {
   const arch = (model.architecture || '').toLowerCase()
   return IMAGE_ARCHITECTURE_PREFIXES.some(prefix => arch.startsWith(prefix))
-}
-function isAudioModel(model: ApiModel): boolean {
-  const arch = (model.architecture || '').toLowerCase()
-  return AUDIO_ARCHITECTURE_PREFIXES.some(prefix => arch.startsWith(prefix))
 }
 
 /** AspectRatio options surfaced in the project-setup form. Mirrors
@@ -59,6 +51,16 @@ export const PROJECT_SETUP_RESOLUTIONS: ReadonlyArray<{ value: ResolutionPreset;
   { value: '540p', label: '540p' },
   { value: '720p', label: '720p' },
   { value: '1080p', label: '1080p' },
+]
+
+/** One-click starting setups for the New project dialog. Only flags the
+ *  fields a fresh project needs; model/advanced choices stay per-project
+ *  because they depend on the installed catalog. */
+export const PROJECT_SETUP_TEMPLATES: ReadonlyArray<{ value: string; label: string; desc: string; setup: Partial<ProjectSetupDefaults> }> = [
+  { value: 'short-film', label: 'Short film', desc: '16:9 · 720p', setup: { aspect_ratio: '16:9', resolution: '720p' } },
+  { value: 'reels', label: 'Reels', desc: '9:16 · 1080p', setup: { aspect_ratio: '9:16', resolution: '1080p' } },
+  { value: 'cinema', label: 'Cinema', desc: '21:9 · 1080p', setup: { aspect_ratio: '21:9', resolution: '1080p' } },
+  { value: 'square', label: 'Square', desc: '1:1 · 1080p', setup: { aspect_ratio: '1:1', resolution: '1080p' } },
 ]
 
 export interface ProjectSetupFormProps {
@@ -94,8 +96,6 @@ export function ProjectSetupForm({
 }: ProjectSetupFormProps) {
   const safeValue: ProjectSetupDefaults = { ...DEFAULT_PROJECT_SETUP, ...value }
   const [models, setModels] = useState<ApiModel[]>([])
-  const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [lorasOpen, setLorasOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -132,49 +132,24 @@ export function ProjectSetupForm({
           is the worst possible default for a fresh project. */}
       <fieldset className={sectionCls} aria-label="Output format">
         <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Output format</legend>
-        <div>
-          <span className="text-xs text-text-secondary block mb-1.5">Aspect ratio</span>
-          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Aspect ratio">
-            {aspectOptions.map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                role="radio"
-                aria-checked={safeValue.aspect_ratio === opt.value}
-                onClick={() => update({ aspect_ratio: opt.value })}
-                disabled={disabled}
-                className={`px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
-                  safeValue.aspect_ratio === opt.value
-                    ? 'border-accent-blue bg-accent-blue/10 text-text-primary'
-                    : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                <span className="font-medium">{opt.label}</span>
-                <span className="ml-1 text-2xs opacity-60">{opt.desc}</span>
-              </button>
-            ))}
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <FormSelect
+              label="Aspect ratio"
+              value={safeValue.aspect_ratio || ''}
+              onChange={next => update({ aspect_ratio: next as AspectRatio })}
+              options={aspectOptions.map(opt => ({ value: opt.value, label: `${opt.label} — ${opt.desc}` }))}
+              disabled={disabled}
+            />
           </div>
-        </div>
-        <div>
-          <span className="text-xs text-text-secondary block mb-1.5">Resolution</span>
-          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Resolution">
-            {PROJECT_SETUP_RESOLUTIONS.map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                role="radio"
-                aria-checked={safeValue.resolution === opt.value}
-                onClick={() => update({ resolution: opt.value })}
-                disabled={disabled}
-                className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                  safeValue.resolution === opt.value
-                    ? 'border-accent-blue bg-accent-blue/10 text-text-primary'
-                    : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {opt.label}
-              </button>
-            ))}
+          <div className="flex-1">
+            <FormSelect
+              label="Resolution"
+              value={safeValue.resolution || ''}
+              onChange={next => update({ resolution: next as ResolutionPreset })}
+              options={PROJECT_SETUP_RESOLUTIONS.map(opt => ({ value: opt.value, label: opt.label }))}
+              disabled={disabled}
+            />
           </div>
         </div>
       </fieldset>
@@ -217,108 +192,61 @@ export function ProjectSetupForm({
           the model catalog isn't loaded yet (offline / first paint). */}
       <fieldset className={sectionCls} aria-label="Default models">
         <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Models</legend>
-        <FormSelect
-          label="Video model"
-          value={safeValue.video_model || ''}
-          onChange={next => update({ video_model: next })}
-          options={[
-            { value: '', label: 'Use last selected' },
-            ...videoModels.map(m => ({ value: m.model_type, label: m.name || m.model_type })),
-          ]}
-          disabled={disabled}
-        />
-        <FormSelect
-          label="Image model"
-          value={safeValue.image_model || ''}
-          onChange={next => update({ image_model: next })}
-          options={[
-            { value: '', label: 'Use last selected' },
-            ...imageModels.map(m => ({ value: m.model_type, label: m.name || m.model_type })),
-          ]}
-          disabled={disabled}
-        />
-      </fieldset>
-
-      {/* Audio — source shape (upload vs generate) and the music model
-          used when source = generate. Skipped entirely from
-          short-film story-driven projects where audio is created
-          from voice references instead of a song. */}
-      <fieldset className={sectionCls} aria-label="Audio defaults">
-        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Audio</legend>
-        <div className="flex gap-1.5 p-1 bg-bg-tertiary rounded-lg border border-border">
-          {(['upload', 'generate'] as const).map(opt => (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => update({ music_source: opt })}
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <FormSelect
+              label="Video model"
+              value={safeValue.video_model || ''}
+              onChange={next => update({ video_model: next })}
+              options={[
+                { value: '', label: 'Use last selected' },
+                ...videoModels.map(m => ({ value: m.model_type, label: m.name || m.model_type })),
+              ]}
               disabled={disabled}
-              className={`flex-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
-                safeValue.music_source === opt
-                  ? 'bg-accent-blue text-white'
-                  : 'text-text-secondary hover:text-text-primary'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              {opt === 'upload' ? 'Upload a track' : 'Generate a track'}
-            </button>
-          ))}
+            />
+          </div>
+          <div className="flex-1">
+            <FormSelect
+              label="Image model"
+              value={safeValue.image_model || ''}
+              onChange={next => update({ image_model: next })}
+              options={[
+                { value: '', label: 'Use last selected' },
+                ...imageModels.map(m => ({ value: m.model_type, label: m.name || m.model_type })),
+              ]}
+              disabled={disabled}
+            />
+          </div>
         </div>
-        {safeValue.music_source === 'generate' && (
-          <FormSelect
-            label="Music model"
-            value={safeValue.music_model || ''}
-            onChange={next => update({ music_model: next })}
-            options={[
-              { value: '', label: 'Use default music model' },
-              ...models
-                .filter(m => isAudioModel(m) || (m.name || '').toLowerCase().includes('music'))
-                .map(m => ({ value: m.model_type, label: m.name || m.model_type })),
-            ]}
-            disabled={disabled}
-          />
-        )}
       </fieldset>
 
-      {/* Default LoRAs — collapsed by default; the per-card LoRA
-          pickers keep existing in Director so a power user can still
-          activate one ad-hoc. */}
-      <CollapsibleSection
-        title="Default LoRAs"
-        description="Apply these LoRAs to every Director generation in this project."
-        icon={Layers}
-        open={lorasOpen}
-        onToggle={() => setLorasOpen(!lorasOpen)}
-      >
-        <p className="text-2xs text-text-muted leading-relaxed">
-          Default LoRAs land in this section when the Studio's checkbox-driven picker is
-          ready to handle the JSON shape. For now, use the Director side (right column)
-          to activate LoRAs per take; the default remains the project-creator's choice.
-        </p>
-        <p className="text-2xs text-text-muted/70 leading-relaxed mt-1.5">
-          Current selection:&nbsp;
-          <code className="text-text-secondary">
-            {countLoras(safeValue.default_image_loras)} image,&nbsp;
-            {countLoras(safeValue.default_video_loras)} video
-          </code>
-        </p>
-      </CollapsibleSection>
-
-      {/* Advanced — collapsed by default so the average project creator
-          never sees scary knobs. Existing-project editing unlocks it
-          for users who already know what they're tweaking. */}
-      <CollapsibleSection
-        title="Advanced defaults"
-        description="Spatial upsampling, film grain, inference steps, H3 turbo mode. Applied to every generation unless overridden per-take."
-        icon={Sparkles}
-        open={advancedOpen}
-        onToggle={() => setAdvancedOpen(!advancedOpen)}
-      >
-        <p className="text-2xs text-text-muted leading-relaxed">
-          Advanced defaults live as a free-form JSON blob today. Each future knob will
-          get its own picker here; until then, power users can hand-edit this project's
-          <code className="text-text-secondary mx-1">outputs/&lt;project&gt;/setup.json</code>
-          and refresh the page.
-        </p>
-      </CollapsibleSection>
+      {/* About — optional metadata shown on the project card. Kept at
+          the bottom so the technical defaults stay the focus. */}
+      <fieldset className={sectionCls} aria-label="About this project">
+        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">About</legend>
+        <label className="block">
+          <span className="text-xs text-text-secondary block mb-1">Description</span>
+          <textarea
+            value={safeValue.description || ''}
+            onChange={e => update({ description: e.target.value })}
+            disabled={disabled}
+            rows={2}
+            placeholder="What is this project about?"
+            className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary resize-none disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-text-secondary block mb-1">Tags</span>
+          <input
+            type="text"
+            value={(safeValue.tags || []).join(', ')}
+            onChange={e => update({ tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
+            disabled={disabled}
+            placeholder="film, draft, reel"
+            className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
+          />
+        </label>
+      </fieldset>
     </div>
   )
 }
@@ -347,45 +275,6 @@ function FormSelect({
       </select>
     </label>
   )
-}
-
-function CollapsibleSection({
-  title, description, icon: Icon, open, onToggle, children,
-}: {
-  title: string
-  description: string
-  icon: typeof ChevronDown
-  open: boolean
-  onToggle: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <fieldset className="border border-border/40 rounded-lg">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left"
-      >
-        <span className="flex items-center gap-1.5">
-          <Icon size={12} className="text-text-secondary" />
-          <span className="text-xs text-text-secondary">{title}</span>
-        </span>
-        {open ? <ChevronDown size={12} className="text-text-muted" /> : <ChevronRight size={12} className="text-text-muted" />}
-      </button>
-      <p className="px-3 pb-2 text-2xs text-text-muted leading-relaxed">{description}</p>
-      {open && (
-        <div className="px-3 pb-3 space-y-2 border-t border-border/40 pt-2.5">
-          {children}
-        </div>
-      )}
-    </fieldset>
-  )
-}
-
-function countLoras(record: unknown): number {
-  if (!record || typeof record !== 'object') return 0
-  const value = (record as Record<string, unknown>).activated_loras
-  return Array.isArray(value) ? value.length : 0
 }
 
 /** Compact summary used in the Project card chip ("16:9 · 720p · LTX-2"). */

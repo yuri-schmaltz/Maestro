@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { ArrowRight, Check, Clapperboard, Film, FolderOpen, Images, Loader2, Plus, Search, Settings, Trash2 } from 'lucide-react'
+import { ArrowRight, Check, Clapperboard, Copy, Film, FolderOpen, Images, Loader2, Pin, PinOff, Plus, Search, Settings, Trash2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useWorkspaceSlice } from '../../stores/workspaceSelectors'
 import type { AppSection, ProjectSetupDefaults } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
-import { saveWorkspaceSetup } from '../../api/client'
-import { ProjectSetupForm, ProjectSetupSummary } from './ProjectSetupForm'
+import { saveWorkspaceSetup, type Workspace } from '../../api/client'
+import { ProjectSetupForm, ProjectSetupSummary, PROJECT_SETUP_TEMPLATES } from './ProjectSetupForm'
 
 /**
  * Projects page — one-to-one with workspaces on the backend.
@@ -41,12 +41,19 @@ export function ProjectsPage() {
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
   const [setup, setSetup] = useState<ProjectSetupDefaults>(DEFAULT_PROJECT_SETUP)
+  const [destination, setDestination] = useState<AppSection>('director')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
 
-  const userProjects = workspaces.filter(w => w.name !== 'default')
+  const userProjects = workspaces
+    .filter(w => w.name !== 'default')
+    .sort((a, b) => {
+      const aPinned = Boolean(a.setup?.pinned), bPinned = Boolean(b.setup?.pinned)
+      if (aPinned !== bPinned) return aPinned ? -1 : 1
+      return a.name.localeCompare(b.name)
+    })
   const hasProjects = userProjects.length > 0
   const visible = userProjects.filter(w => w.name.toLowerCase().includes(query.toLowerCase()))
 
@@ -76,10 +83,18 @@ export function ProjectsPage() {
       await saveSetupAction(setup)
       setCreating(false); setName('')
       setSetup(DEFAULT_PROJECT_SETUP)
-      navigate('director')
+      setDestination('director')
+      navigate(destination)
     }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not create project.') }
     finally { setBusy(null) }
+  }
+  const openDuplicate = (workspace: Workspace) => {
+    setError(null)
+    setSetup({ ...DEFAULT_PROJECT_SETUP, ...(workspace.setup || {}), pinned: false })
+    setName(`${workspace.name.trim().replace(/\s+/g, '-')}-copy`)
+    setDestination('director')
+    setCreating(true)
   }
   const remove = async () => {
     if (!deleting) return
@@ -120,6 +135,25 @@ export function ProjectsPage() {
     setSetup(card?.setup ?? DEFAULT_PROJECT_SETUP)
     setEditing(workspace)
   }
+  const togglePin = async (workspace: Workspace) => {
+    const busyKey = `pin-${workspace.name}`
+    setBusy(busyKey); setError(null)
+    try {
+      const next = { ...(workspace.setup || {}), pinned: !workspace.setup?.pinned }
+      if (workspace.name === active) await saveSetupAction(next as ProjectSetupDefaults)
+      else await saveWorkspaceSetup(workspace.name, next)
+      await useStore.getState().loadWorkspaces()
+    }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not update pin.') }
+    finally { setBusy(null) }
+  }
+  const openCreate = () => {
+    setError(null)
+    setSetup(DEFAULT_PROJECT_SETUP)
+    setName('')
+    setDestination('director')
+    setCreating(true)
+  }
   return (
     <div className="section-scroll">
       <div className="section-container">
@@ -127,7 +161,7 @@ export function ProjectsPage() {
           <label className="shell-search"><Search size={15} /><input aria-label="Search projects" placeholder="Search projects…" value={query} onChange={e => setQuery(e.target.value)} /></label>
           <div className="projects-toolbar-end">
             <span className="text-xs text-text-muted">{userProjects.length} {userProjects.length === 1 ? 'project' : 'projects'}</span>
-            <button className="shell-primary-button" onClick={() => { setError(null); setCreating(true); setSetup(DEFAULT_PROJECT_SETUP) }}><Plus size={16} />New project</button>
+            <button className="shell-primary-button" onClick={openCreate}><Plus size={16} />New project</button>
           </div>
         </div>
         {error && <p role="alert" className="my-4 rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-400">{error}</p>}
@@ -146,13 +180,26 @@ export function ProjectsPage() {
             <article key={workspace.name} className={`project-card ${workspace.name === active ? 'is-current' : ''}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="project-icon"><FolderOpen size={24} strokeWidth={1.5} /></div>
-                {workspace.name === active && <span className="project-current"><Check size={12} />Active</span>}
+                <div className="flex items-center gap-1.5">
+                  {workspace.setup?.pinned && <Pin size={12} className="text-accent-blue" />}
+                  {workspace.name === active && <span className="project-current"><Check size={12} />Active</span>}
+                </div>
               </div>
               <h2 title={workspace.name}>{workspace.name}</h2>
+              {workspace.setup?.description && (
+                <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">{workspace.setup.description}</p>
+              )}
               <p className="text-xs text-text-muted">{workspace.file_count ?? 0} media {(workspace.file_count ?? 0) === 1 ? 'file' : 'files'}</p>
               <p className="text-2xs text-text-secondary leading-relaxed" title={ProjectSetupSummary({ setup: workspace.setup })}>
                 {ProjectSetupSummary({ setup: workspace.setup })}
               </p>
+              {workspace.setup?.tags && workspace.setup.tags.length > 0 && (
+                <p className="flex flex-wrap gap-1">
+                  {workspace.setup.tags.map(tag => (
+                    <span key={tag} className="rounded bg-bg-tertiary px-1.5 py-0.5 text-2xs text-text-muted">{tag}</span>
+                  ))}
+                </p>
+              )}
               <p className="project-card-path" title={workspace.path}>{workspace.path}</p>
               <div className="project-card-actions">
                 <button disabled={busy !== null} onClick={() => void open(workspace.name, 'director')} className="project-open">
@@ -160,6 +207,8 @@ export function ProjectsPage() {
                 </button>
                 <button disabled={busy !== null} onClick={() => void open(workspace.name, 'editor')} title={`Edit ${workspace.name}`} aria-label={`Edit ${workspace.name}`} className="shell-icon-button"><Film size={15} /></button>
                 <button disabled={busy !== null} onClick={() => void open(workspace.name, 'medias')} title={`Browse ${workspace.name}`} aria-label={`Browse ${workspace.name}`} className="shell-icon-button"><Images size={15} /></button>
+                <button disabled={busy !== null} onClick={() => openDuplicate(workspace)} title={`Duplicate ${workspace.name} setup`} aria-label={`Duplicate ${workspace.name} setup`} className="shell-icon-button"><Copy size={14} /></button>
+                <button disabled={busy !== null} onClick={() => void togglePin(workspace)} title={workspace.setup?.pinned ? 'Unpin project' : 'Pin project'} aria-label={workspace.setup?.pinned ? 'Unpin project' : 'Pin project'} className="shell-icon-button">{busy === `pin-${workspace.name}` ? <Loader2 size={14} className="animate-spin" /> : workspace.setup?.pinned ? <PinOff size={14} /> : <Pin size={14} />}</button>
                 <button disabled={busy !== null} onClick={() => openEdit(workspace.name)} title={`Edit ${workspace.name} setup`} aria-label={`Edit ${workspace.name} setup`} className="shell-icon-button"><Settings size={14} /></button>
                 <button disabled={busy !== null} onClick={() => setDeleting(workspace.name)} title={`Delete ${workspace.name}`} aria-label={`Delete ${workspace.name}`} className="shell-icon-button hover:text-red-400"><Trash2 size={14} /></button>
               </div>
@@ -191,16 +240,61 @@ export function ProjectsPage() {
               </>
             ) : creating ? (
               <>
-                <label className="block text-xs text-text-secondary">Project name<input autoFocus required value={name} onChange={e => setName(e.target.value)} className="mt-2 w-full rounded-lg border border-border bg-bg-primary px-3 py-2.5 text-sm text-text-primary" placeholder="my-new-film" /></label>
+                <div>
+                  <span className="text-xs text-text-secondary block mb-1.5">Start from a template</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PROJECT_SETUP_TEMPLATES.map(tmpl => {
+                      const activeT = setup.aspect_ratio === tmpl.setup.aspect_ratio && setup.resolution === tmpl.setup.resolution
+                      return (
+                        <button
+                          key={tmpl.value}
+                          type="button"
+                          onClick={() => setSetup({ ...DEFAULT_PROJECT_SETUP, ...tmpl.setup })}
+                          disabled={busy !== null}
+                          className={`px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
+                            activeT
+                              ? 'border-accent-blue bg-accent-blue/10 text-text-primary'
+                              : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          <span className="font-medium">{tmpl.label}</span>
+                          <span className="ml-1 text-2xs opacity-60">{tmpl.desc}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <label className="block mt-5 text-xs text-text-secondary">Project name<input autoFocus required value={name} onChange={e => setName(e.target.value)} className="mt-2 w-full rounded-lg border border-border bg-bg-primary px-3 py-2.5 text-sm text-text-primary" placeholder="my-new-film" /></label>
                 <p className="mt-2 text-xs text-text-muted">A new folder named <code className="text-text-secondary">{name.trim().replace(/\s+/g, '-') || 'project-name'}</code> will be created under <code className="text-text-secondary">outputs/</code>.</p>
+                <div className="mt-4 flex items-center gap-1.5">
+                  <span className="text-xs text-text-secondary">Open in</span>
+                  {([
+                    { value: 'director', label: 'Director' },
+                    { value: 'editor', label: 'Editor' },
+                    { value: 'medias', label: 'Media' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={busy !== null}
+                      onClick={() => setDestination(opt.value)}
+                      className={`px-2.5 py-1 rounded-lg border text-xs transition-all ${
+                        destination === opt.value
+                          ? 'border-accent-blue bg-accent-blue/10 text-text-primary'
+                          : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
                 <div className="mt-5 border-t border-border/40 pt-4">
                   <ProjectSetupForm value={setup} onChange={setSetup} />
                 </div>
               </>
             ) : (
               <>
-                <p className="text-xs text-text-muted">Project: <code className="text-text-secondary">{editing}</code></p>
-                <div className="mt-3">
+                <div>
                   <ProjectSetupForm value={setup} onChange={setSetup} compact />
                 </div>
               </>
