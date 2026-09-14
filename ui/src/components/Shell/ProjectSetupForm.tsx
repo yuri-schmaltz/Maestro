@@ -29,6 +29,19 @@ export function modelSpeedTier(model: ApiModel): ModelSpeedTier {
   return 'Balanced'
 }
 
+/** Audio-only models (TTS / voice / music generators). They get their
+ *  own picker bound to `music_model` instead of polluting the video /
+ *  image lists — verified against the live catalog (ACE-Step, Chatterbox,
+ *  IndexTTS, Qwen3-TTS, MiniMax-Music, DramaBox/Scenema/Kugel audio…).
+ *  Talking-head *video* models (Ditto, Fantasy Talking) don't match. */
+const AUDIO_MODEL_RE = /audio|tts|music|voice|vocal/
+
+export function isAudioModel(model: ApiModel): boolean {
+  if (model.family === 'tts') return true
+  const haystack = `${model.architecture || ''} ${model.name || ''} ${model.model_type || ''}`.toLowerCase()
+  return AUDIO_MODEL_RE.test(haystack)
+}
+
 /** AspectRatio options surfaced in the project-setup form. Mirrors
  *  `DirectorAspectRatioSelector` so the two surfaces pick from the
  *  same set; ultra-wide (21:9) only shows when the project's video
@@ -105,17 +118,22 @@ export function ProjectSetupForm({
   const supportsUltraWide = (safeValue.video_model || '').toLowerCase().startsWith('minimax_h3')
   const aspectOptions = PROJECT_SETUP_ASPECT_RATIOS.filter(opt => opt.value !== '21:9' || supportsUltraWide)
 
-  // Both pickers list the full installed catalog (deduplicated, sorted
-  // by display name) — every available model shows up, each tagged with
-  // its speed tier. Empty string means "use whatever the Studio already
-  // has", which lets the form stay usable when the model catalog isn't
-  // loaded yet (offline / first paint).
+  // Video/image pickers list the full installed catalog minus
+  // audio-only models (those get their own picker below), each tagged
+  // with its speed tier. Empty string means "use whatever the Studio
+  // already has", which lets the form stay usable when the model
+  // catalog isn't loaded yet (offline / first paint).
+  const deduped = [...models]
+    .filter((m, i, arr) => arr.findIndex(o => o.model_type === m.model_type) === i)
+    .sort((a, b) => (a.name || a.model_type).localeCompare(b.name || b.model_type))
+  const withTier = (m: ApiModel) => ({ value: m.model_type, label: `${m.name || m.model_type} · ${modelSpeedTier(m)}` })
   const modelOptions = [
     { value: '', label: 'Use last selected' },
-    ...[...models]
-      .filter((m, i, arr) => arr.findIndex(o => o.model_type === m.model_type) === i)
-      .sort((a, b) => (a.name || a.model_type).localeCompare(b.name || b.model_type))
-      .map(m => ({ value: m.model_type, label: `${m.name || m.model_type} · ${modelSpeedTier(m)}` })),
+    ...deduped.filter(m => !isAudioModel(m)).map(withTier),
+  ]
+  const audioModelOptions = [
+    { value: '', label: 'Use last selected' },
+    ...deduped.filter(isAudioModel).map(withTier),
   ]
 
   const sectionCls = compact ? 'space-y-1.5' : 'space-y-2'
@@ -221,14 +239,17 @@ export function ProjectSetupForm({
       </fieldset>
 
       {/* Models — picked once at project creation so every take
-          starts from a known baseline. Both pickers list the full
-          installed catalog. Empty string means "use whatever the
-          Studio already has", which lets the form stay usable when
-          the model catalog isn't loaded yet (offline / first paint). */}
+          starts from a known baseline. Video/image share the full
+          non-audio catalog; audio-only models (TTS/voice/music) get
+          their own picker bound to `music_model`, which the Director
+          already consumes for track generation. Empty string means
+          "use whatever the Studio already has", which lets the form
+          stay usable when the model catalog isn't loaded yet
+          (offline / first paint). */}
       <fieldset className={sectionCls} aria-label="Default models">
         <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Models</legend>
         <div className="flex gap-2">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <FormSelect
               label="Video model"
               value={safeValue.video_model || ''}
@@ -237,12 +258,21 @@ export function ProjectSetupForm({
               disabled={disabled}
             />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <FormSelect
               label="Image model"
               value={safeValue.image_model || ''}
               onChange={next => update({ image_model: next })}
               options={modelOptions}
+              disabled={disabled}
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <FormSelect
+              label="Audio model"
+              value={safeValue.music_model || ''}
+              onChange={next => update({ music_model: next })}
+              options={audioModelOptions}
               disabled={disabled}
             />
           </div>
@@ -256,13 +286,13 @@ export function ProjectSetupForm({
         <div className="grid grid-cols-2 gap-2 items-start">
           <label className="block min-w-0">
             <span className="text-xs text-text-secondary block mb-1">Description</span>
-            <textarea
+            <input
+              type="text"
               value={safeValue.description || ''}
               onChange={e => update({ description: e.target.value })}
               disabled={disabled}
-              rows={2}
               placeholder="What is this project about?"
-              className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary resize-none disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
+              className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
             />
           </label>
           <label className="block min-w-0">
