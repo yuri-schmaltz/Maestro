@@ -165,10 +165,10 @@ export function ProjectSetupForm({
   })
   const imageModels = models.filter(m => isImageModel(m))
 
-  const sectionCls = compact ? 'space-y-2' : 'space-y-3'
+  const sectionCls = compact ? 'space-y-1.5' : 'space-y-2'
 
   return (
-    <div className={`text-sm ${compact ? 'space-y-3' : 'space-y-4'}`}>
+    <div className={`text-sm ${compact ? 'space-y-2.5' : 'space-y-3'}`}>
       {/* Cover — the project card thumbnail. The file is only uploaded
           when the parent saves (the workspace may not exist yet in the
           New project dialog), so a picked file is held locally and
@@ -200,7 +200,7 @@ export function ProjectSetupForm({
             )}
           </div>
         ) : (
-          <label className={`flex items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 cursor-pointer transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'border-border hover:border-accent-blue'}`}>
+          <label className={`flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 cursor-pointer transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'border-border hover:border-accent-blue'}`}>
             <ImagePlus size={14} className="text-accent-blue/70 shrink-0" />
             <span className="text-xs text-text-secondary">Upload a cover image (.png, .jpg, .webp, .bmp)</span>
             <input
@@ -235,7 +235,7 @@ export function ProjectSetupForm({
                 aria-checked={active}
                 disabled={disabled}
                 onClick={() => update({ director_skill: id })}
-                className={`p-3 rounded-lg border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`p-2.5 rounded-lg border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                   active
                     ? 'border-accent-blue/60 bg-accent-blue/5'
                     : 'border-border hover:border-border-light'

@@ -296,7 +296,7 @@ export function ProjectsPage() {
           confirmation is inline on the card (no modal). */}
       {(creating || editing) && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4" onClick={() => { if (!busy) { setCreating(false); setEditing(null) } }}>
-          <form role="dialog" aria-modal="true" aria-labelledby="project-dialog-title" className="w-full max-w-xl max-h-[88vh] overflow-y-auto rounded-2xl border border-border bg-bg-secondary p-6 shadow-2xl" onClick={e => e.stopPropagation()} onSubmit={e => { e.preventDefault(); void (creating ? create() : saveEdit()) }} onKeyDown={e => {
+          <form role="dialog" aria-modal="true" aria-labelledby="project-dialog-title" className="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-2xl border border-border bg-bg-secondary p-5 shadow-2xl" onClick={e => e.stopPropagation()} onSubmit={e => { e.preventDefault(); void (creating ? create() : saveEdit()) }} onKeyDown={e => {
               if (e.key === 'Escape' && !busy) { setCreating(false); setEditing(null) }
               if (e.key === 'Tab') {
                 const controls = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('input:not(:disabled), select:not(:disabled), button:not(:disabled)'))
@@ -305,7 +305,7 @@ export function ProjectsPage() {
                 if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus() }
               }
             }}>
-            <h2 id="project-dialog-title" className="mb-3 text-lg font-semibold">
+            <h2 id="project-dialog-title" className="mb-2 text-lg font-semibold">
               {creating ? 'New project' : `Edit ${editing} setup`}
             </h2>
             {creating ? (
@@ -334,9 +334,9 @@ export function ProjectsPage() {
                     })}
                   </div>
                 </div>
-                <label className="block mt-5 text-xs text-text-secondary">Project name<input autoFocus required value={name} onChange={e => setName(e.target.value)} className="mt-2 w-full rounded-lg border border-border bg-bg-primary px-3 py-2.5 text-sm text-text-primary" placeholder="my-new-film" /></label>
+                <label className="block mt-4 text-xs text-text-secondary">Project name<input autoFocus required value={name} onChange={e => setName(e.target.value)} className="mt-2 w-full rounded-lg border border-border bg-bg-primary px-3 py-2.5 text-sm text-text-primary" placeholder="my-new-film" /></label>
                 <p className="mt-2 text-xs text-text-muted">A new folder named <code className="text-text-secondary">{name.trim().replace(/\s+/g, '-') || 'project-name'}</code> will be created under <code className="text-text-secondary">outputs/</code>.</p>
-                <div className="mt-4 flex items-center gap-1.5">
+                <div className="mt-3 flex items-center gap-1.5">
                   <span className="text-xs text-text-secondary">Open in</span>
                   {([
                     { value: 'director', label: 'Director' },
@@ -358,7 +358,7 @@ export function ProjectsPage() {
                     </button>
                   ))}
                 </div>
-                <div className="mt-5 border-t border-border/40 pt-4">
+                <div className="mt-4 border-t border-border/40 pt-3">
                   <ProjectSetupForm value={setup} onChange={setSetup} workspaceName={null} onPendingCover={setPendingCover} />
                 </div>
               </>
@@ -370,7 +370,7 @@ export function ProjectsPage() {
               </>
             )}
             {error && <p role="alert" className="mt-3 text-sm text-red-400">{error}</p>}
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-2">
               <button type="button" disabled={busy !== null} className="shell-secondary-button" onClick={() => { setCreating(false); setEditing(null) }}>Cancel</button>
               <button disabled={busy !== null || (!creating && !editing) || (creating && !name.trim())} className="shell-primary-button">
                 {busy ? 'Working…' : creating ? 'Create project' : 'Save setup'}
