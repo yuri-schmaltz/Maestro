@@ -18,7 +18,6 @@ export function SettingsDrawer() {
   return (
     <div className="section-scroll">
       <div className="section-container">
-        <div className="section-heading"><div><p className="section-eyebrow">Make it yours</p><h1>Configurations</h1><p>Manage hardware, connected services and application preferences.</p></div></div>
         <div className="configurations-layout">
           <nav className="configurations-navigation" aria-label="Configuration categories">
             {tabs.map(({ id, label, description, icon: Icon }) => <button key={id} onClick={() => select(id)} aria-current={active === id ? 'page' : undefined} className={active === id ? 'is-active' : ''}><Icon size={17} /><span><strong>{label}</strong><small>{description}</small></span></button>)}
