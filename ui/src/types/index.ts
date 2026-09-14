@@ -1517,7 +1517,7 @@ export interface DirectorImageGenProgress {
   current: number
   total: number
   currentClipLabel: string
-  status: 'generating' | 'polling' | 'downloading' | 'done' | 'error'
+  status: 'generating' | 'polling' | 'downloading' | 'done' | 'error' | 'cancelled'
 }
 
 /** Counter fed by the /api/v1/audio/analyze/status polling loop. The

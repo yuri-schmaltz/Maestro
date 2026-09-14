@@ -1,17 +1,42 @@
-# Handoff — Maestro fork standalone (2026-09-10)
+# Handoff — Maestro fork standalone (2026-09-14)
 
-## Atualização de retomada — 2026-09-13
+## Atualização de retomada — 2026-09-14
 
 Consultar primeiro [TODO_RETOMADA](docs/TODO_RETOMADA.md), seção “Execução em
 andamento”. O texto abaixo contém histórico e não equivale à validação atual.
-O build oficial (`npm run build`) e o lint foram restaurados; `tsc --noEmit`
-na configuração raiz da UI não valida os projetos referenciados.
-O launcher agora preserva processos alheios e falha claramente em porta
-ocupada; seu fallback e o carregamento da porta pelo Vite foram corrigidos.
-Há testes de contrato do store em `npm run test:store`. A validação visual
-completa, geração real, exportação, skill local ponta a ponta e as extrações
-Studio/Director/routers permanecem abertas. Nenhum reinício do backend real
-foi realizado nesta etapa.
+HEAD verificado: `4b82d94` (feat(projects): template skills, advanced
+collapse, compact skill, neutral auto, model hints). 24 commits à frente
+de `659907b`, todos do ciclo `feat/projects/style(projects)` (cards,
+banners, skill no setup, model pickers, audio picker etc.). As release
+notes de [v2.1](docs/RELEASE_NOTES_V2.1.md) já estão redigidas; `VERSION`
+e `pyproject.toml` continuam em 2.0.1 até a promoção explícita.
+
+O build oficial (`npm run build`) e o lint (`npm run lint`) foram
+restaurados nesta etapa. O patch parcial em `useStore.ts` que adicionava
+as assinaturas de `cancelDirectorAnalyze` / `cancelDirectorTrackGen` /
+`cancelDirectorImageGen` foi completado: cada ação aborta o fetch em curso
+via `AbortController`, dispara a sequência invalidadora, fecha o passo de
+UI correto e (para image-gen) chama `api.cancelJob` no job server-side.
+`cancelPlan` agora invoca as três ações e devolve os três campos extras
+no retorno estruturado. O `test:store` ganhou a quarta suíte de
+contratos (`Cancel contracts`) cobrindo idempotência, formato do retorno
+e cancel real em cada um dos três fluxos.
+
+Quatro suítes passam no `test:store`, duas no `test:control`, e 171
+testes Python passam (2 skipped, 4 deselected, 33 subtests). O backend
+real não foi reiniciado nesta etapa — apenas o working tree e os
+gauntlets foram validados.
+
+### Validação da segunda etapa (histórico)
+
+O shell Chromium passou em sete abas e cinco larguras, com revisão de produção,
+histórico do Editor e CRUD sob interceptação de gravações. Criação/edição e
+reabertura de setup também passaram; criar um projeto agora aplica os defaults
+antes de entrar no Director. Dashboard e revisão de produções pausadas foram
+conectados aos componentes existentes. A API foi testada com um plugin local
+real descoberto após o import do orquestrador; seu ID chega ao planner correto.
+Build, lint, contratos UI e 162 testes Python passaram. Geração/exportação
+reais e a refatoração estrutural completa continuam pendentes.
 
 
 ### Validação da segunda etapa

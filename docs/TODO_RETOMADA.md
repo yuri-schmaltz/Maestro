@@ -1,12 +1,63 @@
 # TODO de retomada — Maestro
 
-Revisão: 2026-09-13. Base observada: commit `659907b` e alterações locais.
+Revisão: 2026-09-14. Base observada: commit `4b82d94` (HEAD) e alterações
+locais nos arquivos `ui/src/api/client.ts`, `ui/src/stores/useStore.ts`,
+`ui/src/types/index.ts`, `ui/scripts/store-gauntlet.mjs`, `CHANGELOG.md`,
+`HANDOFF.md`.
 
 Este documento compara a análise de 2026-09-12 com as correções e extrações
-feitas posteriormente por outro agente. A rodada anterior deste revisor foi
-somente diagnóstica; as implementações subsequentes pertencem ao outro agente.
-Nesta rodada foram executadas verificações e criado este TODO, sem corrigir
-código de aplicação nem reiniciar a instância existente.
+feitas posteriormente. As rodadas anteriores deste revisor foram somente
+diagnósticas; as implementações subsequentes pertencem aos outros agentes.
+Nesta rodada (2026-09-14) o patch parcial das ações de cancel foi
+completado e os gauntlets passaram; o backend real não foi reiniciado.
+
+## Execução em andamento — 2026-09-14 (cancel + contratos)
+
+Esta etapa completou o patch parcial das ações de cancel no `useStore.ts`
+e adicionou a quarta suíte de contratos no `test:store`.
+
+Entregue nesta etapa (verificado com os gates abaixo):
+
+- **Três ações de cancel implementadas.** `cancelDirectorAnalyze`,
+  `cancelDirectorTrackGen` e `cancelDirectorImageGen` agora abortam a
+  requisição em curso via `AbortController`, incrementam a sequência
+  invalidadora para descartar resoluções tardias, fecham o estado de UI
+  para o passo correto e (apenas image-gen) chamam `api.cancelJob` no
+  job server-side. `DirectorImageGenProgress.status` ganhou o literal
+  `'cancelled'`.
+- **`cancelPlan` agora invoca os três cancels.** O retorno inclui os
+  três campos extras (`cancelledAnalyze`, `cancelledTrackGen`,
+  `cancelledImageGen`) além dos três originais.
+- **API client com `signal?: AbortSignal`.** `analyzeAudio`,
+  `generateMusic` e `uploadAudio` aceitam um signal opcional e o plugam
+  no `fetch`. Cancelamento client-side real e não apenas bump-de-sequência.
+- **Build oficial e lint restaurados.** Patch parcial de `useStore.ts`
+  não tinha implementação; agora completa. `tsc -b`, `vite build` e
+  `eslint .` passam sem erro.
+- **Quarta suíte no `test:store`.** Cobertura de idempotência dos três
+  cancels (no-op quando nada está em curso), formato do retorno de
+  `cancelPlan`, cancel da análise com `AbortController` honrado, cancel
+  da geração de faixa e cancel da geração de imagem incluindo
+  `api.cancelJob`.
+- **`directorAnalyzeAndPlan` e `directorGenerateStartImages` protegidos
+  contra catch após cancel.** O catch compara a sequência capturada na
+  entrada com a sequência global e retorna cedo se forem diferentes —
+  assim o estado escrito pelo `cancel*` não é sobrescrito por uma
+  falha tardia "espúria".
+
+Evidências desta etapa:
+
+| Verificação | Resultado |
+| --- | --- |
+| `npm run build` | Aprovado |
+| `npm run lint` | Aprovado |
+| `npm run test:store` | Aprovado — store + persistência + slices + **cancel** |
+| `npm run test:control` | Aprovado |
+| `pytest tests/ -q` | 171 passed, 2 skipped, 4 deselected, 33 subtests |
+
+Próximas ações: extrair `setParam`/`params` e finishing fields do root;
+sincronizar pidfile stale; promover VERSION para 2.1.0; extrair
+Director HTTP backend; validar CI em ambiente limpo.
 
 ## Execução em andamento — 2026-09-13 (extração de persistência)
 

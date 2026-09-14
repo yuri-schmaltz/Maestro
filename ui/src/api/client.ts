@@ -420,11 +420,14 @@ export async function generateMusic(params: {
   seed?: number
   workspace?: string
   progress_id?: string
+  signal?: AbortSignal
 }): Promise<{ audio_path: string; filename: string; style: string; lyrics: string; job_id?: string | null }> {
+  const { signal, ...payload } = params
   const res = await fetch(`${BASE}/api/v1/director/generate-music`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+    body: JSON.stringify(payload),
+    ...(signal ? { signal } : {}),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Music generation failed' }))
@@ -2174,7 +2177,7 @@ export async function llmEnhancePrompt(params: {
 
 // --- Audio Analysis ---
 
-export async function uploadAudio(file: File): Promise<{
+export async function uploadAudio(file: File, signal?: AbortSignal): Promise<{
   filename: string
   path: string
   url: string
@@ -2185,6 +2188,7 @@ export async function uploadAudio(file: File): Promise<{
   const res = await fetch(`${BASE}/api/v1/upload-audio`, {
     method: 'POST',
     body: form,
+    ...(signal ? { signal } : {}),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Upload failed' }))
@@ -2223,11 +2227,12 @@ export async function analyzeAudio(params: {
    *  transcription snaps to the real words instead of mishearing
    *  sung vocals. Omit for uploads/unknown tracks. */
   lyrics_hint?: string
-}): Promise<import('../types').AudioAnalysisResult> {
+}, signal?: AbortSignal): Promise<import('../types').AudioAnalysisResult> {
   const res = await fetch(`${BASE}/api/v1/audio/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
+    ...(signal ? { signal } : {}),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Analysis failed' }))

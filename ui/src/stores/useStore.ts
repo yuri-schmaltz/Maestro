@@ -60,6 +60,20 @@ const _directorRepairDiscoveries = new Map<string, object>()
 // call to finish — the worker thread keeps generating but the client stops
 // waiting and resets loading state immediately.
 let _directorV2PlanController: AbortController | null = null
+// Stop handles for the Director analyze / track / image-generation
+// flows. Sequence counters invalidate stale continuations (same pattern
+// as _directorAnalysisSequence); controllers abort the in-flight HTTP
+// request; the job id lets image generation cancel its Studio job
+// server-side. Each cancel action below guards on its own phase so the
+// unified cancelPlan() can call them unconditionally.
+let _directorAnalyzeController: AbortController | null = null
+let _directorAnalyzeStopPoll: (() => void) | null = null
+let _directorTrackGenSequence = 0
+let _directorTrackGenPoll: ReturnType<typeof setInterval> | null = null
+let _directorTrackGenController: AbortController | null = null
+let _directorImageGenSequence = 0
+let _directorImageGenJob: string | null = null
+let _directorImageGenPoll: ReturnType<typeof setInterval> | null = null
 let _dashboardPipelineLoadToken = 0
 let _dashboardPipelineListLoadToken = 0
 let _directorPipelineAttachToken = 0
@@ -1843,6 +1857,20 @@ export interface AppState {
    * Event. Client-side: aborts the in-flight fetch via
    * AbortController. */
   cancelDirectorV2Plan: () => void
+  /** Stop an in-flight audio analyze (upload track or generated-song
+   *  chain). Aborts the HTTP request, stops the analyze-status poll
+   *  and drops back to the upload step. Returns true when something
+   *  was actually running. */
+  cancelDirectorAnalyze: () => boolean
+  /** Stop an in-flight track generation ("Writing song…" /
+   *  "Generating music…"). Late completions are ignored via sequence
+   *  guard. Returns true when something was actually running. */
+  cancelDirectorTrackGen: () => boolean
+  /** Stop start-image generation mid-run. Cancels the in-flight Studio
+   *  job server-side, keeps already-generated images and drops back to
+   *  the image-prompt review step so the user can re-run. Returns true
+   *  when something was actually running. */
+  cancelDirectorImageGen: () => boolean
   directorGenerateStartImages: () => Promise<void>
   directorApplyToClips: () => void
   directorGenerate: () => void
@@ -1889,6 +1917,9 @@ export interface AppState {
    *    - if a Director pipeline (generation) is running → stop_pipeline
    *      + abort each child job in _pipeline_child_jobs[pid]
    *    - if a single Studio job is active → request_cancel for that job
+   *    - if audio analyze / track generation / image generation is in
+   *      flight → their dedicated cancel actions (each self-guards on
+   *      its own phase, so calling them here is always safe)
    *
    *  Returns a structured result so callers / tests can assert what was
    *  cancelled without polling state. */
@@ -1896,6 +1927,9 @@ export interface AppState {
     cancelledV2Plan: boolean
     cancelledPipeline: boolean
     cancelledJobs: number
+    cancelledAnalyze: boolean
+    cancelledTrackGen: boolean
+    cancelledImageGen: boolean
   }>
 }
 
@@ -8056,6 +8090,8 @@ export const useStore = create<AppState>((set, get, store) => ({
     // a single "Analyzing audio..." for the entire first-run wait. Cleared on
     // success or failure in the finally block.
     const analysisSequence = ++_directorAnalysisSequence
+    const analyzeController = new AbortController()
+    _directorAnalyzeController = analyzeController
     const progress = trackAnalysisProgress(
       api.fetchAudioAnalyzeStatus,
       value => set({
@@ -8072,7 +8108,9 @@ export const useStore = create<AppState>((set, get, store) => ({
       if (analyzePoll !== null) clearInterval(analyzePoll)
       analyzePoll = null
       progress.cancel()
+      _directorAnalyzeStopPoll = null
     }
+    _directorAnalyzeStopPoll = stopAnalyzePolling
     try {
       startAnalyzePolling()
       let analysis = await api.analyzeAudio({
@@ -8080,7 +8118,7 @@ export const useStore = create<AppState>((set, get, store) => ({
         transcribe,
         extract_vocals: transcribe,
         lyrics_hint: opts?.lyricsHint || undefined,
-      })
+      }, analyzeController.signal)
       if (analysisSequence !== _directorAnalysisSequence) return
       progress.finish('done')
       stopAnalyzePolling()
@@ -8149,6 +8187,9 @@ export const useStore = create<AppState>((set, get, store) => ({
         directorLoadingMessage: null,
       })
     } catch (e: unknown) {
+      // After a cancel the bumped sequence invalidates this run; the cancel
+      // action already wrote the user-visible state, so don't overwrite it.
+      if (analysisSequence !== _directorAnalysisSequence) return
       progress.finish('error')
       const msg = e instanceof Error ? e.message : 'Analysis failed'
       console.error('Director analysis failed:', e)
@@ -8156,6 +8197,8 @@ export const useStore = create<AppState>((set, get, store) => ({
       throw e
     } finally {
       stopAnalyzePolling()
+      _directorAnalyzeController = null
+      _directorAnalyzeStopPoll = null
     }
   },
 
@@ -8242,10 +8285,16 @@ export const useStore = create<AppState>((set, get, store) => ({
       ? crypto.randomUUID().replace(/-/g, '')
       : `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`
     const musicProgressId = `music_${randomPart.slice(0, 32)}`
+    const trackSequence = ++_directorTrackGenSequence
+    const trackController = new AbortController()
+    _directorTrackGenController = trackController
     let musicProgressPoll: ReturnType<typeof setInterval> | null = null
     const pollMusicProgress = async () => {
+      // Skip late poll ticks after a cancel bumped the sequence.
+      if (trackSequence !== _directorTrackGenSequence) return
       try {
         const status = await api.fetchJobStatus(musicProgressId)
+        if (trackSequence !== _directorTrackGenSequence) return
         const phase = (status.phase || status.message || '').trim()
         if (status.status === 'queued') {
           set({ directorLoadingMessage: 'Music generation queued…' })
@@ -8266,6 +8315,7 @@ export const useStore = create<AppState>((set, get, store) => ({
         // still active; keep the current status and try again.
       }
     }
+    _directorTrackGenPoll = null
     try {
       // The POST remains blocking so the existing analyze → plan handoff is
       // unchanged, but the browser reserves its render id and polls the normal
@@ -8280,14 +8330,18 @@ export const useStore = create<AppState>((set, get, store) => ({
         model_type: s.directorMusicModel,
         workspace: get().activeWorkspace || undefined,
         progress_id: musicProgressId,
+        signal: trackController.signal,
       })
       void pollMusicProgress()
       musicProgressPoll = setInterval(() => { void pollMusicProgress() }, 1000)
+      _directorTrackGenPoll = musicProgressPoll
       // Also reconnect the normal output card so generated music remains
       // visible in the main gallery while Director is waiting for it.
       setTimeout(() => { void get().reconnectJobs() }, 1200)
       setTimeout(() => { void get().reconnectJobs() }, 5000)
       const r = await trackPromise
+      // Late completion after cancel: drop the result silently and keep state.
+      if (trackSequence !== _directorTrackGenSequence) return
       // Persist the (possibly LLM-written) song back into the editable fields.
       set({
         directorSongStyle: r.style || style,
@@ -8326,6 +8380,9 @@ export const useStore = create<AppState>((set, get, store) => ({
         }
       }
     } catch (e: unknown) {
+      // Ignore the AbortError from a deliberate cancel — the cancel action
+      // already wrote the user-visible state.
+      if (trackSequence !== _directorTrackGenSequence) return
       const msg = e instanceof Error ? e.message : 'Music generation failed'
       console.error('Director music generation failed:', e)
       set({
@@ -8337,6 +8394,8 @@ export const useStore = create<AppState>((set, get, store) => ({
       })
     } finally {
       if (musicProgressPoll !== null) clearInterval(musicProgressPoll)
+      if (_directorTrackGenPoll === musicProgressPoll) _directorTrackGenPoll = null
+      if (_directorTrackGenController === trackController) _directorTrackGenController = null
     }
   },
 
@@ -8588,6 +8647,103 @@ export const useStore = create<AppState>((set, get, store) => ({
     set({ directorLoading: false, directorError: null })
   },
 
+  /**
+   * Cancel an in-flight Director audio analyze. Aborts the in-flight
+   * HTTP request, stops the status poll, drops the director back to the
+   * upload step and bumps the analysis sequence so any late completions
+   * from a parallel request are discarded. Returns true when something
+   * was actually running. Safe to call when nothing is running.
+   */
+  cancelDirectorAnalyze: () => {
+    if (!_directorAnalyzeController && !_directorAnalyzeStopPoll) return false
+    const controller = _directorAnalyzeController
+    const stop = _directorAnalyzeStopPoll
+    _directorAnalyzeController = null
+    _directorAnalyzeStopPoll = null
+    // Bump first so any late `analyzeAudio` resolution is discarded by the
+    // existing sequence check at the top of directorAnalyzeAndPlan.
+    _directorAnalysisSequence += 1
+    if (controller) {
+      try { controller.abort() } catch { /* already aborted */ }
+    }
+    if (stop) {
+      try { stop() } catch { /* best-effort */ }
+    }
+    set({
+      directorLoading: false,
+      directorLoadingMessage: null,
+      directorError: null,
+      directorStep: 'upload',
+    })
+    return true
+  },
+
+  /**
+   * Cancel an in-flight Director track generation ("Writing song…" /
+   * "Generating music…"). Aborts the HTTP request, stops the progress
+   * poll, drops state back to the upload step, and bumps the sequence so
+   * late completions are silently discarded. Returns true when something
+   * was actually running. Safe to call when nothing is running.
+   */
+  cancelDirectorTrackGen: () => {
+    if (!_directorTrackGenController && !_directorTrackGenPoll) return false
+    const controller = _directorTrackGenController
+    const poll = _directorTrackGenPoll
+    _directorTrackGenController = null
+    _directorTrackGenPoll = null
+    // Bump first so any late `generateMusic` resolution is discarded.
+    _directorTrackGenSequence += 1
+    if (controller) {
+      try { controller.abort() } catch { /* already aborted */ }
+    }
+    if (poll !== null) {
+      clearInterval(poll)
+    }
+    set({
+      directorTrackGenerating: false,
+      directorLoading: false,
+      directorLoadingMessage: null,
+      directorError: null,
+      directorStep: 'upload',
+    })
+    return true
+  },
+
+  /**
+   * Cancel an in-flight Director start-image generation. Bumps the
+   * sequence so each genImage() call aborts at its next poll tick,
+   * cancels the server-side Studio job so the GPU is freed, keeps
+   * already-generated images in `directorClipImages`, and drops the
+   * director back to the image-prompt review step so the user can
+   * re-run without losing the approved prompts. Returns true when
+   * something was actually running. Safe to call when nothing is.
+   */
+  cancelDirectorImageGen: () => {
+    if (!_directorImageGenJob && _directorImageGenPoll === null) return false
+    const job = _directorImageGenJob
+    const poll = _directorImageGenPoll
+    _directorImageGenJob = null
+    _directorImageGenPoll = null
+    // Bump first so each genImage() call aborts at its next check.
+    _directorImageGenSequence += 1
+    if (poll !== null) {
+      clearInterval(poll)
+    }
+    if (job) {
+      void api.cancelJob(job).catch(() => undefined)
+    }
+    const current = get().directorImageGenProgress
+    set({
+      directorLoading: false,
+      directorError: null,
+      directorStep: 'review',
+      directorImageGenProgress: current
+        ? { ...current, status: 'cancelled' }
+        : null,
+    })
+    return true
+  },
+
   directorPlanVideoPrompts: async () => {
     const { directorPlannedClips, directorSceneDescription, directorAnalysis, directorClipPlans, directorReferenceImagePath } = get()
     if (!directorPlannedClips.length || !directorClipPlans.length) return
@@ -8668,6 +8824,9 @@ export const useStore = create<AppState>((set, get, store) => ({
       set({ directorError: 'Approve the scene cards in the main workspace to continue this production.' })
       return
     }
+    // Capture the sequence at entry so the catch handler can tell a genuine
+    // failure from one we triggered ourselves via cancelDirectorImageGen().
+    const imageGenSequenceAtStart = ++_directorImageGenSequence
     const { directorClipPlans, directorPlannedClips, params, selectedModelPerMode, savedParamsPerMode, savedLoraPerMode, directorResolution, directorAspectRatio, directorSceneDescription } = get()
     if (!directorClipPlans.length) return
 
@@ -8720,23 +8879,59 @@ export const useStore = create<AppState>((set, get, store) => ({
         ...buildImgPostProc(),
       }
       const { job_id } = await api.submitGeneration(genParams)
+      _directorImageGenJob = job_id
       let outputFiles: string[] = []
       let attempts = 0
       const maxAttempts = 300  // 300 × 2s = 10 minutes
-      while (attempts < maxAttempts) {
-        await new Promise(r => setTimeout(r, 2000))
-        const status = await api.fetchJobStatus(job_id)
-        if (status.status === 'completed') { outputFiles = status.output_files; break }
-        if (status.status === 'failed') throw new Error(status.error || `${label} generation failed`)
-        attempts++
+      const imageSequence = _directorImageGenSequence
+      const stopImagePoll = () => {
+        if (_directorImageGenPoll !== null) {
+          clearInterval(_directorImageGenPoll)
+          _directorImageGenPoll = null
+        }
       }
-      if (attempts >= maxAttempts) throw new Error(`${label} generation timed out`)
-      if (outputFiles.length === 0) throw new Error(`No output file for ${label}`)
-      const filename = outputFiles[0]
-      const imgRes = await fetch(api.getFileUrl(filename))
-      const blob = await imgRes.blob()
-      const file = new File([blob], filename, { type: blob.type || 'image/png' })
-      return { file, filename }
+      const imagePoll = setInterval(() => {
+        if (imageSequence !== _directorImageGenSequence) stopImagePoll()
+      }, 2000)
+      _directorImageGenPoll = imagePoll
+      try {
+        // Immediate cancel check after submit completes; the while loop's
+        // 2-second wait otherwise swallows a cancel that happened during
+        // submitGeneration's await.
+        if (imageSequence !== _directorImageGenSequence) {
+          throw new Error('Image generation cancelled')
+        }
+        while (attempts < maxAttempts) {
+          if (imageSequence !== _directorImageGenSequence) {
+            throw new Error('Image generation cancelled')
+          }
+          await new Promise(r => setTimeout(r, 2000))
+          const status = await api.fetchJobStatus(job_id)
+          if (imageSequence !== _directorImageGenSequence) {
+            throw new Error('Image generation cancelled')
+          }
+          if (status.status === 'completed') { outputFiles = status.output_files; break }
+          // A 'cancelled' status means the server-side job was killed (e.g.
+          // by /api/v1/cancel). Break so the outer cancel-state check can
+          // decide whether to surface it to the user or stay quiet.
+          if (status.status === 'cancelled') break
+          if (status.status === 'failed') throw new Error(status.error || `${label} generation failed`)
+          attempts++
+        }
+        if (imageSequence !== _directorImageGenSequence) {
+          throw new Error('Image generation cancelled')
+        }
+        if (attempts >= maxAttempts) throw new Error(`${label} generation timed out`)
+        if (outputFiles.length === 0) throw new Error(`No output file for ${label}`)
+        const filename = outputFiles[0]
+        const imgRes = await fetch(api.getFileUrl(filename))
+        const blob = await imgRes.blob()
+        const file = new File([blob], filename, { type: blob.type || 'image/png' })
+        return { file, filename }
+      } finally {
+        stopImagePoll()
+        if (_directorImageGenJob === job_id) _directorImageGenJob = null
+      }
     }
 
     // Auto-unload LLM before GPU-heavy image generation to free VRAM
@@ -8808,6 +9003,9 @@ export const useStore = create<AppState>((set, get, store) => ({
         get().directorPlanVideoPrompts()
       }
     } catch (e: unknown) {
+      // After a cancel the bumped sequence invalidates this run; the cancel
+      // action already wrote the user-visible state, so don't overwrite it.
+      if (imageGenSequenceAtStart !== _directorImageGenSequence) return
       const msg = e instanceof Error ? e.message : 'Image generation failed'
       console.error('Director image generation failed:', e)
       set({
@@ -9079,6 +9277,9 @@ export const useStore = create<AppState>((set, get, store) => ({
         directorLoadingMessage: null,
       })
     } catch (e: unknown) {
+      // After a cancel the bumped sequence invalidates this run; the cancel
+      // action already wrote the user-visible state, so don't overwrite it.
+      if (analysisSequence !== _directorAnalysisSequence) return
       progress.finish('error')
       const msg = e instanceof Error ? e.message : 'Analysis failed'
       console.error('Short film analysis failed:', e)
@@ -11669,7 +11870,14 @@ export const useStore = create<AppState>((set, get, store) => ({
    * The returned object lets tests assert exactly which surfaces flipped.
    */
   cancelPlan: async () => {
-    const result = { cancelledV2Plan: false, cancelledPipeline: false, cancelledJobs: 0 }
+    const result = {
+      cancelledV2Plan: false,
+      cancelledPipeline: false,
+      cancelledJobs: 0,
+      cancelledAnalyze: false,
+      cancelledTrackGen: false,
+      cancelledImageGen: false,
+    }
     const state = get()
 
     // 1. If a Director v2 plan is in flight, abort the fetch + flip
@@ -11706,11 +11914,28 @@ export const useStore = create<AppState>((set, get, store) => ({
       }
     }
 
-    // 3. If a single Studio job is active and no pipeline owns it,
-    //    route through the legacy cancel_job. The store doesn't track
-    //    active job ids (they live in _jobs on the server); the user
-    //    has a separate "Cancel" button on each job card for that.
-    //    Skip here — nothing to do without a job id.
+    // 3. Audio analyze. Each action self-guards on its phase, so calling
+    //    unconditionally is safe — the action returns false if nothing was
+    //    running and we just don't flip the bit.
+    try {
+      result.cancelledAnalyze = get().cancelDirectorAnalyze()
+    } catch (e) {
+      console.error('cancelPlan: analyze cancel failed:', e)
+    }
+
+    // 4. Track generation.
+    try {
+      result.cancelledTrackGen = get().cancelDirectorTrackGen()
+    } catch (e) {
+      console.error('cancelPlan: track-gen cancel failed:', e)
+    }
+
+    // 5. Start-image generation.
+    try {
+      result.cancelledImageGen = get().cancelDirectorImageGen()
+    } catch (e) {
+      console.error('cancelPlan: image-gen cancel failed:', e)
+    }
 
     return result
   },

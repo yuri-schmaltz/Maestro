@@ -1,5 +1,35 @@
 # Maestro Changelog
 
+## Retomada de estabilização — 2026-09-14 (working tree)
+
+- **Cancel actions para os três fluxos do Director.** Implementadas as
+  ações `cancelDirectorAnalyze`, `cancelDirectorTrackGen` e
+  `cancelDirectorImageGen` no store (`useStore.ts`). Cada uma aborta a
+  requisição HTTP em curso via `AbortController`, dispara a sequência
+  invalidadora para descartar respostas tardias e fecha o estado de UI
+  para o passo correto (`upload` para analyze e track-gen, `review` para
+  image-gen). `cancelDirectorImageGen` também chama `api.cancelJob` no
+  job server-side e marca `directorImageGenProgress.status` como
+  `'cancelled'`. `cancelPlan()` (já existente) agora invoca as três ações
+  e devolve `{ cancelledV2Plan, cancelledPipeline, cancelledJobs,
+  cancelledAnalyze, cancelledTrackGen, cancelledImageGen }` numa única
+  chamada — Strategy B do Director-as-Stage fica completo.
+- **Novos contratos no `test:store` para o ciclo de cancel.** Quatro
+  cenários adicionados: idempotência quando nada está em curso, forma
+  do retorno de `cancelPlan`, cancel da análise com `AbortController`
+  honrado, cancel da geração de faixa e cancel da geração de imagem
+  incluindo a chamada `api.cancelJob`. Total de quatro suítes no
+  `test:store`: store, persistência, slices e cancel.
+- **Build oficial TypeScript e ESLint restaurados.** O patch parcial em
+  `useStore.ts` que adicionava as assinaturas de cancel sem a
+  implementação foi completado; `npm run build` e `npm run lint` passam
+  sem erro. `DirectorImageGenProgress.status` ganhou o valor literal
+  `'cancelled'`.
+- **API client com AbortSignal para os três endpoints longos.**
+  `analyzeAudio`, `generateMusic` e `uploadAudio` agora aceitam
+  `signal?: AbortSignal` opcional e plugam o `AbortController` quando
+  presente.
+
 ## Retomada de estabilização — 2026-09-13 (working tree)
 
 - Contratos de comportamento para `studioModelSlice` e `studioModeSlice` no

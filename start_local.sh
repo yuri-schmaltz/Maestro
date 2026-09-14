@@ -195,6 +195,17 @@ probe_index_alive() {
 if [[ "$FORCE_RESTART" -eq 0 ]] && probe_index_alive; then
   RUNNING_VERSION="$(probe_running_version || true)"
   if [[ -n "$RUNNING_VERSION" && "$RUNNING_VERSION" == "$EXPECTED_VERSION" ]]; then
+    # The running backend might have been started outside this launcher
+    # (e.g. manually or by a previous shell). If the pidfile exists but its
+    # PID is dead, overwrite it with a fresh marker so stop_local.sh finds a
+    # consistent target. Use 0 as a sentinel — the real PID lives in the
+    # process table; the pidfile just signals "an instance is alive on $PORT".
+    if [[ -f "$PIDFILE" ]]; then
+      OLD_PID=$(cat "$PIDFILE" 2>/dev/null || true)
+      if ! [[ "$OLD_PID" =~ ^[0-9]+$ ]] || ! kill -0 "$OLD_PID" 2>/dev/null; then
+        echo "0" > "$PIDFILE"
+      fi
+    fi
     write_backend_port "$PORT"
     echo "[start_local] (skipped) — Maestro v${RUNNING_VERSION} já está rodando na porta ${PORT}"
     exit 0

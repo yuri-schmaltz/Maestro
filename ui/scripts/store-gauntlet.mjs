@@ -133,6 +133,167 @@ assert.equal(useStore.getState().toolsUpscaleMedia, 'image')
 useStore.getState().setGenerationMode('image')
 assert.equal(useStore.getState().params.seed, 202)
 useStore.setState(original, true)
+
+// --- Cancel contracts (Director analyze / track / image-gen + unified cancelPlan) ---
+// No-op call must return false and not throw. This guards the "user clicked
+// cancel while nothing was running" path used by the unified cancel button.
+assert.equal(useStore.getState().cancelDirectorAnalyze(), false, 'analyze cancel is a no-op when idle')
+assert.equal(useStore.getState().cancelDirectorTrackGen(), false, 'track-gen cancel is a no-op when idle')
+assert.equal(useStore.getState().cancelDirectorImageGen(), false, 'image-gen cancel is a no-op when idle')
+
+// cancelPlan returns the full structured result with all six fields, even
+// when no phase is active. Type contract that the UI / tests rely on.
+const empty = await useStore.getState().cancelPlan()
+assert.deepEqual(Object.keys(empty).sort(), [
+  'cancelledAnalyze', 'cancelledImageGen', 'cancelledJobs',
+  'cancelledPipeline', 'cancelledTrackGen', 'cancelledV2Plan',
+], 'cancelPlan returns the documented shape')
+assert.equal(empty.cancelledAnalyze, false)
+assert.equal(empty.cancelledTrackGen, false)
+assert.equal(empty.cancelledImageGen, false)
+assert.equal(empty.cancelledV2Plan, false)
+assert.equal(empty.cancelledPipeline, false)
+assert.equal(empty.cancelledJobs, 0)
+
+// Drive an analyze flow against a fetch that never resolves, then cancel.
+// The handler must flip directorStep back to 'upload' and clear loading.
+let analyzeFetchStarted = false
+globalThis.fetch = async (url, options) => {
+  const path = String(url).split('?')[0]
+  if (path === '/api/v1/audio/analyze/status') {
+    return new Response(JSON.stringify({ step: 'transcribing', detail: '', current: 1, total: 6, status: 'running' }))
+  }
+  if (path === '/api/v1/audio/analyze') {
+    analyzeFetchStarted = true
+    // Honor the abort signal so the cancel actually settles the pending promise.
+    return new Promise((resolve, reject) => {
+      options?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+    })
+  }
+  if (path === '/api/v1/upload-audio') {
+    return new Response(JSON.stringify({ filename: 'song.mp3', path: '/uploads/song.mp3', url: '/uploads/song.mp3' }))
+  }
+  return new Response('{}')
+}
+const pendingAnalyze = useStore.getState().directorAnalyzeAndPlan('/uploads/song.mp3', { transcribe: true })
+// Give the analyze handler a tick to start its fetch.
+await new Promise(resolve => setTimeout(resolve, 0))
+await new Promise(resolve => setTimeout(resolve, 50))
+assert.equal(analyzeFetchStarted, true, 'analyze request is in flight')
+assert.equal(useStore.getState().cancelDirectorAnalyze(), true, 'analyze cancel flips active phase')
+const cancelledState = useStore.getState()
+assert.equal(cancelledState.directorStep, 'upload', 'analyze cancel returns to upload step')
+assert.equal(cancelledState.directorLoading, false)
+assert.equal(cancelledState.directorLoadingMessage, null)
+// Allow the pendingAnalyze promise to settle; the catch is silent because
+// the controller aborted it.
+await pendingAnalyze.catch(() => undefined)
+// After cancel the action must be a no-op (no double-cancel side effects).
+assert.equal(useStore.getState().cancelDirectorAnalyze(), false, 'analyze cancel is idempotent')
+
+// Track-gen cancel: stub generateMusic to never resolve.
+let trackFetchStarted = false
+globalThis.fetch = async (url, options) => {
+  const path = String(url).split('?')[0]
+  if (path === '/api/v1/director/generate-music') {
+    trackFetchStarted = true
+    return new Promise((resolve, reject) => {
+      options?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+    })
+  }
+  if (path.startsWith('/api/v1/status/')) {
+    return new Response(JSON.stringify({ status: 'running', phase: 'sampling', step: 5, total_steps: 50, progress: 10 }))
+  }
+  if (path === '/api/v1/upload-image') {
+    return new Response(JSON.stringify({ filename: 'ref.png', path: '/uploads/ref.png', url: '/uploads/ref.png' }))
+  }
+  return new Response('{}')
+}
+useStore.setState({
+  directorSongDescription: 'a calm piano ballad',
+  directorSongStyle: '',
+  directorSongLyrics: '',
+  directorSongInstrumental: false,
+  directorSongDuration: 60,
+  directorReferenceImage: null,
+  directorReferenceImagePath: '/uploads/ref.png',
+})
+const pendingTrack = useStore.getState().directorGenerateTrack()
+await new Promise(resolve => setTimeout(resolve, 0))
+await new Promise(resolve => setTimeout(resolve, 50))
+assert.equal(trackFetchStarted, true, 'track-gen request is in flight')
+assert.equal(useStore.getState().directorTrackGenerating, true)
+assert.equal(useStore.getState().cancelDirectorTrackGen(), true, 'track-gen cancel flips active phase')
+const cancelledTrack = useStore.getState()
+assert.equal(cancelledTrack.directorTrackGenerating, false)
+assert.equal(cancelledTrack.directorLoading, false)
+assert.equal(cancelledTrack.directorStep, 'upload')
+await pendingTrack.catch(() => undefined)
+assert.equal(useStore.getState().cancelDirectorTrackGen(), false, 'track-gen cancel is idempotent')
+
+// Image-gen cancel: stub submitGeneration to return a job id, then have
+// status never resolve until cancelJob is called. The cancel must call
+// api.cancelJob AND unblock the status promise.
+let cancelCalled = null
+let pendingStatus = []
+globalThis.fetch = async (url, options) => {
+  const path = String(url).split('?')[0]
+  if (path === '/api/v1/generate') {
+    return new Response(JSON.stringify({ job_id: 'fake-job-1', status: 'queued' }))
+  }
+  if (path.startsWith('/api/v1/status/fake-job-1')) {
+    return new Promise(resolve => {
+      pendingStatus.push(resolve)
+    })
+  }
+  if (path === '/api/v1/cancel/fake-job-1') {
+    cancelCalled = true
+    // Resolve any pending status poll with a 'cancelled' so the while loop
+    // returns through its normal completion path.
+    for (const resolve of pendingStatus.splice(0)) {
+      resolve(new Response(JSON.stringify({ status: 'cancelled', output_files: [] })))
+    }
+    return new Response('{}')
+  }
+  if (path === '/api/v1/llm/status') return new Response(JSON.stringify({ loaded: false }))
+  if (path === '/api/v1/llm/unload') return new Response(JSON.stringify({ ok: true }))
+  if (path.startsWith('/api/v1/upload-image')) return new Response(JSON.stringify({ filename: 'ref.png', path: '/uploads/ref.png', url: '/uploads/ref.png' }))
+  if (path === '/api/v1/director/refs/upload') return new Response(JSON.stringify({ ref_image_path: '/uploads/ref.png', char_paths: [], loc_paths: [] }))
+  return new Response('{}')
+}
+useStore.setState({
+  directorClipPlans: [
+    { image_prompt: 'a calm forest', video_prompt: 'calm forest pan' },
+  ],
+  directorPlannedClips: [
+    { id: 'c1', section_label: 'verse', duration_frames: 48, start_time: 0, energy: 0.3 },
+  ],
+  directorReferenceImage: null,
+  directorReferenceImagePath: '/uploads/ref.png',
+  directorImageGenProgress: null,
+})
+// Fire the image-gen flow but don't await it — the inner genImage poll
+// loop awaits a stub fetchJobStatus that never resolves by itself. The
+// contract under test is the cancel action's state mutation, server-side
+// cancel call, and idempotence, all observable without waiting for the
+// function to settle. The pendingImageGen handle stays around so the
+// unhandled-rejection doesn't crash the suite.
+const pendingImageGen = useStore.getState().directorGenerateStartImages().catch(() => undefined)
+await new Promise(resolve => setTimeout(resolve, 50))
+assert.equal(useStore.getState().directorStep, 'generate_images', 'image-gen enters its phase')
+assert.equal(useStore.getState().cancelDirectorImageGen(), true, 'image-gen cancel flips active phase')
+assert.equal(cancelCalled, true, 'image-gen cancel routes through api.cancelJob')
+const cancelledImage = useStore.getState()
+assert.equal(cancelledImage.directorStep, 'review', 'image-gen cancel drops to prompt review')
+assert.equal(cancelledImage.directorLoading, false)
+assert.equal(useStore.getState().cancelDirectorImageGen(), false, 'image-gen cancel is idempotent')
+// Detach the pending promise so Node's top-level await doesn't see it as
+// unsettled after the rest of the gauntlet finishes.
+pendingImageGen.catch(() => undefined)
+
+useStore.setState(original, true)
+globalThis.fetch = (url, options) => new Promise(resolve => pending.push({ url, options, resolve }))
+console.log('Cancel contracts passed: analyze / track-gen / image-gen idempotent cancels, abort signals, server-side job cancellation and unified cancelPlan shape.')
 console.log('Store contracts passed: workspace races, late saves, progress lifecycle, LoRA phases, plugin identity, mode snapshots and workflow routing.')
 
 // --- Persistence contracts (studioPersistence, no store instance) ---
