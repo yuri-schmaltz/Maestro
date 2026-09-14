@@ -70,7 +70,7 @@ function CoverSquareButton({ workspaceName, coverImage, pendingFile, pendingUrl,
     )
   }
   return (
-    <label title="Upload a cover image (.png, .jpg, .webp, .bmp)" className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-dashed transition-colors ${disabled ? 'cursor-not-allowed opacity-50' : 'border-border hover:border-accent-blue'}`}>
+    <label title="Upload a cover image (.png, .jpg, .webp, .bmp)" aria-label="Upload a cover image" className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-dashed transition-colors ${disabled ? 'cursor-not-allowed opacity-50' : 'border-border hover:border-accent-blue'}`}>
       <ImagePlus size={16} className="text-text-muted" />
       <input type="file" accept=".png,.jpg,.jpeg,.webp,.bmp" className="hidden" disabled={disabled} onChange={e => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = '' }} />
     </label>
@@ -85,6 +85,7 @@ export function ProjectsPage() {
   const deleteWorkspace = useStore(s => s.deleteWorkspace)
   const saveSetupAction = useStore(s => s.saveWorkspaceSetup)
   const navigate = useStore(s => s.setAppSection)
+  const studioModels = useStore(s => s.selectedModelPerMode)
   const [query, setQuery] = useState('')
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
@@ -388,6 +389,7 @@ export function ProjectsPage() {
                   <div className="grid grid-cols-4 gap-1.5">
                     {PROJECT_SETUP_TEMPLATES.map(tmpl => {
                       const activeT = setup.aspect_ratio === tmpl.setup.aspect_ratio && setup.resolution === tmpl.setup.resolution
+                        && (tmpl.setup.director_skill === undefined || (setup.director_skill || 'music_video') === tmpl.setup.director_skill)
                       return (
                         <button
                           key={tmpl.value}
@@ -430,13 +432,13 @@ export function ProjectsPage() {
                   ))}
                 </div>
                 <div className="mt-4 border-t border-border/40 pt-3">
-                  <ProjectSetupForm value={setup} onChange={setSetup} />
+                  <ProjectSetupForm value={setup} onChange={setSetup} studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }} />
                 </div>
               </>
             ) : (
               <>
                 <div>
-                  <ProjectSetupForm value={setup} onChange={setSetup} compact />
+                  <ProjectSetupForm value={setup} onChange={setSetup} compact studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }} />
                 </div>
               </>
             )}

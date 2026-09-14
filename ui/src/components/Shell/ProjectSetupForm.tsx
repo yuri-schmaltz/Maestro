@@ -66,14 +66,16 @@ export const PROJECT_SETUP_RESOLUTIONS: ReadonlyArray<{ value: ResolutionPreset;
   { value: '1080p', label: '1080p' },
 ]
 
-/** One-click starting setups for the New project dialog. Only flags the
- *  fields a fresh project needs; model/advanced choices stay per-project
- *  because they depend on the installed catalog. */
+/** One-click starting setups for the New project dialog. Each template
+ *  pins format AND skill together so picking "Short film" can't leave
+ *  the project on the Music Video skill by accident. Model/advanced
+ *  choices stay per-project because they depend on the installed
+ *  catalog. */
 export const PROJECT_SETUP_TEMPLATES: ReadonlyArray<{ value: string; label: string; desc: string; setup: Partial<ProjectSetupDefaults> }> = [
-  { value: 'short-film', label: 'Short film', desc: '16:9 · 720p', setup: { aspect_ratio: '16:9', resolution: '720p' } },
-  { value: 'reels', label: 'Reels', desc: '9:16 · 1080p', setup: { aspect_ratio: '9:16', resolution: '1080p' } },
-  { value: 'cinema', label: 'Cinema', desc: '21:9 · 1080p', setup: { aspect_ratio: '21:9', resolution: '1080p' } },
-  { value: 'square', label: 'Square', desc: '1:1 · 1080p', setup: { aspect_ratio: '1:1', resolution: '1080p' } },
+  { value: 'short-film', label: 'Short film', desc: '16:9 · 720p', setup: { aspect_ratio: '16:9', resolution: '720p', director_skill: 'short_film' } },
+  { value: 'reels', label: 'Reels', desc: '9:16 · 1080p', setup: { aspect_ratio: '9:16', resolution: '1080p', director_skill: 'music_video' } },
+  { value: 'cinema', label: 'Cinema', desc: '21:9 · 1080p', setup: { aspect_ratio: '21:9', resolution: '1080p', director_skill: 'music_video' } },
+  { value: 'square', label: 'Square', desc: '1:1 · 1080p', setup: { aspect_ratio: '1:1', resolution: '1080p', director_skill: 'music_video' } },
 ]
 
 export interface ProjectSetupFormProps {
@@ -83,6 +85,10 @@ export interface ProjectSetupFormProps {
   /** Render compact version (less spacing) — used inside the small
    *  Edit setup modal so it fits next to other controls. */
   compact?: boolean
+  /** Current Studio model selection per kind, used to name the
+   *  effective default in "Use last selected (LTX-2 22B)". Optional —
+   *  without it the option shows the plain label. */
+  studioModels?: { video?: string; image?: string; audio?: string }
 }
 
 /**
@@ -100,6 +106,7 @@ export function ProjectSetupForm({
   onChange,
   disabled = false,
   compact = false,
+  studioModels,
 }: ProjectSetupFormProps) {
   const safeValue: ProjectSetupDefaults = { ...DEFAULT_PROJECT_SETUP, ...value }
   const [models, setModels] = useState<ApiModel[]>([])
@@ -127,12 +134,13 @@ export function ProjectSetupForm({
     .filter((m, i, arr) => arr.findIndex(o => o.model_type === m.model_type) === i)
     .sort((a, b) => (a.name || a.model_type).localeCompare(b.name || b.model_type))
   const withTier = (m: ApiModel) => ({ value: m.model_type, label: `${m.name || m.model_type} · ${modelSpeedTier(m)}` })
-  const modelOptions = [
-    { value: '', label: 'Use last selected' },
-    ...deduped.filter(m => !isAudioModel(m)).map(withTier),
-  ]
+  const lastSelectedLabel = (current?: string) =>
+    current ? `Use last selected (${shortModelLabel(current)})` : 'Use last selected'
+  const visualList = deduped.filter(m => !isAudioModel(m)).map(withTier)
+  const modelOptions = [{ value: '', label: lastSelectedLabel(studioModels?.video) }, ...visualList]
+  const imageModelOptions = [{ value: '', label: lastSelectedLabel(studioModels?.image) }, ...visualList]
   const audioModelOptions = [
-    { value: '', label: 'Use last selected' },
+    { value: '', label: lastSelectedLabel(studioModels?.audio) },
     ...deduped.filter(isAudioModel).map(withTier),
   ]
 
@@ -158,17 +166,17 @@ export function ProjectSetupForm({
                 type="button"
                 role="radio"
                 aria-checked={active}
+                title={desc}
                 disabled={disabled}
                 onClick={() => update({ director_skill: id })}
-                className={`p-2.5 rounded-lg border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                   active
                     ? 'border-accent-blue/60 bg-accent-blue/5'
                     : 'border-border hover:border-border-light'
                 }`}
               >
-                <Icon size={16} className={active ? 'text-accent-blue mb-1.5' : 'text-text-muted mb-1.5'} />
-                <div className="text-xs font-medium text-text-primary">{label}</div>
-                <div className="text-2xs text-text-muted mt-0.5">{desc}</div>
+                <Icon size={15} className={active ? 'text-accent-blue shrink-0' : 'text-text-muted shrink-0'} />
+                <span className="text-xs font-medium text-text-primary truncate">{label}</span>
               </button>
             )
           })}
@@ -222,16 +230,16 @@ export function ProjectSetupForm({
               <span className="text-2xs text-text-muted block leading-tight truncate">continuous sliding window</span>
             </span>
           </label>
-          <label className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 select-none transition-all ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${safeValue.auto_mode ? 'border-red-500/60 bg-red-500/5' : 'border-border hover:border-border-light'}`}>
+          <label className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 select-none transition-all ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${safeValue.auto_mode ? 'border-accent-blue/60 bg-accent-blue/5' : 'border-border hover:border-border-light'}`}>
             <input
               type="checkbox"
               checked={Boolean(safeValue.auto_mode)}
               disabled={disabled}
               onChange={e => update({ auto_mode: e.target.checked })}
-              className="accent-red-500 w-3 h-3 shrink-0"
+              className="accent-accent-blue w-3 h-3 shrink-0"
             />
             <span className="min-w-0">
-              <span className={`text-xs block leading-tight ${safeValue.auto_mode ? 'text-red-400' : 'text-text-secondary'}`}>Auto</span>
+              <span className="text-xs text-text-secondary block leading-tight">Auto</span>
               <span className="text-2xs text-text-muted block leading-tight truncate">skip review steps</span>
             </span>
           </label>
@@ -246,6 +254,13 @@ export function ProjectSetupForm({
           "use whatever the Studio already has", which lets the form
           stay usable when the model catalog isn't loaded yet
           (offline / first paint). */}
+      {/* Advanced defaults (models + about) start collapsed so the New
+          project dialog fits without scrolling — one click expands. */}
+      <details className="rounded-lg border border-border/60">
+        <summary className="cursor-pointer select-none px-2.5 py-2 text-xs text-text-secondary hover:text-text-primary transition-colors">
+          Advanced defaults
+        </summary>
+        <div className="px-2.5 pb-2.5 space-y-3">
       <fieldset className={sectionCls} aria-label="Default models">
         <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Models</legend>
         <div className="flex gap-2">
@@ -263,7 +278,7 @@ export function ProjectSetupForm({
               label="Image model"
               value={safeValue.image_model || ''}
               onChange={next => update({ image_model: next })}
-              options={modelOptions}
+              options={imageModelOptions}
               disabled={disabled}
             />
           </div>
@@ -308,6 +323,8 @@ export function ProjectSetupForm({
           </label>
         </div>
       </fieldset>
+        </div>
+      </details>
     </div>
   )
 }
