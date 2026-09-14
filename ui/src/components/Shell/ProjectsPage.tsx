@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowRight, Check, Clapperboard, Copy, Film, FolderOpen, Images, Loader2, Pin, PinOff, Plus, Search, Settings, Trash2 } from 'lucide-react'
+import { ArrowRight, Check, Clapperboard, Copy, Film, FolderOpen, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Trash2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useWorkspaceSlice } from '../../stores/workspaceSelectors'
 import type { AppSection, ProjectSetupDefaults } from '../../types'
@@ -29,6 +29,19 @@ import { ProjectSetupForm, ProjectSetupSummary, PROJECT_SETUP_TEMPLATES } from '
  * inside the Director's right column and only flow into
  * `director_ui_snapshot` (per-take), keeping the project setup clean.
  */
+function formatUpdated(timestamp?: number | null): string | null {
+  if (!timestamp) return null
+  const seconds = Math.max(0, Math.floor(Date.now() / 1000 - timestamp))
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return new Date(timestamp * 1000).toLocaleDateString()
+}
+
 export function ProjectsPage() {
   const workspaces = useWorkspaceSlice('workspaces')
   const active = useWorkspaceSlice('activeWorkspace')
@@ -189,6 +202,7 @@ export function ProjectsPage() {
     setDestination('director')
     setCreating(true)
   }
+
   return (
     <div className="section-scroll">
       <div className="section-container">
@@ -211,21 +225,30 @@ export function ProjectsPage() {
           <div className="shell-empty"><FolderOpen size={32} /><h2>No matching projects</h2><p>Try a different name.</p></div>
         )}
         <div className="projects-grid">
-          {visible.map(workspace => (
-            <article key={workspace.name} className={`project-card ${workspace.name === active ? 'is-current' : ''}`}>
-              {workspace.setup?.cover_image && (
-                <img
-                  src={workspaceCoverUrl(workspace.name, workspace.setup.cover_image)}
-                  alt={`${workspace.name} cover`}
-                  loading="lazy"
-                  className="project-cover"
-                  onError={e => { e.currentTarget.style.display = 'none' }}
-                />
-              )}
-              <div className="flex items-start justify-between gap-3">
-                <div className="project-icon"><FolderOpen size={24} strokeWidth={1.5} /></div>
-                <div className="flex items-center gap-1.5">
-                  {workspace.setup?.pinned && <Pin size={12} className="text-accent-blue" />}
+          {visible.map(workspace => {
+            const skill = workspace.setup?.director_skill === 'short_film' ? 'short_film' : 'music_video'
+            const SkillIcon = skill === 'short_film' ? Film : Music
+            const skillLabel = skill === 'short_film' ? 'Short Film' : 'Music Video'
+            const summary = ProjectSetupSummary({ setup: workspace.setup })
+            const files = workspace.file_count ?? 0
+            const updated = formatUpdated(workspace.modified)
+            const meta = `${summary} · ${files} ${files === 1 ? 'file' : 'files'}${updated ? ` · updated ${updated}` : ''}`
+            return (
+            <article key={workspace.name} className={`project-card ${workspace.name === active ? 'is-current' : ''} ${workspace.setup?.pinned ? 'is-pinned' : ''}`}>
+              <div className={`project-banner ${skill === 'short_film' ? 'project-skill-film' : 'project-skill-music'}`}>
+                {workspace.setup?.cover_image ? (
+                  <img
+                    src={workspaceCoverUrl(workspace.name, workspace.setup.cover_image)}
+                    alt={`${workspace.name} cover`}
+                    loading="lazy"
+                    onError={e => { e.currentTarget.style.display = 'none' }}
+                  />
+                ) : (
+                  <div className="project-placeholder" aria-hidden="true"><SkillIcon size={34} strokeWidth={1.25} /></div>
+                )}
+                <span className="project-skill-chip"><SkillIcon size={11} />{skillLabel}</span>
+                <div className="project-banner-badges">
+                  {workspace.setup?.pinned && <span className="project-pin-badge" title="Pinned project"><Pin size={12} /></span>}
                   {workspace.name === active && <span className="project-current"><Check size={12} />Active</span>}
                 </div>
               </div>
@@ -233,10 +256,7 @@ export function ProjectsPage() {
               {workspace.setup?.description && (
                 <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">{workspace.setup.description}</p>
               )}
-              <p className="text-xs text-text-muted">{workspace.file_count ?? 0} media {(workspace.file_count ?? 0) === 1 ? 'file' : 'files'}</p>
-              <p className="text-2xs text-text-secondary leading-relaxed" title={ProjectSetupSummary({ setup: workspace.setup })}>
-                {ProjectSetupSummary({ setup: workspace.setup })}
-              </p>
+              <p className="project-card-meta" title={`${meta} · ${workspace.path}`}>{meta}</p>
               {workspace.setup?.tags && workspace.setup.tags.length > 0 && (
                 <p className="flex flex-wrap gap-1">
                   {workspace.setup.tags.map(tag => (
@@ -244,20 +264,22 @@ export function ProjectsPage() {
                   ))}
                 </p>
               )}
-              <p className="project-card-path" title={workspace.path}>{workspace.path}</p>
               <div className="project-card-actions">
                 <button disabled={busy !== null} onClick={() => void open(workspace.name, 'director')} className="project-open">
                   {busy === workspace.name ? <Loader2 size={14} className="animate-spin" /> : <Clapperboard size={14} />}Open Director<ArrowRight size={14} />
                 </button>
+              </div>
+              <div className="project-card-actions-manage">
                 <button disabled={busy !== null} onClick={() => void open(workspace.name, 'editor')} title={`Edit ${workspace.name}`} aria-label={`Edit ${workspace.name}`} className="shell-icon-button"><Film size={15} /></button>
                 <button disabled={busy !== null} onClick={() => void open(workspace.name, 'medias')} title={`Browse ${workspace.name}`} aria-label={`Browse ${workspace.name}`} className="shell-icon-button"><Images size={15} /></button>
                 <button disabled={busy !== null} onClick={() => openDuplicate(workspace)} title={`Duplicate ${workspace.name} setup`} aria-label={`Duplicate ${workspace.name} setup`} className="shell-icon-button"><Copy size={14} /></button>
                 <button disabled={busy !== null} onClick={() => void togglePin(workspace)} title={workspace.setup?.pinned ? 'Unpin project' : 'Pin project'} aria-label={workspace.setup?.pinned ? 'Unpin project' : 'Pin project'} className="shell-icon-button">{busy === `pin-${workspace.name}` ? <Loader2 size={14} className="animate-spin" /> : workspace.setup?.pinned ? <PinOff size={14} /> : <Pin size={14} />}</button>
                 <button disabled={busy !== null} onClick={() => openEdit(workspace.name)} title={`Edit ${workspace.name} setup`} aria-label={`Edit ${workspace.name} setup`} className="shell-icon-button"><Settings size={14} /></button>
-                <button disabled={busy !== null} onClick={() => setDeleting(workspace.name)} title={`Delete ${workspace.name}`} aria-label={`Delete ${workspace.name}`} className="shell-icon-button hover:text-red-400"><Trash2 size={14} /></button>
+                <button disabled={busy !== null} onClick={() => setDeleting(workspace.name)} title={`Delete ${workspace.name}`} aria-label={`Delete ${workspace.name}`} className="shell-icon-button project-danger"><Trash2 size={14} /></button>
               </div>
             </article>
-          ))}
+            )
+          })}
         </div>
       </div>
       {/* New project / Edit setup / Delete dialog. Each uses its own

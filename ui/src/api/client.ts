@@ -502,6 +502,8 @@ export interface Workspace {
   name: string
   path: string
   file_count?: number
+  /** Folder mtime (epoch seconds) for the "updated X ago" card hint. */
+  modified?: number | null
   /**
    * Per-project ProjectSetup returned alongside the list payload so the
    * project card can render the "16:9 · 720p · LTX-2" chip without a

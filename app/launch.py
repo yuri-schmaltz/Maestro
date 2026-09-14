@@ -532,6 +532,14 @@ def _workspace_file_count(path: str) -> int:
         return 0
 
 
+def _workspace_modified(path: str) -> float | None:
+    """mtime of a workspace folder for the "updated X ago" card hint."""
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return None
+
+
 def _list_workspaces() -> list[dict]:
     """List all workspaces (subdirectories of the base output path + default).
 
@@ -542,12 +550,12 @@ def _list_workspaces() -> list[dict]:
     without a second round-trip on first paint.
     """
     base = wgp.server_config.get("save_path", "outputs")
-    workspaces = [{"name": "default", "path": base, "file_count": _workspace_file_count(base), "setup": _load_workspace_setup("default")}]
+    workspaces = [{"name": "default", "path": base, "file_count": _workspace_file_count(base), "modified": _workspace_modified(base), "setup": _load_workspace_setup("default")}]
     if os.path.isdir(base):
         for name in sorted(os.listdir(base)):
             full = os.path.join(base, name)
             if os.path.isdir(full) and not name.startswith(("_", ".")):
-                workspaces.append({"name": name, "path": full, "file_count": _workspace_file_count(full), "setup": _load_workspace_setup(name)})
+                workspaces.append({"name": name, "path": full, "file_count": _workspace_file_count(full), "modified": _workspace_modified(full), "setup": _load_workspace_setup(name)})
     return workspaces
 
 
