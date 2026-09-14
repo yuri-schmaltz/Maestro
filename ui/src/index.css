@@ -872,7 +872,8 @@ input[type="range"]::-webkit-slider-thumb {
    summary starts at the format). The raw path moved to the tooltip. */
 .project-card-meta { font-size: var(--text-2xs); color:var(--color-text-secondary); line-height:1.6; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .project-card-actions { display:flex; align-items:center; gap:2px; margin-top:12px; padding-top:12px; border-top:1px solid var(--color-border); }
-.project-card-actions .project-danger { margin-left:auto; }
+.project-card-actions .project-danger { margin-left:auto; color:#f87171; }
+.project-card-actions .project-danger:hover { color:#fca5a5; background:rgba(248,113,113,.08); }
 /* Icon-only Open Director button: keeps the accent highlight of the
    old text button so the primary action still stands out in the row. */
 .project-open-icon { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; flex-shrink:0; border-radius:7px; background:color-mix(in srgb,var(--color-accent-blue) 14%,transparent); color:var(--color-accent-blue); }
