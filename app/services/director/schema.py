@@ -259,6 +259,9 @@ class AudioPlan:
 
 # ── ShotPlan — the core unit ─────────────────────────────────────────
 
+# podcast/viral_video stay valid here so previously saved pipelines that
+# reference them still parse — they are just no longer offered in the
+# user-facing picker (see RETIRED_DIRECTOR_SKILL_TYPES below).
 VALID_SKILL_TYPES = {"music_video", "short_film", "podcast", "viral_video"}
 DIRECTOR_SKILL_ALIASES = {
     "video_podcast": "podcast",
@@ -267,11 +270,13 @@ DIRECTOR_SKILL_ALIASES = {
 DIRECTOR_SKILL_CATALOG = {
     "music_video": {"label": "Music Video", "desc": "Automated music video from audio", "icon": "music", "active": True},
     "short_film": {"label": "Short Film", "desc": "Dialogue-driven scenes from audio", "icon": "film", "active": True},
-    "podcast": {"label": "Video Podcast", "desc": "Coming Soon", "icon": "podcast", "active": False},
-    "viral_video": {"label": "Viral Video", "desc": "Coming Soon", "icon": "viral", "active": False},
-    "demo_skill": {"label": "Demo Skill", "desc": "Validation planner for importable skills", "icon": "film", "active": True},
 }
-DIRECTOR_SKILL_ORDER = ["music_video", "short_film", "podcast", "viral_video", "demo_skill"]
+DIRECTOR_SKILL_ORDER = ["music_video", "short_film"]
+# Skills retired from the picker. Planner modules, aliases, and the local
+# plugin mechanism stay importable so old pipelines and validation tests
+# keep resolving, but the catalog/order above (and any local manifest with
+# one of these ids) is never advertised to the UI.
+RETIRED_DIRECTOR_SKILL_TYPES = {"podcast", "viral_video", "demo_skill", "demo_local_skill"}
 
 
 def canonical_skill_type(skill_type: str) -> str:
@@ -287,7 +292,7 @@ class ShotPlan:
     shot_id: str
     index: int
     duration_sec: float
-    skill_type: str  # "music_video" | "short_film" | "podcast" | "viral_video"
+    skill_type: str  # "music_video" | "short_film" (podcast/viral_video still parse for legacy pipelines)
 
     scene_goal: str
     subjects_on_screen: list[SubjectRef]
@@ -430,7 +435,7 @@ class ShotPlan:
 
 @dataclass
 class ProductionPlan:
-    skill_type: str  # "music_video" | "short_film" | "podcast" | "viral_video"
+    skill_type: str  # "music_video" | "short_film" (podcast/viral_video still parse for legacy pipelines)
     shots: list[ShotPlan]
     title: Optional[str] = None
     global_style: Optional[str] = None

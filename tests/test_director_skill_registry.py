@@ -11,10 +11,13 @@ if str(APP_ROOT) not in sys.path:
 from services.director.registry import get_skill_planner_class, list_skills
 
 
-def test_demo_skill_is_registered_and_plan_builds():
-    skill_ids = {entry['id'] for entry in list_skills()}
-    assert 'demo_skill' in skill_ids
+def test_public_skill_list_offers_only_shipped_skills():
+    skill_ids = [entry['id'] for entry in list_skills()]
+    assert skill_ids == ['music_video', 'short_film']
+    assert all(entry['active'] for entry in list_skills())
 
+
+def test_retired_skill_planner_still_resolves_for_legacy_pipelines():
     planner_cls = get_skill_planner_class('demo_skill')
     planner = planner_cls()
     plan = planner.plan(scene_description='A single subject in a clean studio environment.')

@@ -13,7 +13,7 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from .schema import DIRECTOR_SKILL_ALIASES, DIRECTOR_SKILL_CATALOG, DIRECTOR_SKILL_ORDER, canonical_skill_type
+from .schema import DIRECTOR_SKILL_ALIASES, DIRECTOR_SKILL_CATALOG, DIRECTOR_SKILL_ORDER, RETIRED_DIRECTOR_SKILL_TYPES, canonical_skill_type
 
 _SKILL_MODULES = {
     "music_video": ".planners.music_video",
@@ -118,6 +118,10 @@ def _merge_manifest_into_catalog(manifest: dict[str, Any]) -> None:
     skill_id = canonical_skill_type(str(manifest.get('id') or ''))
     if not skill_id:
         return
+    # Retired skills are never advertised: a stale manifest with one of
+    # these ids must not re-add it to the order or the catalog.
+    if skill_id in RETIRED_DIRECTOR_SKILL_TYPES:
+        return
 
     catalog_entry = DIRECTOR_SKILL_CATALOG.setdefault(skill_id, {
         'label': skill_id.replace('_', ' ').title(),
@@ -145,10 +149,17 @@ def _load_local_skill_manifests() -> None:
 
 
 def list_skills() -> list[dict[str, Any]]:
-    """Return metadata for all skills in the catalog."""
+    """Return metadata for all skills in the catalog.
+
+    Retired ids (podcast, viral_video, demo skills) are skipped even if a
+    stale manifest or a previous merge put them in the order — the picker
+    only ever sees music_video + short_film.
+    """
     _load_local_skill_manifests()
     items: list[dict[str, Any]] = []
     for skill_type in list_skill_types():
+        if skill_type in RETIRED_DIRECTOR_SKILL_TYPES:
+            continue
         entry = dict(DIRECTOR_SKILL_CATALOG.get(skill_type, {"label": skill_type.replace("_", " ").title(), "desc": "", "icon": "music", "active": False}))
         entry["id"] = skill_type
         entry["aliases"] = [alias for alias, canonical in DIRECTOR_SKILL_ALIASES.items() if canonical == skill_type]

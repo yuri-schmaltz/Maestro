@@ -1336,7 +1336,6 @@ function SkillsReadyCatalog({
     short_film: { icon: 'film', tag: 'Audio' },
     short_film_audio: { icon: 'film', tag: 'Audio' },
     short_film_story: { icon: 'film', tag: 'Story' },
-    demo_skill: { icon: 'sparkles', tag: 'Text' },
   }
 
   const skillIcons = {

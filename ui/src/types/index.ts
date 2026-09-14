@@ -1531,19 +1531,16 @@ export interface DirectorAnalyzeProgress {
 
 /** Director skills exposed by the in-stage chooser modal.
  *
- *  Active (wired to a planner in `services/director/planners/`):
- *    - music_video, short_film
- *
- *  Visible-but-inactive ("Soon" badge in the chooser):
- *    - podcast (legacy alias, kept for saved-state compatibility),
- *      video_podcast (the user-facing label), viral_video
+ *  Only music_video and short_film are offered. The retired ids below
+ *  (podcast + aliases, viral_video, demo skills) stay in the type and
+ *  the canonicalizer purely for saved-state compatibility — a workspace
+ *  persisted years ago can still parse, it just can't pick them again.
  *
  *  Plugin-contributed skills can carry any string id (see
  *  `canonicalDirectorSkill`). The union is widened to `string` so a
- *  locally installed skill that announces a new id (e.g.
- *  `demo_local_skill`) is not silently collapsed into `music_video`
- *  by the canonicalizer — the Stage uses the raw id to look up
- *  the plugin's metadata and icon. */
+ *  locally installed skill that announces a new id is not silently
+ *  collapsed into `music_video` by the canonicalizer — the Stage uses
+ *  the raw id to look up the plugin's metadata and icon. */
 export type DirectorSkill = 'music_video' | 'short_film' | 'podcast' | 'video_podcast' | 'viral_video' | 'demo_skill' | (string & {})
 
 export const DIRECTOR_SKILL_OPTIONS: Array<{
@@ -1555,20 +1552,19 @@ export const DIRECTOR_SKILL_OPTIONS: Array<{
 }> = [
   { id: 'music_video', label: 'Music Video', desc: 'Automated music video from audio', icon: 'music', active: true },
   { id: 'short_film', label: 'Short Film', desc: 'Dialogue-driven scenes from audio', icon: 'film', active: true },
-  { id: 'podcast', label: 'Video Podcast', desc: 'Coming Soon', icon: 'podcast', active: false },
-  { id: 'viral_video', label: 'Viral Video', desc: 'Coming Soon', icon: 'viral', active: false },
-  { id: 'demo_skill', label: 'Demo Skill', desc: 'Validation planner for importable skills', icon: 'sparkles', active: true },
 ] as const
 
 /** Normalise legacy aliases and passthrough plugin-contributed skills.
  *
  *  Built-in aliases still in saved-state (the user might have
  *  selected a skill years ago and persisted it):
- *    - video_podcast / podcast_video → podcast (kept as a single
- *      archived entry — the in-stage chooser surfaces it as "Soon").
+ *    - video_podcast / podcast_video → podcast
+ *
+ *  The retired ids (podcast, viral_video, demo_skill) pass through
+ *  unchanged so old workspaces keep parsing — the chooser simply no
+ *  longer offers them.
  *
  *  Anything else is returned as-is so a plugin-installed skill
- *  (e.g. `demo_local_skill` from `services/director/planners/demo/`)
  *  keeps its identity through the canonicaliser instead of being
  *  silently rewritten to the default. Empty / null fall back to
  *  `music_video` (the historical default) so first-launch flows
