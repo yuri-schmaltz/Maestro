@@ -9,8 +9,11 @@ from pathlib import Path
 from app.services.workspace_setup import (
     DEFAULT_PROJECT_SETUP,
     WorkspaceSetupError,
+    cover_image_path,
+    delete_cover_image,
     load_setup,
     persist_setup,
+    save_cover_image,
     setup_path,
 )
 
@@ -69,6 +72,51 @@ class WorkspaceSetupServiceTests(unittest.TestCase):
             with self.assertRaises(WorkspaceSetupError) as context:
                 persist_setup(root, "project_1", {"director_skill": "podcast"})
             self.assertEqual(context.exception.status_code, 400)
+
+    def test_cover_image_round_trip(self):
+        with tempfile.TemporaryDirectory() as root:
+            stored = persist_setup(root, "project_1", {"cover_image": "cover_abc123.png"})
+            self.assertEqual(stored["cover_image"], "cover_abc123.png")
+            loaded = load_setup(root, "project_1")
+            self.assertEqual(loaded["cover_image"], "cover_abc123.png")
+
+    def test_invalid_cover_image_is_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            for bad in ("../escape.png", "cover.png/", "cover.exe", "cover svg.png", ""):
+                if bad == "":
+                    continue
+                with self.assertRaises(WorkspaceSetupError, msg=bad) as context:
+                    persist_setup(root, "project_1", {"cover_image": bad})
+                self.assertEqual(context.exception.status_code, 400)
+
+    def test_cover_upload_store_and_delete(self):
+        with tempfile.TemporaryDirectory() as root:
+            png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+            first = save_cover_image(root, "project_1", png, "My Cover.PNG")
+            second = save_cover_image(root, "project_1", png, "other.jpg")
+            self.assertNotEqual(first, second)
+            self.assertTrue(first.endswith(".png"))
+            self.assertIsNotNone(cover_image_path(root, "project_1", first))
+            self.assertIsNone(cover_image_path(root, "project_1", "missing.png"))
+            self.assertTrue(delete_cover_image(root, "project_1", first))
+            self.assertIsNone(cover_image_path(root, "project_1", first))
+            self.assertTrue(delete_cover_image(root, "project_1"))
+            self.assertFalse(delete_cover_image(root, "project_1"))
+
+    def test_cover_upload_rejects_bad_input(self):
+        with tempfile.TemporaryDirectory() as root:
+            png = b"\x89PNG\r\n\x1a\n"
+            with self.assertRaises(WorkspaceSetupError) as context:
+                save_cover_image(root, "project_1", png, "cover.gif")
+            self.assertEqual(context.exception.status_code, 415)
+            with self.assertRaises(WorkspaceSetupError) as context:
+                save_cover_image(root, "project_1", b"", "cover.png")
+            self.assertEqual(context.exception.status_code, 400)
+            with self.assertRaises(WorkspaceSetupError) as context:
+                save_cover_image(root, "default", png, "cover.png")
+            self.assertEqual(context.exception.status_code, 400)
+            with self.assertRaises(WorkspaceSetupError):
+                save_cover_image(root, "../escape", png, "cover.png")
 
     def test_invalid_tags_are_rejected(self):
         with tempfile.TemporaryDirectory() as root:

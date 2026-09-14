@@ -578,6 +578,43 @@ export async function saveWorkspaceSetup(name: string, setup: ProjectSetupDefaul
   return (body?.setup ?? setup) as ProjectSetupDefaults
 }
 
+/** Upload the project card cover image (.png/.jpg/.jpeg/.webp/.bmp,
+ *  max 10 MB). The backend stores it next to setup.json and points the
+ *  setup at it — returns the stored filename for `cover_image`. */
+export async function uploadWorkspaceCover(name: string, file: File): Promise<{ cover_image: string }> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${BASE}/api/v1/workspaces/${encodeURIComponent(name)}/cover`, {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Cover upload failed' }))
+    throw new Error(err.detail || 'Cover upload failed')
+  }
+  const body = await res.json()
+  if (!body?.cover_image) throw new Error('Cover upload failed')
+  return { cover_image: body.cover_image as string }
+}
+
+/** Remove the project card cover image and clear the setup reference. */
+export async function deleteWorkspaceCover(name: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/v1/workspaces/${encodeURIComponent(name)}/cover`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Could not remove cover image' }))
+    throw new Error(err.detail || 'Could not remove cover image')
+  }
+}
+
+/** Cover image URL for a project card. The stored filename is unique
+ *  per upload, so embedding it as `v` defeats stale browser cache
+ *  after the cover is replaced. */
+export function workspaceCoverUrl(name: string, coverImage: string): string {
+  return `${BASE}/api/v1/workspaces/${encodeURIComponent(name)}/cover?v=${encodeURIComponent(coverImage)}`
+}
+
 // --- Editor projects ---
 
 export async function fetchEditorProjects(workspace?: string): Promise<{

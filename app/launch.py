@@ -67,8 +67,11 @@ from services.web_push import WebPushService, WebPushUnavailable
 from services.workspace_setup import (
     DEFAULT_PROJECT_SETUP,
     WorkspaceSetupError,
+    cover_image_path,
+    delete_cover_image,
     load_setup,
     persist_setup,
+    save_cover_image,
     setup_path,
 )
 from services.editor_projects import (
@@ -7463,6 +7466,63 @@ async def put_workspace_setup(name: str, request: Request):
         raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
     raw_setup = body.get("setup", body)
     persisted = _persist_workspace_setup(name, raw_setup)
+    return {"status": "ok", "name": name, "setup": persisted}
+
+
+@api.post("/api/v1/workspaces/{name}/cover")
+async def upload_workspace_cover(name: str, file: UploadFile = File(...)):
+    """Upload the project card cover image.
+
+    Stores the file next to setup.json under a unique cover_<id>.<ext>
+    name and points setup.json at it. The previous cover file is only
+    removed after the new setup.json persists, so a failed persist
+    never destroys the previous cover.
+    """
+    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
+    content = await file.read()
+    try:
+        stored = save_cover_image(base, name, content, file.filename or "cover.png")
+    except WorkspaceSetupError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    previous = (_load_workspace_setup(name).get("cover_image") or "")
+    try:
+        current = _load_workspace_setup(name)
+        current["cover_image"] = stored
+        persisted = _persist_workspace_setup(name, current)
+    except HTTPException:
+        delete_cover_image(base, name, stored)
+        raise
+    if previous and previous != stored:
+        delete_cover_image(base, name, previous)
+    return {"status": "ok", "name": name, "cover_image": stored, "setup": persisted}
+
+
+@api.get("/api/v1/workspaces/{name}/cover")
+def serve_workspace_cover(name: str):
+    """Serve the project card cover image referenced by setup.json."""
+    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
+    filename = (_load_workspace_setup(name).get("cover_image") or "")
+    path = cover_image_path(base, name, filename) if filename else None
+    if path is None:
+        raise HTTPException(status_code=404, detail="No cover image for this project.")
+    media_type = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".bmp": "image/bmp",
+    }.get(os.path.splitext(filename)[1].lower(), "application/octet-stream")
+    return FileResponse(path, media_type=media_type)
+
+
+@api.delete("/api/v1/workspaces/{name}/cover")
+def delete_workspace_cover(name: str):
+    """Remove the project card cover image and clear the setup reference."""
+    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
+    current = _load_workspace_setup(name)
+    current["cover_image"] = ""
+    persisted = _persist_workspace_setup(name, current)
+    delete_cover_image(base, name)
     return {"status": "ok", "name": name, "setup": persisted}
 
 

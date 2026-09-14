@@ -1,12 +1,11 @@
 /* eslint-disable react-refresh/only-export-components -- shared options between
    ProjectSetup form chips and the Director right-column override live here
    so the two surfaces stay in lockstep. */
-import { useState } from 'react'
-import { Film, Music } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Film, ImagePlus, Music, X } from 'lucide-react'
 import type { ProjectSetupDefaults, AspectRatio, ResolutionPreset, GenerationMode } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
-import { fetchModels, type ApiModel } from '../../api/client'
-import { useEffect } from 'react'
+import { fetchModels, workspaceCoverUrl, type ApiModel } from '../../api/client'
 
 /** Architectures that produce video output. Used to filter the model
  *  catalog into a video picker and an image picker without needing a
@@ -76,6 +75,15 @@ export interface ProjectSetupFormProps {
   /** Render compact version (less spacing) — used inside the small
    *  Edit setup modal so it fits next to other controls. */
   compact?: boolean
+  /** Workspace name used to preview an already-uploaded cover. Omit
+   *  when the workspace doesn't exist yet (New project dialog) — a
+   *  picked file is then held locally and reported via
+   *  `onPendingCover` so the parent can upload it at save time. */
+  workspaceName?: string | null
+  /** Called with a picked-but-unsaved cover File (null when cleared).
+   *  The parent uploads it on submit and writes the returned filename
+   *  into `cover_image`. */
+  onPendingCover?: (file: File | null) => void
 }
 
 /**
@@ -94,9 +102,14 @@ export function ProjectSetupForm({
   filterDirectorCapable = true,
   disabled = false,
   compact = false,
+  workspaceName = null,
+  onPendingCover,
 }: ProjectSetupFormProps) {
   const safeValue: ProjectSetupDefaults = { ...DEFAULT_PROJECT_SETUP, ...value }
   const [models, setModels] = useState<ApiModel[]>([])
+  const [pendingCover, setPendingCover] = useState<File | null>(null)
+  const [coverError, setCoverError] = useState('')
+  const update = (patch: Partial<ProjectSetupDefaults>) => onChange({ ...safeValue, ...patch })
 
   useEffect(() => {
     let cancelled = false
@@ -108,7 +121,35 @@ export function ProjectSetupForm({
     return () => { cancelled = true }
   }, [])
 
-  const update = (patch: Partial<ProjectSetupDefaults>) => onChange({ ...safeValue, ...patch })
+  const pendingCoverUrl = useMemo(
+    () => (pendingCover ? URL.createObjectURL(pendingCover) : null),
+    [pendingCover],
+  )
+  useEffect(() => () => { if (pendingCoverUrl) URL.revokeObjectURL(pendingCoverUrl) }, [pendingCoverUrl])
+
+  const pickCover = (file: File | null) => {
+    setCoverError('')
+    if (!file) {
+      setPendingCover(null)
+      onPendingCover?.(null)
+      if (safeValue.cover_image) update({ cover_image: '' })
+      return
+    }
+    const ext = (file.name.split('.').pop() || '').toLowerCase()
+    if (!['png', 'jpg', 'jpeg', 'webp', 'bmp'].includes(ext)) {
+      setCoverError('Cover must be a .png, .jpg, .jpeg, .webp or .bmp file.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setCoverError('Cover image too large (max 10 MB).')
+      return
+    }
+    setPendingCover(file)
+    onPendingCover?.(file)
+  }
+  const coverPreview = pendingCoverUrl
+    || (safeValue.cover_image && workspaceName ? workspaceCoverUrl(workspaceName, safeValue.cover_image) : null)
+
   const supportsUltraWide = (safeValue.video_model || '').toLowerCase().startsWith('minimax_h3')
   const aspectOptions = PROJECT_SETUP_ASPECT_RATIOS.filter(opt => opt.value !== '21:9' || supportsUltraWide)
 
@@ -128,6 +169,52 @@ export function ProjectSetupForm({
 
   return (
     <div className={`text-sm ${compact ? 'space-y-3' : 'space-y-4'}`}>
+      {/* Cover — the project card thumbnail. The file is only uploaded
+          when the parent saves (the workspace may not exist yet in the
+          New project dialog), so a picked file is held locally and
+          previewed until submit. */}
+      <fieldset className={sectionCls} aria-label="Project cover">
+        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Cover</legend>
+        {coverPreview ? (
+          <div className="relative">
+            <img
+              src={coverPreview}
+              alt="Project cover preview"
+              className="w-full h-28 object-cover rounded-lg border border-border"
+              onError={e => { e.currentTarget.style.display = 'none' }}
+            />
+            <button
+              type="button"
+              onClick={() => pickCover(null)}
+              disabled={disabled}
+              aria-label="Remove cover image"
+              title="Remove cover image"
+              className="absolute top-1.5 right-1.5 bg-bg-primary/80 rounded-full p-1 hover:bg-bg-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <X size={12} className="text-text-muted" />
+            </button>
+            {pendingCover && (
+              <span className="absolute bottom-1.5 left-1.5 text-2xs text-white/80 bg-black/50 px-1.5 py-0.5 rounded">
+                {pendingCover.name} · uploads on save
+              </span>
+            )}
+          </div>
+        ) : (
+          <label className={`flex items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 cursor-pointer transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'border-border hover:border-accent-blue'}`}>
+            <ImagePlus size={14} className="text-accent-blue/70 shrink-0" />
+            <span className="text-xs text-text-secondary">Upload a cover image (.png, .jpg, .webp, .bmp)</span>
+            <input
+              type="file"
+              accept=".png,.jpg,.jpeg,.webp,.bmp"
+              className="hidden"
+              disabled={disabled}
+              onChange={e => { pickCover(e.target.files?.[0] || null); e.target.value = '' }}
+            />
+          </label>
+        )}
+        {coverError && <p className="text-2xs text-red-400" role="alert">{coverError}</p>}
+      </fieldset>
+
       {/* Skill — which Director workflow this project plans with.
           Chosen once here so the Director chat never asks again;
           changing it later re-syncs the Director through

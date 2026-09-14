@@ -52,6 +52,9 @@ export interface ProjectSetupDefaults {
    *  project creation/setup screen (Music Video / Short Film cards);
    *  the Director chat no longer asks — it follows the project. */
   director_skill?: DirectorSkill
+  /** Project card cover image filename (uploaded via the cover
+   *  endpoint, stored next to setup.json). Empty means no cover. */
+  cover_image?: string
 }
 
 export const PROJECT_SETUP_LATEST_SCHEMA = 1
@@ -73,6 +76,7 @@ export const DEFAULT_PROJECT_SETUP: ProjectSetupDefaults = {
   tags: [],
   pinned: false,
   director_skill: 'music_video',
+  cover_image: '',
 }
 
 export type DirectorPipelineType = 'music_video' | 'short_film_audio' | 'short_film_story'

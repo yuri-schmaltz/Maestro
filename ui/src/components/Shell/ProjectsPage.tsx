@@ -4,7 +4,7 @@ import { useStore } from '../../stores/useStore'
 import { useWorkspaceSlice } from '../../stores/workspaceSelectors'
 import type { AppSection, ProjectSetupDefaults } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
-import { saveWorkspaceSetup, type Workspace } from '../../api/client'
+import { saveWorkspaceSetup, uploadWorkspaceCover, deleteWorkspaceCover, workspaceCoverUrl, type Workspace } from '../../api/client'
 import { ProjectSetupForm, ProjectSetupSummary, PROJECT_SETUP_TEMPLATES } from './ProjectSetupForm'
 
 /**
@@ -46,6 +46,13 @@ export function ProjectsPage() {
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
+  // Cover image picked in the dialog but not uploaded yet (the New
+  // project workspace doesn't exist until submit). Uploaded as part of
+  // create/saveEdit, then cleared.
+  const [pendingCover, setPendingCover] = useState<File | null>(null)
+  // Cover filename the dialog started with — used to detect a removal
+  // that must also delete the stored file on save.
+  const [initialCover, setInitialCover] = useState('')
 
   const userProjects = workspaces
     .filter(w => w.name !== 'default')
@@ -80,9 +87,18 @@ export function ProjectsPage() {
       // mount via the store. Done sequentially so a failed save never
       // strands a project on disk in an unexpected shape.
       await createWorkspace(value)
-      await saveSetupAction(setup)
+      // A picked cover can only be uploaded now that the folder
+      // exists — merge the stored filename into the setup payload.
+      let nextSetup = setup
+      if (pendingCover) {
+        const { cover_image } = await uploadWorkspaceCover(value, pendingCover)
+        nextSetup = { ...nextSetup, cover_image }
+      }
+      await saveSetupAction(nextSetup)
       setCreating(false); setName('')
       setSetup(DEFAULT_PROJECT_SETUP)
+      setPendingCover(null)
+      setInitialCover('')
       setDestination('director')
       navigate(destination)
     }
@@ -91,7 +107,11 @@ export function ProjectsPage() {
   }
   const openDuplicate = (workspace: Workspace) => {
     setError(null)
-    setSetup({ ...DEFAULT_PROJECT_SETUP, ...(workspace.setup || {}), pinned: false })
+    // The duplicate gets a fresh folder without the original's cover
+    // file, so the reference must not carry over either.
+    setSetup({ ...DEFAULT_PROJECT_SETUP, ...(workspace.setup || {}), pinned: false, cover_image: '' })
+    setPendingCover(null)
+    setInitialCover('')
     setName(`${workspace.name.trim().replace(/\s+/g, '-')}-copy`)
     setDestination('director')
     setCreating(true)
@@ -119,13 +139,24 @@ export function ProjectsPage() {
       // applyWorkspaceSetup too, which only runs when the active
       // workspace matches. Editing a non-active workspace still
       // persists; the change applies on the next switch.
+      let nextSetup = setup
+      if (pendingCover) {
+        const { cover_image } = await uploadWorkspaceCover(editing, pendingCover)
+        nextSetup = { ...nextSetup, cover_image }
+      } else if (initialCover && !nextSetup.cover_image) {
+        // Cover was removed in the dialog — delete the stored file too
+        // (best-effort; the reference is already cleared above).
+        await deleteWorkspaceCover(editing).catch(() => undefined)
+      }
       if (editing === active) {
-        await saveSetupAction(setup)
+        await saveSetupAction(nextSetup)
       } else {
-        await saveWorkspaceSetup(editing, setup)
+        await saveWorkspaceSetup(editing, nextSetup)
       }
       await useStore.getState().loadWorkspaces()
       setEditing(null)
+      setPendingCover(null)
+      setInitialCover('')
     }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not save project setup.') }
     finally { setBusy(null) }
@@ -133,6 +164,8 @@ export function ProjectsPage() {
   const openEdit = (workspace: string) => {
     const card = workspaces.find(w => w.name === workspace)
     setSetup(card?.setup ?? DEFAULT_PROJECT_SETUP)
+    setPendingCover(null)
+    setInitialCover(card?.setup?.cover_image || '')
     setEditing(workspace)
   }
   const togglePin = async (workspace: Workspace) => {
@@ -150,6 +183,8 @@ export function ProjectsPage() {
   const openCreate = () => {
     setError(null)
     setSetup(DEFAULT_PROJECT_SETUP)
+    setPendingCover(null)
+    setInitialCover('')
     setName('')
     setDestination('director')
     setCreating(true)
@@ -178,6 +213,15 @@ export function ProjectsPage() {
         <div className="projects-grid">
           {visible.map(workspace => (
             <article key={workspace.name} className={`project-card ${workspace.name === active ? 'is-current' : ''}`}>
+              {workspace.setup?.cover_image && (
+                <img
+                  src={workspaceCoverUrl(workspace.name, workspace.setup.cover_image)}
+                  alt={`${workspace.name} cover`}
+                  loading="lazy"
+                  className="project-cover"
+                  onError={e => { e.currentTarget.style.display = 'none' }}
+                />
+              )}
               <div className="flex items-start justify-between gap-3">
                 <div className="project-icon"><FolderOpen size={24} strokeWidth={1.5} /></div>
                 <div className="flex items-center gap-1.5">
@@ -289,13 +333,13 @@ export function ProjectsPage() {
                   ))}
                 </div>
                 <div className="mt-5 border-t border-border/40 pt-4">
-                  <ProjectSetupForm value={setup} onChange={setSetup} />
+                  <ProjectSetupForm value={setup} onChange={setSetup} workspaceName={null} onPendingCover={setPendingCover} />
                 </div>
               </>
             ) : (
               <>
                 <div>
-                  <ProjectSetupForm value={setup} onChange={setSetup} compact />
+                  <ProjectSetupForm value={setup} onChange={setSetup} compact workspaceName={editing} onPendingCover={setPendingCover} />
                 </div>
               </>
             )}

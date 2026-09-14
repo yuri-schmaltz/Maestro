@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import uuid
 from typing import Any
 
 
@@ -40,8 +41,13 @@ DEFAULT_PROJECT_SETUP: dict[str, Any] = {
     "tags": [],
     "pinned": False,
     "director_skill": "music_video",
+    "cover_image": "",
     "schema_version": 1,
 }
+
+COVER_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+MAX_COVER_IMAGE_BYTES = 10 * 1024 * 1024
+_COVER_FILENAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 
 _WORKSPACE_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 _STRING_FIELDS = {"aspect_ratio", "resolution", "video_model", "image_model", "music_model", "description"}
@@ -123,6 +129,14 @@ def _validate_setup(name: str, setup: dict[str, Any]) -> dict[str, Any]:
             if value not in {"music_video", "short_film"}:
                 raise WorkspaceSetupError(400, "director_skill must be 'music_video' or 'short_film'.")
             sanitized[key] = value
+        elif key == "cover_image":
+            if value is None or value == "":
+                sanitized[key] = ""
+            elif (isinstance(value, str) and _COVER_FILENAME_RE.match(value)
+                    and os.path.splitext(value)[1].lower() in COVER_IMAGE_EXTENSIONS):
+                sanitized[key] = value
+            else:
+                raise WorkspaceSetupError(400, "cover_image must be a previously uploaded cover filename.")
         elif key in _LIST_STRING_FIELDS:
             if not isinstance(value, list) or not all(isinstance(tag, str) for tag in value):
                 raise WorkspaceSetupError(400, f"{key} must be an array of strings.")
@@ -160,3 +174,100 @@ def persist_setup(save_path: str, name: str, setup: dict[str, Any]) -> dict[str,
             pass
         raise WorkspaceSetupError(500, f"Could not persist setup: {exc}") from exc
     return sanitized
+
+
+def _cover_directory(save_path: str, name: str) -> str | None:
+    """Resolve the workspace folder that holds the cover image.
+
+    Returns None for the default workspace and invalid names — covers
+    only exist for real projects with a setup.json.
+    """
+    path = setup_path(save_path, name)
+    if path is None:
+        return None
+    return os.path.dirname(path)
+
+
+def save_cover_image(save_path: str, name: str, data: bytes, filename: str) -> str:
+    """Store one project cover image and return the stored filename.
+
+    The file lands next to setup.json under a unique ``cover_<id>.<ext>``
+    name so replacing the cover naturally cache-busts the card URL.
+    Replacing an old cover is the caller's job (delete the previous
+    filename after the new setup.json persists) so a failed persist
+    never destroys the previous cover.
+    """
+    if not isinstance(data, (bytes, bytearray)) or not data:
+        raise WorkspaceSetupError(400, "Cover image is empty.")
+    if len(data) > MAX_COVER_IMAGE_BYTES:
+        raise WorkspaceSetupError(413, "Cover image too large (max 10 MB).")
+    directory = _cover_directory(save_path, name)
+    if directory is None:
+        raise WorkspaceSetupError(400, "Cover images are only supported for named projects.")
+    ext = os.path.splitext(filename or "")[1].lower()
+    if ext not in COVER_IMAGE_EXTENSIONS:
+        raise WorkspaceSetupError(415, "Cover image must be a .png, .jpg, .jpeg, .webp or .bmp file.")
+    os.makedirs(directory, exist_ok=True)
+    stored = f"cover_{uuid.uuid4().hex[:8]}{ext}"
+    temporary_path = os.path.join(directory, stored + ".tmp")
+    try:
+        with open(temporary_path, "wb") as handle:
+            handle.write(bytes(data))
+        os.replace(temporary_path, os.path.join(directory, stored))
+    except OSError as exc:
+        try:
+            if os.path.exists(temporary_path):
+                os.remove(temporary_path)
+        except OSError:
+            pass
+        raise WorkspaceSetupError(500, f"Could not store cover image: {exc}") from exc
+    return stored
+
+
+def delete_cover_image(save_path: str, name: str, filename: str | None = None) -> bool:
+    """Remove cover files. With a filename only that file goes, otherwise
+    every ``cover.*`` leftover. Returns True when anything was removed."""
+    directory = _cover_directory(save_path, name)
+    if directory is None or not os.path.isdir(directory):
+        return False
+    removed = False
+    if filename:
+        if not _COVER_FILENAME_RE.match(filename):
+            return False
+        candidate = os.path.realpath(os.path.join(os.path.realpath(directory), filename))
+        if candidate != os.path.realpath(directory) and candidate.startswith(os.path.realpath(directory) + os.sep) and os.path.isfile(candidate):
+            try:
+                os.remove(candidate)
+                removed = True
+            except OSError:
+                pass
+        return removed
+    try:
+        entries = os.listdir(directory)
+    except OSError:
+        return False
+    for entry in entries:
+        if not entry.startswith("cover_"):
+            continue
+        candidate = os.path.join(directory, entry)
+        if os.path.isfile(candidate):
+            try:
+                os.remove(candidate)
+                removed = True
+            except OSError:
+                continue
+    return removed
+
+
+def cover_image_path(save_path: str, name: str, filename: str) -> str | None:
+    """Resolve an uploaded cover file, or None when missing/invalid."""
+    directory = _cover_directory(save_path, name)
+    if directory is None or not filename or not _COVER_FILENAME_RE.match(filename):
+        return None
+    if os.path.splitext(filename)[1].lower() not in COVER_IMAGE_EXTENSIONS:
+        return None
+    base_real = os.path.realpath(directory)
+    candidate = os.path.realpath(os.path.join(base_real, filename))
+    if candidate != base_real and candidate.startswith(base_real + os.sep) and os.path.isfile(candidate):
+        return candidate
+    return None
