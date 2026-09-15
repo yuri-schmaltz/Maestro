@@ -5,6 +5,7 @@ import type {
   AppSection,
   AspectRatio,
   GenerationMode,
+  ProjectsRootInfo,
   ResolutionPreset,
 } from '../types'
 import type { AppState } from './useStore'
@@ -12,7 +13,8 @@ import type { AppState } from './useStore'
 export type WorkspaceSlice = Pick<AppState,
   'workspaces' | 'activeWorkspace' | 'activeWorkspaceSetup' | 'activeWorkspaceSetupLoading' |
   'browsingUploads' | 'loadWorkspaceSetup' | 'saveWorkspaceSetup' | 'applyWorkspaceSetup' |
-  'loadWorkspaces' | 'switchWorkspace' | 'createWorkspace' | 'deleteWorkspace'
+  'loadWorkspaces' | 'switchWorkspace' | 'createWorkspace' | 'deleteWorkspace' |
+  'projectsRoot' | 'loadProjectsRoot' | 'setProjectsRoot'
 >
 
 /** Workspace state and actions composed into the root store. */
@@ -25,6 +27,31 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
   activeWorkspaceSetup: null,
   activeWorkspaceSetupLoading: false,
   browsingUploads: false,
+
+  // Storage settings: where new workspaces are created. Hydrated by
+  // `loadProjectsRoot` at boot and updated through `setProjectsRoot`.
+  // `null` until the first fetch resolves so the Settings UI doesn't
+  // render stale values from a previous session.
+  projectsRoot: null as ProjectsRootInfo | null,
+  loadProjectsRoot: async () => {
+    try {
+      const info = await api.fetchProjectsRoot()
+      set({ projectsRoot: info })
+    } catch (e) {
+      console.error('Failed to load projects root:', e)
+      // Leave the previous value in place; the UI surfaces the error.
+    }
+  },
+  setProjectsRoot: async (path: string) => {
+    const info = await api.setProjectsRoot(path)
+    set({ projectsRoot: info })
+    // The new root only affects future workspaces, but the visible
+    // workspace list may have stale paths for entries that were
+    // resolved before the change. Reload so the gallery reflects the
+    // new layout immediately.
+    await get().loadWorkspaces()
+    return info
+  },
 
   loadWorkspaceSetup: async (name) => {
     const request = ++setupRequest

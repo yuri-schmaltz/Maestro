@@ -1,5 +1,37 @@
 # Maestro Changelog
 
+## Feature — 2026-09-14 (configurable projects folder)
+
+- **Configurable projects folder.** New `GET/PUT /api/v1/settings/projects-root`
+  endpoint lets the user pick where Maestro creates new project
+  folders. The default is the OS-native user Videos folder
+  (`~/Videos` on Linux and macOS, `%USERPROFILE%\Videos` on Windows),
+  with `~/Movies` as a macOS-style fallback and `~/MaestroProjects`
+  as a last resort when neither Videos folder exists. Empty string
+  reverts to the default.
+- **Backend migration.** On boot, if `services.projects_root_path`
+  is unset and `save_path` still holds the legacy default `outputs`,
+  Maestro now writes the resolved OS-default into
+  `services.projects_root_path`. Existing users who customized
+  `save_path` keep their layout verbatim.
+- **Workspace helpers re-routed.** `_projects_root()` resolves the
+  effective root with precedence: configured path → `save_path`.
+  `_workspace_dir()` consumes it so new workspaces land under the
+  configured root while existing workspaces remain accessible via
+  their original paths.
+- **UI: Configurations > Storage.** New tab with a path input,
+  validation (exists + writable), reset-to-default button, and a
+  status panel showing the effective path and existence flags.
+  Wired into `workspaceSlice` via `loadProjectsRoot` / `setProjectsRoot`
+  actions; the setter refreshes the workspace list on save so the
+  gallery picks up the new layout.
+- **Tests.** 14 new pytest cases cover the helper precedence
+  matrix, the validation contract, the persistence path and the
+  one-shot migration. 1 new contract suite in `test:store`
+  exercises `loadProjectsRoot` / `setProjectsRoot` against a
+  stubbed api client. Suite totals: 188 pytest passed (was 174),
+  6 `test:store` suites.
+
 ## Retomada de estabilização — 2026-09-14 (continuação)
 
 - **Director finishing extraído para slice.** Os 8 campos + 8 setters

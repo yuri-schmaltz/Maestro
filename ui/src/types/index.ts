@@ -1137,7 +1137,7 @@ export interface MultiClip {
   durationFrames?: number
 }
 
-export type SettingsTab = 'performance' | 'integrations' | 'style_bibles' | 'notifications'
+export type SettingsTab = 'performance' | 'integrations' | 'storage' | 'style_bibles' | 'notifications'
 
 export interface ServicesConfig {
   llm_model_id: string
@@ -1518,6 +1518,18 @@ export interface DirectorImageGenProgress {
   total: number
   currentClipLabel: string
   status: 'generating' | 'polling' | 'downloading' | 'done' | 'error' | 'cancelled'
+}
+
+/** Wire shape returned by GET/PUT /api/v1/settings/projects-root.
+ *  The configured path is empty when the user hasn't customized it;
+ *  the backend then falls back to the OS-default Videos folder (or
+ *  ``~/MaestroProjects`` when Videos is unusable). */
+export interface ProjectsRootInfo {
+  configured_path: string
+  default_path: string
+  effective_path: string
+  exists: boolean
+  writable: boolean
 }
 
 /** Counter fed by the /api/v1/audio/analyze/status polling loop. The

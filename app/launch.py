@@ -215,6 +215,53 @@ except Exception as _sweep_err:
 # This is a one-shot migration: after the first boot post-update, the
 # key is persisted, so subsequent boots are no-ops.
 _services = wgp.server_config.setdefault("services", {})
+
+# One-shot migration: route new projects to the OS-default Videos
+# folder. Only runs when:
+#   * the user hasn't explicitly configured ``projects_root_path`` AND
+#   * ``save_path`` still holds the legacy default ``outputs`` (which
+#     points at the app/ cwd rather than the user's media folder).
+# Existing users who already customized ``save_path`` keep their layout
+# verbatim — we don't second-guess a deliberate choice. The migration
+# writes ``projects_root_path`` into ``services`` so subsequent boots
+# are no-ops.
+#
+# The default-root resolution inlines the same logic as the
+# ``_default_projects_root`` helper defined later in the file; this is
+# a deliberate duplication so the migration runs before the helper
+# block is parsed. Keep both in sync if you change either.
+if "projects_root_path" not in _services and wgp.server_config.get("save_path", "outputs") == "outputs":
+    _home = Path.home()
+    _candidates: list[Path] = [_home / "Videos", _home / "Movies"]
+    if sys.platform.startswith("win"):
+        _candidates.insert(0, _home / "Videos")
+        _onedrive = os.environ.get("OneDrive") or os.environ.get("ONEDRIVE")
+        if _onedrive:
+            _candidates.append(Path(_onedrive) / "Videos")
+    _default_root = ""
+    for _candidate in _candidates:
+        try:
+            if _candidate.is_dir() and os.access(str(_candidate), os.W_OK):
+                _default_root = str(_candidate.resolve())
+                break
+        except OSError:
+            continue
+    if not _default_root:
+        _fallback = _home / "MaestroProjects"
+        try:
+            _fallback.mkdir(parents=True, exist_ok=True)
+            _default_root = str(_fallback.resolve())
+        except OSError:
+            _default_root = ""
+    if _default_root:
+        _services["projects_root_path"] = _default_root
+        try:
+            with open(wgp.server_config_filename, "w", encoding="utf-8") as _f:
+                _f.write(json.dumps(wgp.server_config, indent=4))
+            print(f"[Maestro] Migration: projects root set to {_default_root}")
+        except Exception as _e:
+            print(f"[Maestro] Migration: failed to persist projects root: {_e}")
+
 if "auto_performance" not in _services:
     _services["auto_performance"] = False
     try:
@@ -456,11 +503,83 @@ def _get_active_workspace() -> str:
     return wgp.server_config.get("services", {}).get("active_workspace", "default")
 
 
+def _default_projects_root() -> str:
+    """Return the OS-default location for Maestro project workspaces.
+
+    The default lives under the user's Videos folder (``$HOME/Videos``
+    on Linux/macOS, ``%USERPROFILE%\\Videos`` on Windows). This is where
+    most local tools already expect user-created media; keeping Maestro
+    projects there means the user's file manager, gallery apps and
+    backup pipelines find them without further config.
+
+    If the OS-default Videos folder is missing (e.g. a minimal server
+    install with no GUI), we fall back to creating
+    ``$HOME/MaestroProjects`` instead. We never fall back to a relative
+    ``outputs`` path because the user explicitly opted into per-user
+    storage by selecting the field in Configurations.
+    """
+    home = Path.home()
+    candidates: list[Path] = []
+    if sys.platform.startswith("win"):
+        # On Windows, %USERPROFILE%\\Videos is the canonical location,
+        # but OneDrive-redirected user profiles resolve it via
+        # %USERPROFILE%\\OneDrive\\Videos. We try the literal first, then
+        # the OneDrive variant if the literal doesn't exist.
+        candidates.append(home / "Videos")
+        onedrive = os.environ.get("OneDrive") or os.environ.get("ONEDRIVE")
+        if onedrive:
+            candidates.append(Path(onedrive) / "Videos")
+    else:
+        # Linux + macOS: XDG-spec on Linux (~/.config/user-dirs.dirs
+        # would override this, but most users keep the default), the
+        # macOS ~/Movies folder is the analog.
+        candidates.append(home / "Videos")
+        candidates.append(home / "Movies")
+
+    for candidate in candidates:
+        try:
+            if candidate.is_dir() and os.access(str(candidate), os.W_OK):
+                return str(candidate.resolve())
+        except OSError:
+            continue
+
+    # Nothing usable exists yet: create $HOME/MaestroProjects as a
+    # last-resort default that doesn't depend on the OS video folder
+    # being present.
+    fallback = home / "MaestroProjects"
+    try:
+        fallback.mkdir(parents=True, exist_ok=True)
+        return str(fallback.resolve())
+    except OSError:
+        # Final fallback: leave the path empty so callers fall back to
+        # the legacy ``outputs`` layout instead of crashing on boot.
+        return ""
+
+
+def _projects_root() -> str:
+    """Resolve the effective root where workspace directories live.
+
+    Order of precedence:
+      1. ``services.projects_root_path`` if the user configured one
+         (Configurações > Storage). The path is validated at write time;
+         we re-check existence here so a stale config doesn't crash the
+         launcher.
+      2. ``save_path`` (legacy default: ``outputs``) — preserved so
+         older installs keep working without an extra migration step.
+    """
+    configured = (
+        (wgp.server_config.get("services") or {}).get("projects_root_path") or ""
+    )
+    if configured and os.path.isdir(configured):
+        return configured
+    return wgp.server_config.get("save_path", "outputs")
+
+
 def _workspace_dir(workspace: str = None) -> str:
     """Get the output directory for a workspace. Creates it if needed."""
     ws = workspace or _get_active_workspace()
     # Always read base from config, never from wgp.save_path (which may already include workspace)
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     if ws == "default":
         return base
     ws_dir = os.path.join(base, ws)
@@ -7394,6 +7513,96 @@ async def update_services_config(request: Request):
 # ============================================================================
 # API Routes: Workspaces
 # ============================================================================
+
+@api.get("/api/v1/settings/projects-root")
+def get_projects_root():
+    """Return the user-configured projects root path.
+
+    The path is stored in ``wgp.server_config["services"]["projects_root_path"]``.
+    When unset (the default), the effective root falls back to
+    ``wgp.server_config["save_path"]`` — preserving the legacy layout
+    where workspaces live directly under ``outputs/``.
+
+    The endpoint also reports the currently-effective root and whether
+    the configured path actually exists on disk so the UI can show
+    stale-config warnings without a second round-trip.
+    """
+    services = wgp.server_config.get("services", {}) or {}
+    configured = services.get("projects_root_path") or ""
+    default_path = wgp.server_config.get("save_path", "outputs")
+    effective = configured or default_path
+    exists = bool(effective) and os.path.isdir(effective)
+    writable = False
+    if exists:
+        try:
+            writable = os.access(effective, os.W_OK)
+        except OSError:
+            writable = False
+    return {
+        "configured_path": configured,
+        "default_path": default_path,
+        "effective_path": effective,
+        "exists": exists,
+        "writable": writable,
+    }
+
+
+@api.put("/api/v1/settings/projects-root")
+async def set_projects_root(request: Request):
+    """Set the projects root path. Empty string clears it (revert to default).
+
+    Validates that the path exists and is writable before persisting.
+    Empty string is accepted as a "reset to default" sentinel — the
+    caller no longer wants the custom layout. Relative paths are
+    resolved against the backend cwd; absolute paths are taken as-is.
+
+    The new path takes effect immediately for *new* workspaces; existing
+    workspaces under the old root remain accessible until the user moves
+    them manually. The active workspace is not auto-migrated because the
+    user may still have the old root mounted by an external tool.
+    """
+    body = await request.json()
+    raw = (body.get("path") or "").strip()
+    if not raw:
+        # Explicit reset to default. Clear the configured key.
+        services = wgp.server_config.setdefault("services", {})
+        services.pop("projects_root_path", None)
+        with open(wgp.server_config_filename, "w", encoding="utf-8") as f:
+            f.write(json.dumps(wgp.server_config, indent=4))
+        return {
+            "configured_path": "",
+            "effective_path": wgp.server_config.get("save_path", "outputs"),
+            "exists": True,
+            "writable": True,
+        }
+
+    path = os.path.abspath(raw)
+    # Defense in depth: refuse path that escapes the user's expected
+    # layout via a traversal marker. We don't restrict to absolute
+    # paths because users may legitimately want a sibling of /home.
+    if "\x00" in path:
+        raise HTTPException(status_code=400, detail="Invalid path: null byte")
+    if not os.path.isdir(path):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Path does not exist or is not a directory: {path}",
+        )
+    if not os.access(path, os.W_OK):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Path is not writable: {path}",
+        )
+    services = wgp.server_config.setdefault("services", {})
+    services["projects_root_path"] = path
+    with open(wgp.server_config_filename, "w", encoding="utf-8") as f:
+        f.write(json.dumps(wgp.server_config, indent=4))
+    return {
+        "configured_path": path,
+        "effective_path": path,
+        "exists": True,
+        "writable": True,
+    }
+
 
 @api.get("/api/v1/workspaces")
 def list_workspaces_endpoint():

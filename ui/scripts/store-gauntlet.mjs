@@ -293,7 +293,75 @@ pendingImageGen.catch(() => undefined)
 
 useStore.setState(original, true)
 globalThis.fetch = (url, options) => new Promise(resolve => pending.push({ url, options, resolve }))
+
+// --- Storage contracts (projectsRoot, workspaceSlice) ---
+// The hydration action and setter route through the api client. Stub
+// fetch with a deterministic projectsRoot shape so we can assert the
+// round-trip without touching the real backend.
+let projectsRootCallCount = 0
+let lastSetPayload = null
+globalThis.fetch = async (url, options) => {
+  projectsRootCallCount += 1
+  const method = options?.method || 'GET'
+  if (String(url).endsWith('/api/v1/settings/projects-root') && method === 'GET') {
+    return new Response(JSON.stringify({
+      configured_path: '',
+      default_path: 'outputs',
+      effective_path: '/home/user/Videos',
+      exists: true,
+      writable: true,
+    }))
+  }
+  if (String(url).endsWith('/api/v1/settings/projects-root') && method === 'PUT') {
+    lastSetPayload = JSON.parse(options.body)
+    // Empty path → backend returns the default effective_path.
+    const effective = lastSetPayload.path || '/home/user/Videos'
+    return new Response(JSON.stringify({
+      configured_path: lastSetPayload.path,
+      default_path: 'outputs',
+      effective_path: effective,
+      exists: true,
+      writable: true,
+    }))
+  }
+  // Stub loadWorkspaces triggered by setProjectsRoot on success.
+  if (String(url).endsWith('/api/v1/workspaces') && method === 'GET') {
+    return new Response(JSON.stringify({ workspaces: [{ name: 'default', path: '/home/user/Videos', file_count: 0, modified: 0, setup: {} }], active: 'default' }))
+  }
+  return new Response('{}')
+}
+useStore.setState({ projectsRoot: null })
+await useStore.getState().loadProjectsRoot()
+let stp = useStore.getState()
+assert.ok(stp.projectsRoot, 'loadProjectsRoot hydrates the store')
+assert.equal(stp.projectsRoot.effective_path, '/home/user/Videos')
+assert.equal(stp.projectsRoot.configured_path, '')
+assert.equal(stp.projectsRoot.writable, true)
+assert.equal(projectsRootCallCount, 1, 'loadProjectsRoot issues exactly one GET')
+// Setter: empty path reverts to default; the backend then returns the
+// effective path under the OS-default folder.
+lastSetPayload = null
+const reverted = await useStore.getState().setProjectsRoot('')
+assert.equal(lastSetPayload.path, '', 'empty path is sent as-is')
+assert.equal(reverted.configured_path, '')
+assert.equal(reverted.effective_path, '/home/user/Videos')
+stp = useStore.getState()
+assert.equal(stp.projectsRoot.configured_path, '')
+// Setter: custom path is persisted.
+lastSetPayload = null
+const customInfo = await useStore.getState().setProjectsRoot('/mnt/media/Maestro')
+assert.equal(lastSetPayload.path, '/mnt/media/Maestro')
+assert.equal(customInfo.configured_path, '/mnt/media/Maestro')
+assert.equal(customInfo.effective_path, '/mnt/media/Maestro')
+stp = useStore.getState()
+assert.equal(stp.projectsRoot.configured_path, '/mnt/media/Maestro')
+// Setter refreshes the workspace list so the gallery picks up the new
+// layout. The PUT triggers one GET for loadWorkspaces.
+assert.ok(projectsRootCallCount >= 3, 'setProjectsRoot refreshes loadWorkspaces')
+useStore.setState(original, true)
+
 console.log('Cancel contracts passed: analyze / track-gen / image-gen idempotent cancels, abort signals, server-side job cancellation and unified cancelPlan shape.')
+console.log('Storage contracts passed: loadProjectsRoot hydration, setProjectsRoot empty revert and custom path persistence, workspace refresh on save.')
 console.log('Store contracts passed: workspace races, late saves, progress lifecycle, LoRA phases, plugin identity, mode snapshots and workflow routing.')
 
 // --- Persistence contracts (studioPersistence, no store instance) ---

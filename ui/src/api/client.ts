@@ -1908,6 +1908,44 @@ export async function fetchSystemConfig(): Promise<import('../types').SystemConf
   return res.json()
 }
 
+// --- Projects Root (Storage settings) ---
+
+export interface ProjectsRootInfo {
+  /** User-configured path. Empty string = no custom path (use default). */
+  configured_path: string
+  /** Fallback path the backend uses when nothing is configured. */
+  default_path: string
+  /** The path the backend will actually use for new workspaces. */
+  effective_path: string
+  exists: boolean
+  writable: boolean
+}
+
+export async function fetchProjectsRoot(): Promise<ProjectsRootInfo> {
+  const res = await fetch(`${BASE}/api/v1/settings/projects-root`)
+  if (!res.ok) throw new Error('Failed to fetch projects root')
+  return res.json()
+}
+
+/**
+ * Set the projects root path. Pass an empty string to revert to the
+ * backend default (currently the OS-default Videos folder, falling back
+ * to ``outputs`` if the Videos folder isn't usable). The backend
+ * validates that the path exists and is writable before persisting.
+ */
+export async function setProjectsRoot(path: string): Promise<ProjectsRootInfo> {
+  const res = await fetch(`${BASE}/api/v1/settings/projects-root`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Failed to set projects root' }))
+    throw new Error(err.detail || 'Failed to set projects root')
+  }
+  return res.json()
+}
+
 export async function scanModelFolders(): Promise<{ candidates: import('../types').ModelFolderCandidate[] }> {
   const res = await fetch(`${BASE}/api/v1/model-folders/scan`)
   if (!res.ok) throw new Error('Failed to scan for model folders')
