@@ -1,16 +1,14 @@
-import { Cpu, Bell, Cable, BookOpen, HardDrive } from 'lucide-react'
+import { Cpu, Bell, Cable, HardDrive } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { SystemSettingsPanel } from './SystemSettingsPanel'
 import { ServicesSettingsPanel } from './ServicesSettingsPanel'
 import { NotificationSettingsPanel } from './NotificationSettingsPanel'
-import { StyleBiblesSettingsPanel } from './StyleBiblesSettingsPanel'
 import { StorageSettingsPanel } from './StorageSettingsPanel'
 
 const tabs = [
   { id: 'performance', label: 'Performance', description: 'Hardware, models and storage', icon: Cpu },
   { id: 'integrations', label: 'Integrations', description: 'Language models and services', icon: Cable },
   { id: 'storage', label: 'Storage', description: 'Where new projects are created on disk', icon: HardDrive },
-  { id: 'style_bibles', label: 'Style Bibles', description: 'Director character & environment anchors', icon: BookOpen },
   { id: 'notifications', label: 'Notifications', description: 'Alerts, sounds and delivery', icon: Bell },
 ] as const
 
@@ -28,7 +26,6 @@ export function SettingsDrawer() {
             {active === 'performance' && <SystemSettingsPanel />}
             {active === 'integrations' && <ServicesSettingsPanel />}
             {active === 'storage' && <StorageSettingsPanel />}
-            {active === 'style_bibles' && <StyleBiblesSettingsPanel />}
             {active === 'notifications' && <NotificationSettingsPanel />}
           </div>
         </div>

@@ -4,18 +4,17 @@ import * as api from '../../api/client'
 import type { CharacterAnchor, EnvironmentAnchor, LoraConfig, StyleBible, StyleBibleSummary } from '../../api/client'
 
 /**
- * Style Bible configuration panel.
+ * StyleBiblesModal — global Style Bible editor surfaced from any
+ * Director surface (header button). The editor itself is the same
+ * surface that used to live in Configurations; it's now modal so the
+ * user can manage their library without leaving the workflow that
+ * actually consumes them.
  *
- * Pattern lifted from directo_studio M1. Lets the operator manage
- * Style Bibles from the Configurations page: list, open, create,
- * edit, delete. The editor is intentionally compact — it covers the
- * metadata + characters + environments + loras + global style/negative
- * fields enough to be useful for Director v2, but it is NOT a full
- * Style Bible IDE. The editor's job is to expose every field the
- * backend can store; the workflow is "edit a few fields, save, see
- * it in the Director".
+ * Bibles are global templates stored at app/settings/style_bibles/
+ * — not per-project data — so the natural home for management is
+ * wherever the Director is, not inside a project setup form.
  */
-export function StyleBiblesSettingsPanel() {
+export function StyleBiblesModal({ onClose }: { onClose: () => void }) {
   const [bibles, setBibles] = useState<StyleBibleSummary[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -37,6 +36,14 @@ export function StyleBiblesSettingsPanel() {
   }, [])
 
   useEffect(() => { void refresh() }, [refresh])
+
+  // Escape closes the modal — matches the SaveRecipeDialog/RecipesOverlay
+  // pattern so users get the same keyboard affordance everywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   const openEditor = useCallback(async (id: string) => {
     setError(null)
@@ -97,90 +104,117 @@ export function StyleBiblesSettingsPanel() {
   }, [editing, refresh])
 
   return (
-    <section className="settings-panel" aria-label="Style Bibles settings">
-      <header className="settings-panel-header" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <h2><BookOpen size={18} aria-hidden="true" /> Style Bibles</h2>
-          <p>Reusable character / environment / LoRA anchors for the Director.</p>
-        </div>
-        <div className="settings-row-actions">
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={loading}
-            className="settings-button settings-button-ghost"
-            aria-label="Refresh Style Bibles"
-          >
-            {loading ? <Loader2 className="animate-spin" size={12} /> : 'Refresh'}
-          </button>
-          <button
-            type="button"
-            onClick={startCreate}
-            className="settings-button settings-button-primary"
-          >
-            <Plus size={12} /> New Bible
-          </button>
-        </div>
-      </header>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Style Bibles manager"
+    >
+      <div
+        className="bg-bg-secondary border border-border rounded-xl shadow-2xl w-[860px] max-w-[96vw] max-h-[88vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        <header className="flex items-center justify-between gap-3 px-5 py-3 border-b border-border">
+          <div className="flex items-center gap-2 min-w-0">
+            <BookOpen size={16} className="text-accent-blue shrink-0" aria-hidden="true" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-text-primary">Style Bibles</h2>
+              <p className="text-2xs text-text-muted leading-snug">
+                Global character / environment / LoRA anchors. Reusable across all projects.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={loading}
+              className="text-xs px-2 py-1 rounded border border-border hover:bg-bg-tertiary disabled:opacity-40 flex items-center gap-1"
+              aria-label="Refresh Style Bibles"
+            >
+              {loading ? <Loader2 className="animate-spin" size={11} /> : 'Refresh'}
+            </button>
+            <button
+              type="button"
+              onClick={startCreate}
+              className="text-xs px-2 py-1 rounded bg-accent-blue text-white flex items-center gap-1"
+            >
+              <Plus size={11} /> New Bible
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-xs px-1.5 py-1 rounded border border-border hover:bg-bg-tertiary ml-1"
+              aria-label="Close Style Bibles manager"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        </header>
 
-      {error && (
-        <p role="alert" className="settings-feedback error">
-          {error}
-        </p>
-      )}
-
-      {!editing && (
-        <ul className="divide-y divide-border rounded border border-border">
-          {bibles.length === 0 && !loading && (
-            <li className="p-3 text-xs text-text-muted">
-              No Style Bibles yet. Click "New Bible" to create one.
-            </li>
+        <div className="flex-1 min-h-0 overflow-auto px-5 py-4 space-y-3">
+          {error && (
+            <p role="alert" className="text-xs px-3 py-2 rounded border border-red-400/40 bg-red-400/10 text-red-400">
+              {error}
+            </p>
           )}
-          {bibles.map(bible => (
-            <li key={bible.id} className="p-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="min-w-0">
-                <div className="text-sm font-medium truncate">{bible.title}</div>
-                <div className="text-2xs text-text-muted truncate">
-                  id: <span className="font-mono">{bible.id}</span>
-                  {' · '}
-                  chars={bible.characters_count} envs={bible.environments_count} loras={bible.loras_count}
-                  {bible.tags.length > 0 && ` · ${bible.tags.join(', ')}`}
-                </div>
-              </div>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => void openEditor(bible.id)}
-                  disabled={busyId === bible.id}
-                  className="text-xs px-2 py-1 rounded border border-border hover:bg-bg-tertiary flex items-center gap-1 disabled:opacity-40"
-                  aria-label={`Edit ${bible.id}`}
-                >
-                  <Pencil size={11} /> Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void remove(bible.id)}
-                  disabled={busyId === bible.id}
-                  className="text-xs px-2 py-1 rounded border border-red-400/60 text-red-400 hover:bg-red-400/10 flex items-center gap-1 disabled:opacity-40"
-                  aria-label={`Delete ${bible.id}`}
-                >
-                  <Trash2 size={11} /> Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
 
-      {editing && (
-        <StyleBibleEditor
-          bible={editing}
-          isCreating={creating}
-          onSave={saveEdit}
-          onCancel={cancelEdit}
-        />
-      )}
-    </section>
+          {!editing && (
+            <ul className="divide-y divide-border rounded border border-border">
+              {bibles.length === 0 && !loading && (
+                <li className="p-3 text-xs text-text-muted">
+                  No Style Bibles yet. Click "New Bible" to create one.
+                </li>
+              )}
+              {bibles.map(bible => (
+                <li key={bible.id} className="p-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{bible.title}</div>
+                    <div className="text-2xs text-text-muted truncate">
+                      id: <span className="font-mono">{bible.id}</span>
+                      {' · '}
+                      chars={bible.characters_count} envs={bible.environments_count} loras={bible.loras_count}
+                      {bible.tags.length > 0 && ` · ${bible.tags.join(', ')}`}
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => void openEditor(bible.id)}
+                      disabled={busyId === bible.id}
+                      className="text-xs px-2 py-1 rounded border border-border hover:bg-bg-tertiary flex items-center gap-1 disabled:opacity-40"
+                      aria-label={`Edit ${bible.id}`}
+                    >
+                      <Pencil size={11} /> Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void remove(bible.id)}
+                      disabled={busyId === bible.id}
+                      className="text-xs px-2 py-1 rounded border border-red-400/60 text-red-400 hover:bg-red-400/10 flex items-center gap-1 disabled:opacity-40"
+                      aria-label={`Delete ${bible.id}`}
+                    >
+                      <Trash2 size={11} /> Delete
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+
+          {editing && (
+            <StyleBibleEditor
+              bible={editing}
+              isCreating={creating}
+              onSave={saveEdit}
+              onCancel={cancelEdit}
+            />
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -193,8 +227,6 @@ function StyleBibleEditor({ bible, isCreating, onSave, onCancel }: {
   const [draft, setDraft] = useState<StyleBible>(bible)
   const [openSection, setOpenSection] = useState<'characters' | 'environments' | 'loras' | 'global'>('characters')
 
-  // Re-init draft when the parent swaps the bible underneath us
-  // (e.g. openEditor selects a different bible while we're mounted).
   useEffect(() => { setDraft(bible) }, [bible])
 
   const setMeta = (patch: Partial<StyleBible['metadata']>) => {
@@ -378,29 +410,14 @@ function CharacterList({ characters, onChange }: {
   return (
     <ul className="space-y-2">
       {Object.entries(characters).map(([key, ch]) => (
-        <li key={key || '__new__'} className="rounded border border-border p-2 space-y-1 bg-bg-secondary/40">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={ch.id}
-              onChange={e => {
-                const newId = e.target.value
-                if (!newId || characters[newId]) return
-                const next = { ...characters }
-                delete next[key]
-                next[newId] = { ...ch, id: newId }
-                onChange(next)
-              }}
-              placeholder="id"
-              className="flex-1 rounded border border-border bg-bg-tertiary p-1 text-2xs font-mono"
-              aria-label="Character id"
-            />
+        <li key={key || '__new__'} className="rounded border border-border p-2 space-y-1">
+          <div className="flex gap-1">
             <input
               type="text"
               value={ch.name}
+              placeholder="Name"
               onChange={e => onChange({ ...characters, [key]: { ...ch, name: e.target.value } })}
-              placeholder="name"
-              className="flex-1 rounded border border-border bg-bg-tertiary p-1 text-2xs"
+              className="flex-1 rounded border border-border bg-bg-tertiary p-1 text-xs"
               aria-label="Character name"
             />
             <button
@@ -410,41 +427,38 @@ function CharacterList({ characters, onChange }: {
                 delete next[key]
                 onChange(next)
               }}
-              className="text-red-400 hover:text-red-300"
-              aria-label={`Remove ${ch.name || key}`}
+              className="text-xs px-2 py-0.5 rounded border border-red-400/60 text-red-400 hover:bg-red-400/10"
+              aria-label="Remove character"
             >
-              <Trash2 size={12} />
+              <Trash2 size={11} />
             </button>
           </div>
           <textarea
             rows={2}
             value={ch.physical_description}
+            placeholder="Physical description (locks the character's look)"
             onChange={e => onChange({ ...characters, [key]: { ...ch, physical_description: e.target.value } })}
-            placeholder="physical description"
-            className="w-full rounded border border-border bg-bg-tertiary p-1 text-2xs"
+            className="w-full rounded border border-border bg-bg-tertiary p-1 text-xs"
             aria-label="Character physical description"
           />
           <input
             type="text"
             value={ch.wardrobe}
+            placeholder="Wardrobe"
             onChange={e => onChange({ ...characters, [key]: { ...ch, wardrobe: e.target.value } })}
-            placeholder="wardrobe"
-            className="w-full rounded border border-border bg-bg-tertiary p-1 text-2xs"
+            className="w-full rounded border border-border bg-bg-tertiary p-1 text-xs"
             aria-label="Character wardrobe"
           />
           <input
             type="text"
             value={ch.color_palette.join(', ')}
-            onChange={e => onChange({ ...characters, [key]: { ...ch, color_palette: e.target.value.split(',').map(c => c.trim()).filter(Boolean) } })}
-            placeholder="color palette (comma-separated)"
-            className="w-full rounded border border-border bg-bg-tertiary p-1 text-2xs"
+            placeholder="Color palette (comma-separated)"
+            onChange={e => onChange({ ...characters, [key]: { ...ch, color_palette: e.target.value.split(',').map(t => t.trim()).filter(Boolean) } })}
+            className="w-full rounded border border-border bg-bg-tertiary p-1 text-xs"
             aria-label="Character color palette"
           />
         </li>
       ))}
-      {Object.keys(characters).length === 0 && (
-        <li className="text-2xs text-text-muted">No characters yet. Click + Add to create one.</li>
-      )}
     </ul>
   )
 }
@@ -456,29 +470,14 @@ function EnvironmentList({ environments, onChange }: {
   return (
     <ul className="space-y-2">
       {Object.entries(environments).map(([key, env]) => (
-        <li key={key || '__new__'} className="rounded border border-border p-2 space-y-1 bg-bg-secondary/40">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={env.id}
-              onChange={e => {
-                const newId = e.target.value
-                if (!newId || environments[newId]) return
-                const next = { ...environments }
-                delete next[key]
-                next[newId] = { ...env, id: newId }
-                onChange(next)
-              }}
-              placeholder="id"
-              className="flex-1 rounded border border-border bg-bg-tertiary p-1 text-2xs font-mono"
-              aria-label="Environment id"
-            />
+        <li key={key || '__new__'} className="rounded border border-border p-2 space-y-1">
+          <div className="flex gap-1">
             <input
               type="text"
               value={env.name}
+              placeholder="Name"
               onChange={e => onChange({ ...environments, [key]: { ...env, name: e.target.value } })}
-              placeholder="name"
-              className="flex-1 rounded border border-border bg-bg-tertiary p-1 text-2xs"
+              className="flex-1 rounded border border-border bg-bg-tertiary p-1 text-xs"
               aria-label="Environment name"
             />
             <button
@@ -488,41 +487,38 @@ function EnvironmentList({ environments, onChange }: {
                 delete next[key]
                 onChange(next)
               }}
-              className="text-red-400 hover:text-red-300"
-              aria-label={`Remove ${env.name || key}`}
+              className="text-xs px-2 py-0.5 rounded border border-red-400/60 text-red-400 hover:bg-red-400/10"
+              aria-label="Remove environment"
             >
-              <Trash2 size={12} />
+              <Trash2 size={11} />
             </button>
           </div>
           <textarea
             rows={2}
             value={env.description}
+            placeholder="Description (locks the environment's look)"
             onChange={e => onChange({ ...environments, [key]: { ...env, description: e.target.value } })}
-            placeholder="description"
-            className="w-full rounded border border-border bg-bg-tertiary p-1 text-2xs"
+            className="w-full rounded border border-border bg-bg-tertiary p-1 text-xs"
             aria-label="Environment description"
           />
           <input
             type="text"
             value={env.lighting}
+            placeholder="Lighting"
             onChange={e => onChange({ ...environments, [key]: { ...env, lighting: e.target.value } })}
-            placeholder="lighting"
-            className="w-full rounded border border-border bg-bg-tertiary p-1 text-2xs"
+            className="w-full rounded border border-border bg-bg-tertiary p-1 text-xs"
             aria-label="Environment lighting"
           />
           <input
             type="text"
             value={env.color_palette.join(', ')}
-            onChange={e => onChange({ ...environments, [key]: { ...env, color_palette: e.target.value.split(',').map(c => c.trim()).filter(Boolean) } })}
-            placeholder="color palette (comma-separated)"
-            className="w-full rounded border border-border bg-bg-tertiary p-1 text-2xs"
+            placeholder="Color palette (comma-separated)"
+            onChange={e => onChange({ ...environments, [key]: { ...env, color_palette: e.target.value.split(',').map(t => t.trim()).filter(Boolean) } })}
+            className="w-full rounded border border-border bg-bg-tertiary p-1 text-xs"
             aria-label="Environment color palette"
           />
         </li>
       ))}
-      {Object.keys(environments).length === 0 && (
-        <li className="text-2xs text-text-muted">No environments yet. Click + Add to create one.</li>
-      )}
     </ul>
   )
 }
@@ -534,22 +530,25 @@ function LoraList({ loras, onChange }: {
   return (
     <ul className="space-y-2">
       {Object.entries(loras).map(([key, lora]) => (
-        <li key={key || '__new__'} className="rounded border border-border p-2 space-y-1 bg-bg-secondary/40">
-          <div className="flex gap-2">
+        <li key={key || '__new__'} className="rounded border border-border p-2 space-y-1">
+          <div className="flex gap-1">
             <input
               type="text"
               value={lora.name}
-              onChange={e => {
-                const newId = e.target.value
-                if (!newId || loras[newId]) return
-                const next = { ...loras }
-                delete next[key]
-                next[newId] = { ...lora, name: newId }
-                onChange(next)
-              }}
-              placeholder="name (also the dictionary key)"
-              className="flex-1 rounded border border-border bg-bg-tertiary p-1 text-2xs font-mono"
+              placeholder="Name"
+              onChange={e => onChange({ ...loras, [key]: { ...lora, name: e.target.value } })}
+              className="flex-1 rounded border border-border bg-bg-tertiary p-1 text-xs"
               aria-label="LoRA name"
+            />
+            <input
+              type="number"
+              step="0.05"
+              min="0"
+              max="2"
+              value={lora.weight}
+              onChange={e => onChange({ ...loras, [key]: { ...lora, weight: Number(e.target.value) } })}
+              className="w-20 rounded border border-border bg-bg-tertiary p-1 text-xs"
+              aria-label="LoRA weight"
             />
             <button
               type="button"
@@ -558,78 +557,44 @@ function LoraList({ loras, onChange }: {
                 delete next[key]
                 onChange(next)
               }}
-              className="text-red-400 hover:text-red-300"
-              aria-label={`Remove ${lora.name || key}`}
+              className="text-xs px-2 py-0.5 rounded border border-red-400/60 text-red-400 hover:bg-red-400/10"
+              aria-label="Remove LoRA"
             >
-              <Trash2 size={12} />
+              <Trash2 size={11} />
             </button>
           </div>
           <input
             type="text"
             value={lora.file_path}
+            placeholder="file path or url"
             onChange={e => onChange({ ...loras, [key]: { ...lora, file_path: e.target.value } })}
-            placeholder="file path (e.g. app/loras/foo.safetensors)"
-            className="w-full rounded border border-border bg-bg-tertiary p-1 text-2xs font-mono"
+            className="w-full rounded border border-border bg-bg-tertiary p-1 text-xs font-mono"
             aria-label="LoRA file path"
           />
-          <div className="grid grid-cols-3 gap-2">
-            <NumberField label="weight" value={lora.weight} onChange={v => onChange({ ...loras, [key]: { ...lora, weight: v } })} />
-            <NumberField label="min" value={lora.weight_min} onChange={v => onChange({ ...loras, [key]: { ...lora, weight_min: v } })} />
-            <NumberField label="max" value={lora.weight_max} onChange={v => onChange({ ...loras, [key]: { ...lora, weight_max: v } })} />
-          </div>
           <input
             type="text"
             value={lora.notes}
+            placeholder="Notes"
             onChange={e => onChange({ ...loras, [key]: { ...lora, notes: e.target.value } })}
-            placeholder="notes"
-            className="w-full rounded border border-border bg-bg-tertiary p-1 text-2xs"
+            className="w-full rounded border border-border bg-bg-tertiary p-1 text-xs"
             aria-label="LoRA notes"
           />
         </li>
       ))}
-      {Object.keys(loras).length === 0 && (
-        <li className="text-2xs text-text-muted">No LoRAs yet. Click + Add to create one.</li>
-      )}
     </ul>
   )
 }
 
-function NumberField({ label, value, onChange }: {
-  label: string
-  value: number
-  onChange: (next: number) => void
-}) {
-  return (
-    <label className="block">
-      <span className="text-text-muted text-2xs">{label}</span>
-      <input
-        type="number"
-        step="0.05"
-        value={value}
-        onChange={e => {
-          const parsed = parseFloat(e.target.value)
-          onChange(Number.isFinite(parsed) ? parsed : 0)
-        }}
-        className="mt-0.5 w-full rounded border border-border bg-bg-tertiary p-1 text-2xs"
-        aria-label={label}
-      />
-    </label>
-  )
-}
-
-// --- Blank Bible helpers ---
-
 function _blankBible(): StyleBible {
-  const stamp = new Date().toISOString()
   return {
     metadata: {
       id: '',
-      title: 'New Style Bible',
+      title: '',
       description: '',
       author: '',
-      created_at: stamp,
-      updated_at: stamp,
       tags: [],
+      created_at: '',
+      updated_at: '',
     },
     characters: {},
     environments: {},
@@ -648,5 +613,5 @@ function _blankEnvironment(): EnvironmentAnchor {
 }
 
 function _blankLora(): LoraConfig {
-  return { name: '', file_path: '', weight: 1.0, weight_min: 0.0, weight_max: 1.0, notes: '' }
+  return { name: '', file_path: '', weight: 1, weight_min: 0, weight_max: 1, notes: '' }
 }
