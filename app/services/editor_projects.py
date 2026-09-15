@@ -539,7 +539,7 @@ def normalize_editor_project(project: Mapping[str, Any], *, workspace: str | Non
         "quality": quality if quality in {"draft", "balanced", "high"} else "high",
         "codec": codec if codec in {"h264", "h265"} else "h264",
         "encoder": encoder
-        if encoder in {"auto", "software", "nvidia", "intel", "apple"}
+        if encoder in {"auto", "software", "nvidia", "intel", "apple", "amd", "vaapi"}
         else "auto",
         "include_audio": bool(export.get("include_audio", True)),
         "resolution": resolution
@@ -594,7 +594,7 @@ def normalize_editor_project(project: Mapping[str, Any], *, workspace: str | Non
                 if record_quality in {"draft", "balanced", "high"}
                 else "high",
                 "encoder": record_encoder
-                if record_encoder in {"auto", "software", "nvidia", "intel", "apple"}
+                if record_encoder in {"auto", "software", "nvidia", "intel", "apple", "amd", "vaapi"}
                 else "auto",
                 "spatial_upsampling": record_upscale
                 if record_upscale in _EDITOR_UPSCALE_METHODS
@@ -999,7 +999,15 @@ def build_editor_media_preview(
 
 @functools.lru_cache(maxsize=4)
 def editor_export_capabilities(ffmpeg: str = "ffmpeg") -> dict[str, Any]:
-    """Inspect the active FFmpeg build once for safe hardware encoders."""
+    """Inspect the active FFmpeg build once for safe hardware encoders.
+
+    Each backend reports a separate "available" flag for H.264, HEVC and
+    AV1 so the resolver can pick the best codec when the user asks for
+    HEVC/AV1 and the build lacks it for a given backend. ``amd`` and
+    ``vaapi`` follow the same shape but require a working runtime —
+    VAAPI in particular needs a ``/dev/dri/renderD*`` node or it is
+    advertised by FFmpeg yet unusable at encode time.
+    """
     try:
         result = subprocess.run(
             [ffmpeg, "-hide_banner", "-encoders"],
@@ -1010,17 +1018,66 @@ def editor_export_capabilities(ffmpeg: str = "ffmpeg") -> dict[str, Any]:
         listing = result.stdout if result.returncode == 0 else ""
     except (OSError, subprocess.SubprocessError):
         listing = ""
+
+    def _has(*names: str) -> bool:
+        return all(name in listing for name in names)
+
+    vaapi_runtime = (
+        os.name != "nt"
+        and any(
+            os.path.exists(f"/dev/dri/renderD{i}")
+            for i in range(128)
+        )
+    )
+
     encoders = {
         "software": True,
-        "nvidia": "h264_nvenc" in listing and "hevc_nvenc" in listing,
-        "intel": "h264_qsv" in listing and "hevc_qsv" in listing,
-        "apple": "h264_videotoolbox" in listing and "hevc_videotoolbox" in listing,
+        "nvidia": {
+            "h264": "h264_nvenc" in listing,
+            "hevc": "hevc_nvenc" in listing,
+            "av1": "av1_nvenc" in listing,
+        },
+        "intel": {
+            "h264": "h264_qsv" in listing,
+            "hevc": "hevc_qsv" in listing,
+            "av1": "av1_qsv" in listing,
+        },
+        "apple": {
+            "h264": "h264_videotoolbox" in listing,
+            "hevc": "hevc_videotoolbox" in listing,
+            "av1": "av1_videotoolbox" in listing,
+        },
+        "amd": {
+            # AMF only ships H.264/HEVC; AV1 landed in driver 23.10+ but
+            # is opt-in. Treat HEVC as the floor for "available" while
+            # exposing AV1 separately.
+            "h264": _has("h264_amf"),
+            "hevc": _has("hevc_amf"),
+            "av1": _has("av1_amf"),
+        },
+        "vaapi": {
+            "h264": "h264_vaapi" in listing and vaapi_runtime,
+            "hevc": "hevc_vaapi" in listing and vaapi_runtime,
+            "av1": "av1_vaapi" in listing and vaapi_runtime,
+        },
+    }
+    # Back-compat: the existing UI (and persisted encoder settings) read a
+    # flat boolean per backend. Derive it from the codec the user picked
+    # most often — HEVC — so callers that don't care about AV1 still see a
+    # familiar shape. The resolver uses the structured dict directly.
+    flat = {
+        "software": True,
+        "nvidia": encoders["nvidia"]["hevc"] and encoders["nvidia"]["h264"],
+        "intel": encoders["intel"]["hevc"] and encoders["intel"]["h264"],
+        "apple": encoders["apple"]["hevc"] and encoders["apple"]["h264"],
+        "amd": encoders["amd"]["hevc"] and encoders["amd"]["h264"],
+        "vaapi": encoders["vaapi"]["hevc"] and encoders["vaapi"]["h264"],
     }
     recommended = next(
-        (name for name in ("nvidia", "apple", "intel") if encoders[name]),
+        (name for name in ("nvidia", "apple", "intel", "amd", "vaapi") if flat[name]),
         "software",
     )
-    return {"encoders": encoders, "recommended": recommended}
+    return {"encoders": flat, "encoders_by_codec": encoders, "recommended": recommended}
 
 
 def _atempo_chain(speed: float) -> list[str]:
@@ -1131,12 +1188,67 @@ def _quality_settings(value: str, codec: str = "h264") -> tuple[str, str]:
     return "medium", "18"
 
 
+_HW_BACKENDS = ("nvidia", "apple", "intel", "amd", "vaapi")
+
+# Map each user-facing codec to the encoder FFmpeg expects. Falls back
+# to H.264 when the requested codec isn't available for the chosen
+# backend so the export never silently downgrades to a wildly different
+# bit budget.
+_CODEC_TO_HW_ENCODER = {
+    "nvidia": {"h264": "h264_nvenc", "hevc": "hevc_nvenc", "av1": "av1_nvenc"},
+    "intel": {"h264": "h264_qsv", "hevc": "hevc_qsv", "av1": "av1_qsv"},
+    "apple": {
+        "h264": "h264_videotoolbox",
+        "hevc": "hevc_videotoolbox",
+        "av1": "av1_videotoolbox",
+    },
+    "amd": {"h264": "h264_amf", "hevc": "hevc_amf", "av1": "av1_amf"},
+    "vaapi": {"h264": "h264_vaapi", "hevc": "hevc_vaapi", "av1": "av1_vaapi"},
+}
+
+_CODEC_ORDER = ("av1", "hevc", "h264")
+
+
+def _select_codec_for_backend(
+    requested: str, backend: str, capabilities: Mapping[str, Any]
+) -> str:
+    """Pick the codec FFmpeg will actually encode with.
+
+    When the user picked a backend that doesn't expose the requested
+    codec (or the requested codec isn't in the supported set), fall back
+    through AV1 → HEVC → H.264 using the per-codec availability table
+    that ``editor_export_capabilities`` emits.
+    """
+    enc_by_codec = capabilities.get("encoders_by_codec") if isinstance(capabilities, Mapping) else None
+    table = enc_by_codec.get(backend) if isinstance(enc_by_codec, Mapping) else None
+    if not isinstance(table, Mapping):
+        # Old capability shape — assume H.264/HEVC only and accept whatever
+        # the user picked if it's "h264" or "h265".
+        return requested if requested in {"h264", "hevc"} else "h264"
+    if requested == "av1":
+        pref = ["av1", "hevc", "h264"]
+    elif requested == "hevc":
+        pref = ["hevc", "av1", "h264"]
+    else:
+        pref = ["h264", "hevc", "av1"]
+    for candidate in pref:
+        if table.get(candidate):
+            return candidate
+    # Backend can't encode any of the requested families — caller will
+    # detect this via the empty selection in resolve_editor_export_encoder.
+    return ""
+
+
 def resolve_editor_export_encoder(
     export_settings: Mapping[str, Any],
     capabilities: Mapping[str, Any] | None = None,
 ) -> tuple[str, str, list[str]]:
     """Return the selected backend, FFmpeg codec, and quality arguments."""
     codec = str(export_settings.get("codec") or "h264")
+    # Back-compat: legacy UI shipped only h264/h265. Treat anything else
+    # as HEVC. AV1 is opt-in via the codec dropdown on the dialog.
+    if codec not in {"h264", "hevc", "av1"}:
+        codec = "h264"
     quality = str(export_settings.get("quality") or "high")
     requested = str(export_settings.get("encoder") or "auto")
     available = (
@@ -1147,37 +1259,85 @@ def resolve_editor_export_encoder(
     )
     if requested == "auto":
         selected = next(
-            (name for name in ("nvidia", "apple", "intel") if available.get(name)),
+            (name for name in _HW_BACKENDS if available.get(name)),
             "software",
         )
-    elif requested in {"nvidia", "apple", "intel"} and available.get(requested):
+    elif requested in _HW_BACKENDS and available.get(requested):
         selected = requested
+    elif requested in _HW_BACKENDS:
+        # User asked for a specific HW backend but it isn't reported as
+        # available — drop to software rather than silently picking a
+        # different backend. The caller still falls back to software
+        # for the auto-mode retry path.
+        selected = "software"
     else:
         selected = "software"
 
     if selected == "software":
         preset, crf = _quality_settings(quality, codec)
-        return selected, "libx265" if codec == "h265" else "libx264", [
-            "-preset", preset, "-crf", crf,
-        ]
+        sw_codec = {"hevc": "libx265", "av1": "libaom-av1"}.get(codec, "libx264")
+        # libaom-av1 is unusably slow; force a reasonable CPU budget.
+        if sw_codec == "libaom-av1":
+            cpu_used = "8" if quality == "draft" else "4" if quality == "balanced" else "3"
+            return selected, sw_codec, [
+                "-cpu-used", cpu_used, "-crf", crf, "-row-mt", "1", "-tile-columns", "2",
+            ]
+        return selected, sw_codec, ["-preset", preset, "-crf", crf]
+
+    effective_codec = _select_codec_for_backend(codec, selected, capabilities)
+    if not effective_codec:
+        # No usable codec for this backend; downgrade to software.
+        selected = "software"
+        return resolve_editor_export_encoder(export_settings, capabilities)
 
     quality_level = {"draft": "30", "balanced": "24", "high": "19"}.get(quality, "19")
     if selected == "nvidia":
-        encoder = "hevc_nvenc" if codec == "h265" else "h264_nvenc"
+        encoder = _CODEC_TO_HW_ENCODER["nvidia"][effective_codec]
         preset = "p4" if quality == "draft" else "p5"
-        return selected, encoder, [
-            "-preset", preset, "-rc", "vbr", "-cq", quality_level, "-b:v", "0",
-        ]
+        args = ["-preset", preset, "-rc", "vbr", "-cq", quality_level, "-b:v", "0"]
+        if effective_codec == "av1":
+            # AV1 NVENC ignores -rc; tune via -cq directly.
+            args = ["-preset", preset, "-cq", quality_level, "-b:v", "0"]
+        return selected, encoder, args
     if selected == "intel":
-        encoder = "hevc_qsv" if codec == "h265" else "h264_qsv"
+        encoder = _CODEC_TO_HW_ENCODER["intel"][effective_codec]
         preset = "faster" if quality == "draft" else "medium"
         return selected, encoder, [
             "-preset", preset, "-global_quality", quality_level,
         ]
+    if selected == "amd":
+        encoder = _CODEC_TO_HW_ENCODER["amd"][effective_codec]
+        # AMF quality maps to -rc vbr with -qp. -usage lowlatency keeps
+        # memory bounded for typical Editor timelines.
+        quality_arg = {"draft": "28", "balanced": "22", "high": "18"}.get(quality, "20")
+        args = ["-rc", "vbr", "-qp", quality_arg, "-usage", "lowlatency"]
+        if effective_codec == "av1":
+            args = ["-rc", "vbr", "-qp", quality_arg]
+        return selected, encoder, args
 
-    encoder = "hevc_videotoolbox" if codec == "h265" else "h264_videotoolbox"
+    if selected == "vaapi":
+        encoder = _CODEC_TO_HW_ENCODER["vaapi"][effective_codec]
+        # VAAPI needs an explicit device path for encode. We pass the
+        # common default and let ffmpeg error out with a clear message
+        # if the host is missing one.
+        device = os.environ.get("MAESTRO_VAAPI_DEVICE", "/dev/dri/renderD128")
+        args = ["-vaapi_device", device, "-rc_mode", "VBR"]
+        if effective_codec == "h264":
+            args += ["-qp", quality_level]
+        elif effective_codec == "hevc":
+            args += ["-qp", quality_level]
+        else:
+            args += ["-qp", quality_level]
+        return selected, encoder, args
+
+    # Apple VideoToolbox
+    encoder = _CODEC_TO_HW_ENCODER["apple"][effective_codec]
     bitrate = {"draft": "4M", "balanced": "8M", "high": "16M"}.get(quality, "16M")
-    return "apple", encoder, ["-b:v", bitrate, "-realtime", "true"]
+    args = ["-b:v", bitrate, "-realtime", "true"]
+    if effective_codec == "av1":
+        # VideoToolbox AV1 has no realtime flag.
+        args = ["-b:v", bitrate]
+    return "apple", encoder, args
 
 
 def editor_export_dimensions(project: Mapping[str, Any]) -> tuple[int, int, float]:
@@ -1587,6 +1747,15 @@ def render_editor_project(
                     "nvidia": False,
                     "intel": False,
                     "apple": False,
+                    "amd": False,
+                    "vaapi": False,
+                },
+                "encoders_by_codec": {
+                    "nvidia": {"h264": False, "hevc": False, "av1": False},
+                    "intel": {"h264": False, "hevc": False, "av1": False},
+                    "apple": {"h264": False, "hevc": False, "av1": False},
+                    "amd": {"h264": False, "hevc": False, "av1": False},
+                    "vaapi": {"h264": False, "hevc": False, "av1": False},
                 },
                 "recommended": "software",
             }

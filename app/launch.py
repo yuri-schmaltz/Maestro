@@ -28,6 +28,7 @@ import threading
 import traceback
 import requests
 from pathlib import Path, PureWindowsPath
+from typing import Optional
 from urllib.parse import quote
 
 # --- Bootstrap: CWD must be app/ and sys.argv must be patched before importing wgp ---
@@ -216,6 +217,109 @@ except Exception as _sweep_err:
 # key is persisted, so subsequent boots are no-ops.
 _services = wgp.server_config.setdefault("services", {})
 
+
+# ---------------------------------------------------------------------------
+# Projects-root helpers (defined here, before the migration block uses them)
+# ---------------------------------------------------------------------------
+def _xdg_video_dir(home: Path) -> Optional[Path]:
+    """Return the user's localized Videos folder per XDG user-dirs.
+
+    The XDG user-dirs spec (freedesktop.org/wiki/Software/xdg-user-dirs/)
+    names the folder after the active locale — ``~/Videos`` in en_US but
+    ``~/Vídeos`` in pt_BR, ``~/Vidéos`` in fr_FR, and so on. Hardcoded
+    ``home / "Videos"`` silently misses the right folder on non-English
+    systems, so we read ``$XDG_VIDEOS_DIR`` (set by the OS) and fall back
+    to the platformdirs parser which walks ``~/.config/user-dirs.dirs``
+    the same way the desktop does.
+
+    Returns ``None`` when no XDG video folder is configured (e.g. a
+    headless server install without the spec installed).
+    """
+    env_value = os.environ.get("XDG_VIDEOS_DIR")
+    if env_value:
+        try:
+            # user-dirs.dirs uses shell-escaped $HOME; expand it before
+            # resolving so we get the real absolute path.
+            expanded = Path(os.path.expandvars(env_value)).expanduser()
+            if expanded.is_absolute():
+                return expanded
+        except OSError:
+            pass
+    # platformdirs is in app/env's bundled deps; it parses
+    # ~/.config/user-dirs.dirs and applies the same locale-aware naming.
+    try:
+        from platformdirs import PlatformDirs  # type: ignore
+        candidate = Path(PlatformDirs("maestro", "maestro").user_videos_dir)
+        # platformdirs returns ``PosixPath('.')`` when the spec isn't
+        # installed (e.g. headless server). Reject empty/relative
+        # paths so we fall through to the ASCII chain below.
+        if str(candidate) and candidate.is_absolute():
+            return candidate
+    except Exception:
+        pass
+    return None
+
+
+def _default_projects_root() -> str:
+    """Return the OS-default location for Maestro project workspaces.
+
+    The default lives under the user's Videos folder (``$HOME/Videos``
+    on Linux/macOS, ``%USERPROFILE%\\Videos`` on Windows). This is where
+    most local tools already expect user-created media; keeping Maestro
+    projects there means the user's file manager, gallery apps and
+    backup pipelines find them without further config.
+
+    On Linux we honor XDG user-dirs (``$XDG_VIDEOS_DIR`` /
+    ``~/.config/user-dirs.dirs``) so localized folder names like pt_BR
+    ``~/Vídeos`` are picked up correctly. We fall back to ``~/Videos``
+    and then ``~/Movies`` for hosts without XDG, and finally create
+    ``$HOME/MaestroProjects`` when no video folder exists yet. We never
+    fall back to a relative ``outputs`` path because the user
+    explicitly opted into per-user storage by selecting the field in
+    Configurations.
+    """
+    home = Path.home()
+    candidates: list[Path] = []
+    if sys.platform.startswith("win"):
+        # On Windows, %USERPROFILE%\\Videos is the canonical location,
+        # but OneDrive-redirected user profiles resolve it via
+        # %USERPROFILE%\\OneDrive\\Videos. We try the literal first, then
+        # the OneDrive variant if the literal doesn't exist.
+        candidates.append(home / "Videos")
+        onedrive = os.environ.get("OneDrive") or os.environ.get("ONEDRIVE")
+        if onedrive:
+            candidates.append(Path(onedrive) / "Videos")
+    else:
+        # Linux + macOS: the XDG user-dirs spec drives the folder name
+        # by locale (e.g. ``~/Vídeos`` on pt_BR systems). Consult it
+        # first, then fall back to the ASCII ``Videos`` and macOS
+        # ``Movies`` for hosts without XDG.
+        xdg_dir = _xdg_video_dir(home)
+        if xdg_dir is not None:
+            candidates.append(xdg_dir)
+        candidates.append(home / "Videos")
+        candidates.append(home / "Movies")
+
+    for candidate in candidates:
+        try:
+            if candidate.is_dir() and os.access(str(candidate), os.W_OK):
+                return str(candidate.resolve())
+        except OSError:
+            continue
+
+    # Nothing usable exists yet: create $HOME/MaestroProjects as a
+    # last-resort default that doesn't depend on the OS video folder
+    # being present.
+    fallback = home / "MaestroProjects"
+    try:
+        fallback.mkdir(parents=True, exist_ok=True)
+        return str(fallback.resolve())
+    except OSError:
+        # Final fallback: leave the path empty so callers fall back to
+        # the legacy ``outputs`` layout instead of crashing on boot.
+        return ""
+
+
 # One-shot migration: route new projects to the OS-default Videos
 # folder. Only runs when:
 #   * the user hasn't explicitly configured ``projects_root_path`` AND
@@ -226,41 +330,103 @@ _services = wgp.server_config.setdefault("services", {})
 # writes ``projects_root_path`` into ``services`` so subsequent boots
 # are no-ops.
 #
-# The default-root resolution inlines the same logic as the
-# ``_default_projects_root`` helper defined later in the file; this is
-# a deliberate duplication so the migration runs before the helper
-# block is parsed. Keep both in sync if you change either.
-if "projects_root_path" not in _services and wgp.server_config.get("save_path", "outputs") == "outputs":
-    _home = Path.home()
-    _candidates: list[Path] = [_home / "Videos", _home / "Movies"]
-    if sys.platform.startswith("win"):
-        _candidates.insert(0, _home / "Videos")
-        _onedrive = os.environ.get("OneDrive") or os.environ.get("ONEDRIVE")
-        if _onedrive:
-            _candidates.append(Path(_onedrive) / "Videos")
-    _default_root = ""
-    for _candidate in _candidates:
-        try:
-            if _candidate.is_dir() and os.access(str(_candidate), os.W_OK):
-                _default_root = str(_candidate.resolve())
-                break
-        except OSError:
-            continue
-    if not _default_root:
-        _fallback = _home / "MaestroProjects"
-        try:
-            _fallback.mkdir(parents=True, exist_ok=True)
-            _default_root = str(_fallback.resolve())
-        except OSError:
-            _default_root = ""
-    if _default_root:
-        _services["projects_root_path"] = _default_root
-        try:
+# Guarded behind ``__name__ != "__main__"`` so test imports don't
+# pollute the user's real ``wgp_config.json``: tests mutate
+# ``wgp.server_config`` in-memory, and the migration would persist
+# those mutations to disk as a side effect. The migration runs only
+# when the module is the script entrypoint (``python -u launch.py``).
+if __name__ == "__main__":
+    if "projects_root_path" not in _services and wgp.server_config.get("save_path", "outputs") == "outputs":
+        _default_root = _default_projects_root()
+        if _default_root:
+            _services["projects_root_path"] = _default_root
+            try:
+                with open(wgp.server_config_filename, "w", encoding="utf-8") as _f:
+                    _f.write(json.dumps(wgp.server_config, indent=4))
+                print(f"[Maestro] Migration: projects root set to {_default_root}")
+            except Exception as _e:
+                print(f"[Maestro] Migration: failed to persist projects root: {_e}")
+
+# Stale-value healing: users who booted at least once with the old
+# hardcoded ``home / "Videos"`` chain have ``projects_root_path`` pointing
+# at the ASCII folder even on systems whose localized XDG user-dirs is
+# ``~/Vídeos`` (pt_BR) or similar. We don't want to silently rewrite a
+# path the user explicitly typed in the Configurations drawer, but the
+# auto-detected value from the boot migration above was an automatic
+# pick — if a sibling XDG folder exists at the same level, we treat
+# the ASCII path as a stale fallback and swap to the localized one.
+# The heal only runs when:
+#   * the configured path is a direct child of $HOME named ``Videos``
+#     (i.e. the broken default, not a user choice like ``/mnt/media``),
+#   * the XDG-localized sibling exists and is writable, AND
+#   * the user has not explicitly opted out via ``projects_root_healed``
+#     in services (one-shot, like the other migrations).
+def _run_projects_root_heal(services: dict, *, _persist=None) -> None:
+    """In-place mutate ``services`` to fix a stale projects root.
+
+    Pulled out as a module-level function so the contract tests can
+    drive it directly with a synthetic services dict instead of going
+    through the boot-migration path.
+
+    ``_persist`` is the file-write callback (default: writes the live
+    ``wgp.server_config`` to ``wgp.server_config_filename``). Tests
+    pass a no-op so they don't pollute the user's real config.
+    """
+    if _persist is None:
+        def _persist():
             with open(wgp.server_config_filename, "w", encoding="utf-8") as _f:
                 _f.write(json.dumps(wgp.server_config, indent=4))
-            print(f"[Maestro] Migration: projects root set to {_default_root}")
+    if sys.platform.startswith("win"):
+        services["projects_root_healed"] = True
+        try:
+            _persist()
+        except Exception:
+            pass
+        return
+    if services.get("projects_root_healed") is True:
+        return
+    _configured = services.get("projects_root_path", "")
+    _home = Path.home()
+    _stale_ascii = (_home / "Videos").resolve() if (_home / "Videos").exists() else None
+    try:
+        _xdg = _xdg_video_dir(_home)
+    except Exception:
+        _xdg = None
+    if (
+        _stale_ascii is not None
+        and _xdg is not None
+        and _configured
+        and Path(_configured).resolve() == _stale_ascii
+        and _xdg.resolve() != _stale_ascii
+        and _xdg.is_dir()
+        and os.access(str(_xdg), os.W_OK)
+    ):
+        services["projects_root_path"] = str(_xdg.resolve())
+        services["projects_root_healed"] = True
+        try:
+            _persist()
+            print(
+                f"[Maestro] Heal: stale ASCII projects root replaced with "
+                f"XDG folder {_xdg.resolve()}"
+            )
         except Exception as _e:
-            print(f"[Maestro] Migration: failed to persist projects root: {_e}")
+            print(f"[Maestro] Heal: failed to persist projects root: {_e}")
+    else:
+        # Mark the heal as done so we don't re-check on every boot
+        # even when no action was needed.
+        services["projects_root_healed"] = True
+        try:
+            _persist()
+        except Exception:
+            pass
+
+
+if __name__ == "__main__":
+    # Only run the heal when the module is the entrypoint — same
+    # rationale as the migration block above (tests mutate the in-memory
+    # ``wgp.server_config`` and the heal would persist those mutations
+    # back to disk if we ran unconditionally).
+    _run_projects_root_heal(_services)
 
 if "auto_performance" not in _services:
     _services["auto_performance"] = False
@@ -501,59 +667,6 @@ def _interrupt_wan_model() -> None:
 def _get_active_workspace() -> str:
     """Get current workspace name from server config."""
     return wgp.server_config.get("services", {}).get("active_workspace", "default")
-
-
-def _default_projects_root() -> str:
-    """Return the OS-default location for Maestro project workspaces.
-
-    The default lives under the user's Videos folder (``$HOME/Videos``
-    on Linux/macOS, ``%USERPROFILE%\\Videos`` on Windows). This is where
-    most local tools already expect user-created media; keeping Maestro
-    projects there means the user's file manager, gallery apps and
-    backup pipelines find them without further config.
-
-    If the OS-default Videos folder is missing (e.g. a minimal server
-    install with no GUI), we fall back to creating
-    ``$HOME/MaestroProjects`` instead. We never fall back to a relative
-    ``outputs`` path because the user explicitly opted into per-user
-    storage by selecting the field in Configurations.
-    """
-    home = Path.home()
-    candidates: list[Path] = []
-    if sys.platform.startswith("win"):
-        # On Windows, %USERPROFILE%\\Videos is the canonical location,
-        # but OneDrive-redirected user profiles resolve it via
-        # %USERPROFILE%\\OneDrive\\Videos. We try the literal first, then
-        # the OneDrive variant if the literal doesn't exist.
-        candidates.append(home / "Videos")
-        onedrive = os.environ.get("OneDrive") or os.environ.get("ONEDRIVE")
-        if onedrive:
-            candidates.append(Path(onedrive) / "Videos")
-    else:
-        # Linux + macOS: XDG-spec on Linux (~/.config/user-dirs.dirs
-        # would override this, but most users keep the default), the
-        # macOS ~/Movies folder is the analog.
-        candidates.append(home / "Videos")
-        candidates.append(home / "Movies")
-
-    for candidate in candidates:
-        try:
-            if candidate.is_dir() and os.access(str(candidate), os.W_OK):
-                return str(candidate.resolve())
-        except OSError:
-            continue
-
-    # Nothing usable exists yet: create $HOME/MaestroProjects as a
-    # last-resort default that doesn't depend on the OS video folder
-    # being present.
-    fallback = home / "MaestroProjects"
-    try:
-        fallback.mkdir(parents=True, exist_ok=True)
-        return str(fallback.resolve())
-    except OSError:
-        # Final fallback: leave the path empty so callers fall back to
-        # the legacy ``outputs`` layout instead of crashing on boot.
-        return ""
 
 
 def _projects_root() -> str:

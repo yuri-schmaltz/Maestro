@@ -40,6 +40,11 @@ const videoCodecOptions = [
   { value: 'libx264_lossless', label: 'H.264 Lossless' },
   { value: 'libx265_8', label: 'H.265 CRF 8' },
   { value: 'libx265_28', label: 'H.265 CRF 28 (Fast)' },
+  { value: 'h264_nvenc', label: 'NVIDIA NVENC (HW)' },
+  { value: 'h264_amf', label: 'AMD AMF (HW)' },
+  { value: 'h264_qsv', label: 'Intel Quick Sync (HW)' },
+  { value: 'h264_videotoolbox', label: 'Apple VideoToolbox (HW)' },
+  { value: 'h264_vaapi', label: 'VA-API (Linux, HW)' },
 ]
 
 const imageCodecOptions = [

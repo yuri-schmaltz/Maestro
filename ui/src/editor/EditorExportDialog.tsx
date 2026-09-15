@@ -176,6 +176,7 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
                   >
                     <option value="h264">H.264 · Most compatible</option>
                     <option value="h265">H.265 · Smaller master</option>
+                    <option value="av1">AV1 · Smallest master</option>
                   </select>
                 </div>
                 <div className="space-y-1.5">
@@ -190,6 +191,8 @@ export function EditorExportDialog({ open, onClose }: { open: boolean; onClose: 
                     <option value="nvidia" disabled={capabilities ? !capabilities.encoders.nvidia : false}>NVIDIA NVENC</option>
                     <option value="intel" disabled={capabilities ? !capabilities.encoders.intel : false}>Intel Quick Sync</option>
                     <option value="apple" disabled={capabilities ? !capabilities.encoders.apple : false}>Apple VideoToolbox</option>
+                    <option value="amd" disabled={capabilities ? !capabilities.encoders.amd : false}>AMD AMF</option>
+                    <option value="vaapi" disabled={capabilities ? !capabilities.encoders.vaapi : false}>VA-API (Linux)</option>
                   </select>
                 </div>
               </div>

@@ -29,7 +29,17 @@ _APP_DIR = Path(__file__).resolve().parents[1] / "app"
 # ── _default_projects_root ──────────────────────────────────────────────
 
 
-def test_default_projects_root_prefers_videos_when_present(monkeypatch):
+@pytest.fixture
+def _no_xdg(monkeypatch):
+    """Force the XDG helper to return None so tests exercise only the
+    ASCII chain. Without this, the test box may have its own
+    XDG_VIDEOS_DIR / user-dirs.dirs pointing at e.g. ``~/Vídeos`` and
+    the legacy tests would get a path the fixture didn't create."""
+    monkeypatch.setenv("XDG_VIDEOS_DIR", "")
+    monkeypatch.setattr("launch._xdg_video_dir", lambda home: None)
+
+
+def test_default_projects_root_prefers_videos_when_present(monkeypatch, _no_xdg):
     """When $HOME/Videos exists and is writable, that's the default."""
     from launch import _default_projects_root
 
@@ -43,7 +53,7 @@ def test_default_projects_root_prefers_videos_when_present(monkeypatch):
         )
 
 
-def test_default_projects_root_falls_back_to_movies(monkeypatch):
+def test_default_projects_root_falls_back_to_movies(monkeypatch, _no_xdg):
     """On macOS-style hosts without Videos, ~/Movies wins."""
     from launch import _default_projects_root
 
@@ -56,7 +66,7 @@ def test_default_projects_root_falls_back_to_movies(monkeypatch):
         assert result == str((home / "Movies").resolve())
 
 
-def test_default_projects_root_creates_fallback_when_no_videos(monkeypatch):
+def test_default_projects_root_creates_fallback_when_no_videos(monkeypatch, _no_xdg):
     """With neither Videos nor Movies present, we create ~/MaestroProjects."""
     from launch import _default_projects_root
 
@@ -66,6 +76,145 @@ def test_default_projects_root_creates_fallback_when_no_videos(monkeypatch):
         result = _default_projects_root()
         assert result == str((home / "MaestroProjects").resolve())
         assert (home / "MaestroProjects").is_dir()
+
+
+# ── XDG user-dirs (locale-aware videos folder) ─────────────────────────
+
+
+def test_xdg_video_dir_honors_env_var(monkeypatch):
+    """$XDG_VIDEOS_DIR wins over every other source."""
+    from launch import _xdg_video_dir
+
+    monkeypatch.setenv("XDG_VIDEOS_DIR", "/media/whatever/Vídeos")
+    monkeypatch.setattr(Path, "home", lambda: Path("/should/not/be/used"))
+    assert _xdg_video_dir(Path("/anything")) == Path("/media/whatever/Vídeos")
+
+
+def test_xdg_video_dir_expands_shell_home(monkeypatch):
+    """user-dirs.dirs uses $HOME literally; expand it before resolving."""
+    from launch import _xdg_video_dir
+
+    monkeypatch.setenv("XDG_VIDEOS_DIR", "$HOME/Vídeos")
+    monkeypatch.setattr("os.path.expandvars", lambda v: v.replace("$HOME", "/home/testuser"))
+    assert _xdg_video_dir(Path("/anything")) == Path("/home/testuser/Vídeos")
+
+
+def test_xdg_video_dir_returns_none_when_unset(monkeypatch):
+    """No env, no platformdirs entry → None."""
+    from launch import _xdg_video_dir
+
+    monkeypatch.setenv("XDG_VIDEOS_DIR", "")
+    # Force the platformdirs fallback path to return "" so the helper
+    # falls through to ``return None``.
+    import platformdirs
+    fake = type("FakePD", (), {"user_videos_dir": ""})()
+    monkeypatch.setattr(platformdirs, "PlatformDirs", lambda *a, **k: fake)
+    assert _xdg_video_dir(Path("/anything")) is None
+
+
+def test_default_projects_root_prefers_xdg_over_ascii(monkeypatch):
+    """When the XDG user-dirs points at a localized folder
+    (``~/Vídeos`` on pt_BR) and that folder exists, it wins over the
+    ASCII ``~/Videos`` fallback — even if both happen to be present."""
+    from launch import _default_projects_root
+
+    with tempfile.TemporaryDirectory() as tmp:
+        home = Path(tmp)
+        (home / "Vídeos").mkdir()  # pt_BR XDG default
+        (home / "Videos").mkdir()  # also created manually
+        monkeypatch.setattr(Path, "home", lambda: home)
+
+        def fake_xdg(h):
+            return (h / "Vídeos").resolve()
+        monkeypatch.setattr("launch._xdg_video_dir", fake_xdg)
+
+        result = _default_projects_root()
+        assert result == str((home / "Vídeos").resolve()), (
+            f"Expected the XDG folder, got {result}"
+        )
+
+
+# ── Stale ASCII → XDG heal on boot ─────────────────────────────────────
+
+
+def test_stale_ascii_projects_root_is_healed_to_xdg(monkeypatch, tmp_path):
+    """Users who booted with the old hardcoded ``~/Videos`` chain end
+    up with ``projects_root_path`` pointing at the ASCII folder even
+    on systems whose XDG user-dirs is ``~/Vídeos``. The boot-time heal
+    rewrites that to the localized folder, so subsequent boots pick
+    up the right path."""
+    import launch
+    from launch import _run_projects_root_heal
+
+    home = tmp_path
+    (home / "Vídeos").mkdir()
+    (home / "Videos").mkdir()
+
+    services = {
+        "projects_root_path": str((home / "Videos").resolve()),
+    }
+    monkeypatch.setattr(Path, "home", lambda: home)
+    monkeypatch.setattr(launch, "_xdg_video_dir", lambda h: (h / "Vídeos").resolve())
+
+    _run_projects_root_heal(services, _persist=lambda: None)
+
+    assert services["projects_root_path"] == str((home / "Vídeos").resolve())
+    assert services.get("projects_root_healed") is True
+
+
+def test_heal_leaves_non_default_paths_alone(monkeypatch, tmp_path):
+    """If the user explicitly typed something like ``/mnt/media`` we
+    don't touch it — the heal only fires for the broken default path
+    (``$HOME/Videos``)."""
+    import launch
+
+    home = tmp_path
+    (home / "Vídeos").mkdir()
+    services = {"projects_root_path": "/mnt/media"}
+
+    monkeypatch.setattr(Path, "home", lambda: home)
+    monkeypatch.setattr(launch, "_xdg_video_dir", lambda h: (h / "Vídeos").resolve())
+
+    launch._run_projects_root_heal(services, _persist=lambda: None)
+
+    assert services["projects_root_path"] == "/mnt/media"
+    # Marked as healed so we don't re-check every boot, but the path
+    # itself is unchanged.
+    assert services.get("projects_root_healed") is True
+
+
+def test_heal_noop_when_xdg_missing(monkeypatch, tmp_path):
+    """If the XDG folder doesn't exist on disk (e.g. user deleted it),
+    we keep the existing ASCII path and just mark the heal as done."""
+    import launch
+
+    home = tmp_path
+    (home / "Videos").mkdir()
+    # No Vídeos folder created.
+    services = {"projects_root_path": str((home / "Videos").resolve())}
+
+    monkeypatch.setattr(Path, "home", lambda: home)
+    monkeypatch.setattr(launch, "_xdg_video_dir", lambda h: (h / "Vídeos").resolve())
+
+    launch._run_projects_root_heal(services, _persist=lambda: None)
+
+    assert services["projects_root_path"] == str((home / "Videos").resolve())
+    assert services.get("projects_root_healed") is True
+
+
+def test_heal_does_not_persist_when_idempotent(monkeypatch, tmp_path):
+    """Idempotent re-runs (healed flag already set) must be silent."""
+    import launch
+
+    services = {"projects_root_path": "/home/Videos", "projects_root_healed": True}
+    writes = []
+
+    def fake_persist():
+        writes.append("called")
+
+    launch._run_projects_root_heal(services, _persist=fake_persist)
+    assert services["projects_root_path"] == "/home/Videos"
+    assert writes == []  # No-op path doesn't touch disk
 
 
 # ── _projects_root precedence ───────────────────────────────────────────

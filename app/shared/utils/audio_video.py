@@ -1,4 +1,5 @@
 import subprocess
+import functools
 import tempfile, os
 import ffmpeg
 import torchvision.transforms.functional as TF
@@ -594,6 +595,100 @@ def save_video(tensor,
             print(f"error saving {save_file}: {e}")
 
 
+@functools.lru_cache(maxsize=4)
+def _hw_video_encoders(ffmpeg: str = "ffmpeg") -> dict[str, dict[str, str]]:
+    """Reuse the Editor probe to pick a hardware backend for video_output_codec.
+
+    Returns a map of alias → imageio kwargs that wire the chosen HW encoder
+    via ``output_params``. The probe is cached and shared with the Editor
+    export path, so a single ``ffmpeg -encoders`` call covers both.
+
+    Keys present only when the corresponding backend is available for the
+    matched codec (H.264). If nothing is HW-capable the dict is empty.
+    """
+    try:
+        from services.editor_projects import editor_export_capabilities
+        caps = editor_export_capabilities(ffmpeg)
+    except Exception:
+        return {}
+    enc = caps.get("encoders", {}) if isinstance(caps, Mapping) else {}
+    result: dict[str, dict[str, str]] = {}
+    # NVENC
+    if enc.get("nvidia"):
+        result["h264_nvenc"] = {
+            "codec": "h264_nvenc",
+            "pixelformat": "yuv420p",
+            "output_params": [
+                "-preset", "p5", "-rc", "vbr", "-cq", "19", "-b:v", "0",
+                "-hide_banner", "-nostats",
+            ],
+        }
+        result["hevc_nvenc"] = {
+            "codec": "hevc_nvenc",
+            "pixelformat": "yuv420p",
+            "output_params": [
+                "-preset", "p5", "-rc", "vbr", "-cq", "22", "-b:v", "0",
+                "-hide_banner", "-nostats",
+            ],
+        }
+    if enc.get("amd"):
+        result["h264_amf"] = {
+            "codec": "h264_amf",
+            "pixelformat": "yuv420p",
+            "output_params": [
+                "-rc", "vbr", "-qp", "20", "-usage", "lowlatency",
+                "-hide_banner", "-nostats",
+            ],
+        }
+    if enc.get("intel"):
+        result["h264_qsv"] = {
+            "codec": "h264_qsv",
+            "pixelformat": "yuv420p",
+            "output_params": [
+                "-preset", "medium", "-global_quality", "22",
+                "-hide_banner", "-nostats",
+            ],
+        }
+    if enc.get("apple"):
+        result["h264_videotoolbox"] = {
+            "codec": "h264_videotoolbox",
+            "pixelformat": "yuv420p",
+            "output_params": ["-b:v", "8M", "-realtime", "true"],
+        }
+    if enc.get("vaapi"):
+        device = os.environ.get("MAESTRO_VAAPI_DEVICE", "/dev/dri/renderD128")
+        result["h264_vaapi"] = {
+            "codec": "h264_vaapi",
+            "pixelformat": "yuv420p",
+            "output_params": [
+                "-vaapi_device", device, "-rc_mode", "VBR", "-qp", "22",
+                "-hide_banner", "-nostats",
+            ],
+        }
+    return result
+
+
+_HW_VIDEO_ENCODERS: dict[str, dict[str, str]] | None = None
+
+
+def _hw_video_encoders_table() -> dict[str, dict[str, str]]:
+    """Lazy resolver so the optional editor_projects import never runs at
+    module import time (some legacy call sites import this module from
+    worker processes that don't have FastAPI/launch in the path)."""
+    global _HW_VIDEO_ENCODERS
+    if _HW_VIDEO_ENCODERS is None:
+        try:
+            _HW_VIDEO_ENCODERS = _hw_video_encoders()
+        except Exception:
+            _HW_VIDEO_ENCODERS = {}
+    return _HW_VIDEO_ENCODERS
+
+
+HW_VIDEO_OUTPUT_CODECS: tuple[str, ...] = (
+    "h264_nvenc", "h264_amf", "h264_qsv", "h264_videotoolbox", "h264_vaapi",
+)
+
+
 def _get_codec_params(codec_type, container):
     """Get codec parameters based on codec type and container."""
     if codec_type == 'libx264_8':
@@ -609,6 +704,12 @@ def _get_codec_params(codec_type, container):
             return {'codec': 'ffv1', 'pixelformat': 'rgb24'}
         else:  # mp4
             return {'codec': 'libx264', 'output_params': ['-crf', '0'], 'pixelformat': 'yuv444p'}
+    # Hardware-accelerated aliases — only present when the matching
+    # backend was detected by the shared probe. imageio passes
+    # ``output_params`` straight to ffmpeg.
+    hw_table = _hw_video_encoders_table()
+    if codec_type in hw_table:
+        return dict(hw_table[codec_type])
     else:  # libx264
         return {'codec': 'libx264', 'pixelformat': 'yuv420p'}
 

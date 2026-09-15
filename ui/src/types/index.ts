@@ -668,8 +668,8 @@ export type EditorUpscaleMethod =
 
 export interface EditorExportSettings {
   quality: 'draft' | 'balanced' | 'high'
-  codec: 'h264' | 'h265'
-  encoder: 'auto' | 'software' | 'nvidia' | 'intel' | 'apple'
+  codec: 'h264' | 'h265' | 'av1'
+  encoder: 'auto' | 'software' | 'nvidia' | 'intel' | 'apple' | 'amd' | 'vaapi'
   include_audio: boolean
   resolution: 'canvas' | '2160p' | '1080p' | '720p' | '480p'
   frame_rate: 'project' | 24 | 30 | 60
@@ -755,6 +755,15 @@ export interface EditorExportCapabilities {
     nvidia: boolean
     intel: boolean
     apple: boolean
+    amd: boolean
+    vaapi: boolean
+  }
+  encoders_by_codec?: {
+    nvidia: { h264: boolean; hevc: boolean; av1: boolean }
+    intel: { h264: boolean; hevc: boolean; av1: boolean }
+    apple: { h264: boolean; hevc: boolean; av1: boolean }
+    amd: { h264: boolean; hevc: boolean; av1: boolean }
+    vaapi: { h264: boolean; hevc: boolean; av1: boolean }
   }
   recommended: EditorExportSettings['encoder']
 }
