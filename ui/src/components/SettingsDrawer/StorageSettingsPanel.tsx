@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, RotateCcw, Save, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { FolderOpen, RotateCcw, Save, AlertCircle, CheckCircle2, HardDrive } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 
 /**
@@ -193,6 +193,26 @@ export function StorageSettingsPanel() {
               </dd>
             </div>
           </dl>
+        </div>
+      </div>
+
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>Storage Manager</h3>
+          <p>Disk usage, duplicate reclaim and cleanup utilities. Opens a
+            full-screen dashboard.</p>
+        </div>
+        <div className="settings-card">
+          <button
+            type="button"
+            onClick={() => useStore.getState().setStorageDashboardOpen(true)}
+            className="settings-button settings-button-ghost"
+            style={{ width: '100%', justifyContent: 'flex-start' }}
+          >
+            <HardDrive size={13} className="text-accent-blue" aria-hidden="true" />
+            <span className="flex-1 text-left">Open Storage Manager</span>
+            <span className="text-2xs text-text-muted">usage, duplicates, cleanup</span>
+          </button>
         </div>
       </div>
     </section>
