@@ -213,22 +213,27 @@ export function NotificationSettingsPanel() {
   }
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h3 className="text-xs font-medium uppercase tracking-wider text-text-secondary">Notifications</h3>
-        <p className="mt-1 text-2xs leading-relaxed text-text-muted">
-          Maestro always shows a small in-app alert. The options below add system notifications or sound.
-        </p>
-      </div>
+    <section className="settings-panel" aria-label="Notifications settings">
+      <header className="settings-panel-header">
+        <h2><Bell size={18} aria-hidden="true" /> Notifications</h2>
+        <p>Maestro always shows a small in-app alert. The options below
+          add system notifications or sound.</p>
+      </header>
 
-      <section className="space-y-3 rounded-lg border border-border bg-bg-tertiary p-3">
-        <div className="flex items-center gap-2">
-          <Bell size={15} className="text-accent-blue" />
-          <div>
-            <div className="text-xs font-medium text-text-primary">This browser or device</div>
-            <div className="text-2xs text-text-muted">Saved separately in each browser.</div>
-          </div>
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>This browser or device</h3>
+          <p>Saved separately in each browser.</p>
         </div>
+
+        <div className="settings-card">
+          <div className="flex items-center gap-2">
+            <Bell size={15} className="text-accent-blue" />
+            <div>
+              <div className="text-xs font-medium text-text-primary">Browser alerts</div>
+              <div className="text-2xs text-text-muted">In-app toasts and optional OS notifications.</div>
+            </div>
+          </div>
 
         <Toggle
           checked={preferences.browserNotifications}
@@ -360,16 +365,23 @@ export function NotificationSettingsPanel() {
         <p className="text-2xs leading-relaxed text-text-muted">
           Closed-app delivery uses the browser vendor&apos;s standard encrypted Web Push service. Maestro&apos;s signing key and your device subscription remain on your Maestro computer; there is no Maestro cloud account or relay.
         </p>
-      </section>
+      </div>
+      </div>
 
-      <section className="space-y-3 rounded-lg border border-border bg-bg-tertiary p-3">
-        <div className="flex items-center gap-2">
-          <MonitorSpeaker size={15} className="text-accent-blue" />
-          <div>
-            <div className="text-xs font-medium text-text-primary">Maestro host computer</div>
-            <div className="text-2xs text-text-muted">Useful when you leave the generation machine running.</div>
-          </div>
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>Maestro host computer</h3>
+          <p>Useful when you leave the generation machine running.</p>
         </div>
+
+        <div className="settings-card">
+          <div className="flex items-center gap-2">
+            <MonitorSpeaker size={15} className="text-accent-blue" />
+            <div>
+              <div className="text-xs font-medium text-text-primary">Host completion sound</div>
+              <div className="text-2xs text-text-muted">Rings once per Studio generation or complete Director project.</div>
+            </div>
+          </div>
 
         <Toggle
           checked={hostEnabled}
@@ -406,13 +418,14 @@ export function NotificationSettingsPanel() {
         >
           {testingHost ? 'Playing…' : 'Test host sound'}
         </button>
-      </section>
+        </div>
+      </div>
 
       {message && (
         <div className="rounded-md border border-border bg-bg-primary px-2.5 py-2 text-2xs leading-relaxed text-text-secondary">
           {message}
         </div>
       )}
-    </div>
+    </section>
   )
 }

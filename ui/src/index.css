@@ -986,6 +986,217 @@ input[type="range"]::-webkit-slider-thumb {
 .configurations-navigation button strong { font-size: var(--text-base); font-weight:600; color:inherit; }
 .configurations-navigation button small { font-size: var(--text-xs); color:var(--color-text-muted); line-height:1.4; white-space:normal; }
 .configurations-content { min-width:0; }
+
+/* ============================================================
+   Settings panel primitives — shared by all five Configurations
+   tabs. The classes below fix the long-standing inconsistency
+   between panels (each reinvented its own typography, spacing
+   and colors) and resolve the Storage panel's missing-CSS bug
+   where the input and Save button rendered unstyled.
+
+   Three-level hierarchy:
+     .settings-panel   → the whole tab
+     .settings-group   → a thematic block (Appearance, Hardware...)
+     .settings-card    → a single bordered card inside a group
+     .settings-row     → label/control pair inside a card
+
+   Two-column layouts use .settings-grid to keep groups side by
+   side without the visual seams of an ad-hoc flexbox.
+   ============================================================ */
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.settings-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 4px;
+}
+.settings-panel-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+}
+.settings-panel-header p {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  max-width: 64ch;
+}
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.settings-group-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 2px;
+}
+.settings-group-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.settings-group-header p {
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  max-width: 64ch;
+}
+.settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  padding: 16px;
+}
+.settings-card-muted {
+  background: var(--color-bg-secondary);
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.settings-grid > .settings-card { margin: 0; }
+.settings-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.settings-row-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  padding-top: 8px;
+}
+.settings-row-label > svg { color: var(--color-text-muted); flex-shrink: 0; }
+.settings-row-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.settings-row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.settings-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.settings-button:disabled { opacity: 0.4; cursor: not-allowed; }
+.settings-button-primary {
+  background: var(--color-accent-blue);
+  color: white;
+}
+.settings-button-primary:hover:not(:disabled) { background: var(--color-accent-blue-hover, var(--color-accent-blue)); filter: brightness(1.1); }
+.settings-button-ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}
+.settings-button-ghost:hover:not(:disabled) { color: var(--color-text-primary); border-color: color-mix(in srgb, var(--color-text-secondary) 30%, var(--color-border)); }
+.settings-row-hint {
+  grid-column: 2;
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+.settings-text-input {
+  width: 100%;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  transition: border-color .15s;
+}
+.settings-text-input::placeholder { color: var(--color-text-muted); }
+.settings-text-input:focus {
+  outline: none;
+  border-color: var(--color-accent-blue);
+}
+.settings-feedback {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-2xs);
+  line-height: 1.4;
+}
+.settings-feedback svg { flex-shrink: 0; }
+.settings-feedback.error { color: #f87171; }
+.settings-feedback.success { color: var(--color-text-secondary); }
+.settings-definitions {
+  display: grid;
+  grid-template-columns: minmax(140px, max-content) minmax(0, 1fr);
+  gap: 8px 16px;
+  align-items: start;
+}
+.settings-definitions dt {
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  padding-top: 2px;
+}
+.settings-definitions dd {
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+.settings-definitions dd code {
+  font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size: var(--text-2xs);
+  background: var(--color-bg-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  word-break: break-all;
+}
+/* Responsive: 2-col grids collapse to single column under 720px so
+   the Settings drawer stays usable on tablets and small windows. */
+@media (max-width: 1100px) {
+  .settings-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .settings-row { grid-template-columns: 1fr; }
+  .settings-row-label { padding-top: 0; }
+  .settings-row-hint { grid-column: 1; }
+}
+
 .global-status-summary { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:24px; min-height:46px; padding:0 24px; font-size: var(--text-xs); }
 .status-project { display:flex; align-items:center; gap:8px; min-width:0; flex-shrink:0; }
 .status-gauges { display:flex; align-items:center; justify-content:center; gap:18px; min-width:0; flex:1; }

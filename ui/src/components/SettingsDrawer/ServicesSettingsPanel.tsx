@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { RefreshCw, ShieldAlert, ShieldCheck, Lock } from 'lucide-react'
+import { RefreshCw, ShieldAlert, ShieldCheck, Lock, Cable } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 
 function ApiKeyField({ label, maskedValue, isSet, onSave }: {
@@ -293,28 +293,39 @@ export function ServicesSettingsPanel() {
   })
 
   return (
-    <div className="space-y-5">
+    <section className="settings-panel" aria-label="Integrations settings">
+      <header className="settings-panel-header">
+        <h2><Cable size={18} aria-hidden="true" /> Integrations</h2>
+        <p>Language model, content safety, Director architecture and
+          external service keys. Each section is independent — disable
+          what you don't use and Maestro will skip it.</p>
+      </header>
+
       {/* Beta-features toggle moved to the bottom of this panel. See
           the "BETA FEATURES" section near the end of the return for
           rationale on the demotion + restyle. */}
 
       {/* LLM Provider */}
-      <div className="space-y-4">
-        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">LLM Configuration</h3>
-
-        <div className="flex items-center justify-between">
-          <div className="min-w-0 flex-1 mr-3">
-            <div className="text-sm text-text-primary truncate">
-              {llmStatus?.loaded ? llmStatus.model_id : 'Standby'}
-            </div>
-            <div className="text-2xs text-text-muted">
-              {llmStatus?.loaded
-                ? `Active on ${llmStatus.device} (${llmStatus.provider || 'local'})`
-                : 'Auto-loads when needed'}
-            </div>
-          </div>
-          <div className={`w-2 h-2 rounded-full shrink-0 ${llmStatus?.loaded ? 'bg-indicator-success' : 'bg-text-muted/30'}`} />
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>LLM Configuration</h3>
+          <p>Provider, model and runtime device. Auto-loads on demand and unloads after 60s of idle to free VRAM.</p>
         </div>
+
+        <div className="settings-card">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 flex-1 mr-3">
+              <div className="text-sm text-text-primary truncate">
+                {llmStatus?.loaded ? llmStatus.model_id : 'Standby'}
+              </div>
+              <div className="text-2xs text-text-muted">
+                {llmStatus?.loaded
+                  ? `Active on ${llmStatus.device} (${llmStatus.provider || 'local'})`
+                  : 'Auto-loads when needed'}
+              </div>
+            </div>
+            <div className={`w-2 h-2 rounded-full shrink-0 ${llmStatus?.loaded ? 'bg-indicator-success' : 'bg-text-muted/30'}`} />
+          </div>
 
         {/* Provider selector */}
         <div>
@@ -443,6 +454,7 @@ export function ServicesSettingsPanel() {
             </p>
           </div>
         )}
+        </div>
       </div>
 
       {/* Studio Prompt Enhancer — experimental gate. Default UI uses
@@ -453,13 +465,14 @@ export function ServicesSettingsPanel() {
       <hr className="border-border" />
 
       {/* Prompt Enhancer */}
-      <div className="space-y-4">
-        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Studio Prompt Enhancer</h3>
-        <p className="text-2xs text-text-muted">
-          The sparkle button in Studio mode. Uses model-specific prompt guides for best results.
-          Set a separate LLM here or leave empty to use the Director LLM above.
-        </p>
-
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>Studio Prompt Enhancer</h3>
+          <p>The sparkle button in Studio mode. Uses model-specific
+            prompt guides for best results. Set a separate LLM here
+            or leave empty to use the Director LLM above.</p>
+        </div>
+        <div className="settings-card">
         <div>
           <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
             Enhance LLM Model
@@ -522,6 +535,7 @@ export function ServicesSettingsPanel() {
             (does NOT use our model-specific prompt guides).
           </p>
         </div>
+        </div>
       </div>
       </>}
 
@@ -533,8 +547,13 @@ export function ServicesSettingsPanel() {
       <hr className="border-border" />
 
       {/* Director Architecture */}
-      <div className="space-y-3">
-        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Director Architecture</h3>
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>Director Architecture</h3>
+          <p>v2 is the default engine. Toggle off to fall back to v1
+            if you hit regressions.</p>
+        </div>
+        <div className="settings-card">
         {/* Director v2 Engine toggle. v2 became the default 2026-05-03
             after weeks of real-world validation showed it's more
             reliable than v1 (v1 had a polish-pass failure mode where
@@ -590,6 +609,7 @@ export function ServicesSettingsPanel() {
           </p>
         </div>
 
+        </div>
       </div>
 
       <hr className="border-border" />
@@ -598,11 +618,14 @@ export function ServicesSettingsPanel() {
           Selected per-generation in Post Processing → Spatial Upsampling
           ("FlashVSR 2x", "FlashVSR Two Pass 2x", ...). These control the
           model variant, sparse-attention density, and backend. */}
-      <div className="space-y-3">
-        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">FlashVSR Upscaling</h3>
-        <p className="text-2xs text-text-muted -mt-1">
-          DiT super-resolution. Pick it per generation in Post Processing → Spatial Upsampling. First use downloads ~4 GB of weights.
-        </p>
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>FlashVSR Upscaling</h3>
+          <p>DiT super-resolution. Pick it per generation in Post
+            Processing → Spatial Upsampling. First use downloads
+            ~4 GB of weights.</p>
+        </div>
+        <div className="settings-card">
 
         <div>
           <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Model Variant</label>
@@ -657,6 +680,7 @@ export function ServicesSettingsPanel() {
             SpargeAttn gives the best quality when there's motion but needs a separate install. Auto uses the bundled Triton kernels otherwise.
           </p>
         </div>
+        </div>
       </div>
 
       <hr className="border-border" />
@@ -669,8 +693,14 @@ export function ServicesSettingsPanel() {
           "do I need these to use Maestro?"
           The CivitAI key stays visible always since LoRA download
           rate-limit relief is broadly useful, not a power-user feature. */}
-      <div className="space-y-4">
-        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">API Keys</h3>
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>API Keys</h3>
+          <p>External AI provider credentials. The CivitAI key is
+            always visible for LoRA downloads; the others surface
+            only when experimental mode is on.</p>
+        </div>
+        <div className="settings-card">
 
         {servicesConfig.show_experimental && (
           <>
@@ -760,7 +790,8 @@ export function ServicesSettingsPanel() {
             }`} />
           </div>
         </label>
+        </div>
       </div>
-    </div>
+    </section>
   )
 }

@@ -1032,84 +1032,110 @@ export function SystemSettingsPanel() {
   )
 
   return (
-    <div className="space-y-5">
-      <ThemeSection />
+    <section className="settings-panel" aria-label="Performance settings">
+      <header className="settings-panel-header">
+        <h2><Cpu size={18} aria-hidden="true" /> Performance</h2>
+        <p>Hardware, model loading, advanced generation knobs and
+          output codec. Most users only need Auto-Tune — the
+          advanced cards stay collapsed when Auto is on.</p>
+      </header>
 
-      <hr className="border-border" />
-
-      {/* Storage Manager — usage analytics + duplicate reclaim */}
-      <button
-        onClick={() => useStore.getState().setStorageDashboardOpen(true)}
-        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg border border-border text-xs text-text-secondary hover:text-text-primary hover:border-border-light transition-colors"
-      >
-        <HardDrive size={13} className="text-accent-blue" />
-        <span className="flex-1 text-left">Storage Manager</span>
-        <span className="text-2xs text-text-muted">usage, duplicates, cleanup</span>
-      </button>
-
-      <hr className="border-border" />
-
-      {/* Model Visibility — moved to top */}
-      <ModelVisibilitySection />
-
-      <hr className="border-border" />
-
-      {/* Linked model folders — reuse checkpoints from other installs */}
-      <LinkedModelFoldersSection />
-
-      <hr className="border-border" />
-
-      {/* Auto-tune card always visible. The fields below are
-          conditionally hidden based on autoOn. */}
-      <AutoPerformanceCard />
-
-      {/* Auto ON: collapse the advanced fields under an expander.
-          The expander defaults closed — power users who want to peek
-          at what auto picked can open it without leaving the page. */}
-      {autoOn ? (
-        <div>
-          <button
-            onClick={() => setAdvancedOpen(o => !o)}
-            className="flex items-center gap-1 text-xs text-text-muted hover:text-text-secondary transition-colors"
-          >
-            {advancedOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-            {advancedOpen ? 'Hide' : 'Show'} advanced settings
-          </button>
-          {advancedOpen && (
-            <div className="mt-4 space-y-5 pl-2 border-l-2 border-border/30">
-              {renderAdvancedFields()}
-            </div>
-          )}
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>Appearance</h3>
+          <p>Theme family and dark/light/auto switch.</p>
         </div>
-      ) : (
-        // Auto OFF: show fields directly + a "Reset to auto-tune"
-        // affordance below them. The Reset button just toggles auto
-        // back ON, which triggers the apply endpoint via the card.
-        <>
-          {renderAdvancedFields()}
-        </>
-      )}
-
-      <hr className="border-border" />
-
-      {/* Output Codecs */}
-      <div className="space-y-4">
-        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Output Codecs</h3>
-
-        <SelectField
-          label="Video Codec"
-          value={systemConfig.video_output_codec}
-          options={videoCodecOptions}
-          onChange={val => updateConfig({ video_output_codec: val })}
-        />
-
-        <SelectField
-          label="Image Codec"
-          value={systemConfig.image_output_codec}
-          options={imageCodecOptions}
-          onChange={val => updateConfig({ image_output_codec: val })}
-        />
+        <ThemeSection />
       </div>
-    </div>
+
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>Storage</h3>
+          <p>Where projects land on disk and how to reclaim space.</p>
+        </div>
+        <div className="settings-card">
+          <button
+            onClick={() => useStore.getState().setStorageDashboardOpen(true)}
+            className="settings-button settings-button-ghost"
+            style={{ width: '100%', justifyContent: 'flex-start' }}
+          >
+            <HardDrive size={13} className="text-accent-blue" />
+            <span className="flex-1 text-left">Storage Manager</span>
+            <span className="text-2xs text-text-muted">usage, duplicates, cleanup</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>Enabled Models</h3>
+          <p>Pick which checkpoints are available in Studio. Hidden
+            models skip their model card and download UI entirely.</p>
+        </div>
+        <ModelVisibilitySection />
+      </div>
+
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>Linked Model Folders</h3>
+          <p>Reuse checkpoints from other installs without re-downloading.</p>
+        </div>
+        <LinkedModelFoldersSection />
+      </div>
+
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>Hardware & Auto-Tune</h3>
+          <p>Detected GPU and the recommended profile. Auto applies
+            the safest defaults on first launch.</p>
+        </div>
+        <AutoPerformanceCard />
+      </div>
+
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>Advanced</h3>
+          <p>Attention mode, quantization, profile and VRAM headroom.
+            Only visible when Auto-Tune is off, or when explicitly
+            expanded.</p>
+        </div>
+        {autoOn ? (
+          <div className="settings-card">
+            <button
+              onClick={() => setAdvancedOpen(o => !o)}
+              className="settings-button settings-button-ghost"
+              style={{ width: '100%', justifyContent: 'flex-start' }}
+            >
+              {advancedOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+              {advancedOpen ? 'Hide' : 'Show'} advanced settings
+            </button>
+            {advancedOpen && renderAdvancedFields()}
+          </div>
+        ) : (
+          <div className="settings-card">{renderAdvancedFields()}</div>
+        )}
+      </div>
+
+      <div className="settings-group">
+        <div className="settings-group-header">
+          <h3>Output Codecs</h3>
+          <p>Container and pixel format for finished renders.</p>
+        </div>
+        <div className="settings-card">
+          <SelectField
+            label="Video Codec"
+            value={systemConfig.video_output_codec}
+            options={videoCodecOptions}
+            onChange={val => updateConfig({ video_output_codec: val })}
+          />
+          <SelectField
+            label="Image Codec"
+            value={systemConfig.image_output_codec}
+            options={imageCodecOptions}
+            onChange={val => updateConfig({ image_output_codec: val })}
+          />
+        </div>
+      </div>
+    </section>
   )
 }

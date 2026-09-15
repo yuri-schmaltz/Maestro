@@ -97,22 +97,18 @@ export function StyleBiblesSettingsPanel() {
   }, [editing, refresh])
 
   return (
-    <section className="space-y-4">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <BookOpen size={16} /> Style Bibles
-          </h2>
-          <p className="text-xs text-text-muted">
-            Reusable character / environment / LoRA anchors for the Director.
-          </p>
+    <section className="settings-panel" aria-label="Style Bibles settings">
+      <header className="settings-panel-header" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <h2><BookOpen size={18} aria-hidden="true" /> Style Bibles</h2>
+          <p>Reusable character / environment / LoRA anchors for the Director.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="settings-row-actions">
           <button
             type="button"
             onClick={refresh}
             disabled={loading}
-            className="text-xs px-2 py-1 rounded border border-border hover:bg-bg-tertiary disabled:opacity-40"
+            className="settings-button settings-button-ghost"
             aria-label="Refresh Style Bibles"
           >
             {loading ? <Loader2 className="animate-spin" size={12} /> : 'Refresh'}
@@ -120,7 +116,7 @@ export function StyleBiblesSettingsPanel() {
           <button
             type="button"
             onClick={startCreate}
-            className="text-xs px-2 py-1 rounded bg-accent-blue text-white flex items-center gap-1"
+            className="settings-button settings-button-primary"
           >
             <Plus size={12} /> New Bible
           </button>
@@ -128,7 +124,7 @@ export function StyleBiblesSettingsPanel() {
       </header>
 
       {error && (
-        <p role="alert" className="text-xs text-red-400 bg-red-400/10 rounded p-2">
+        <p role="alert" className="settings-feedback error">
           {error}
         </p>
       )}

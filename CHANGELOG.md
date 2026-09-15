@@ -1,5 +1,44 @@
 # Maestro Changelog
 
+## Refactor — 2026-09-14 (configurations layout primitives)
+
+- **Shared `.settings-panel` primitives.** Five Configurations panels
+  (Performance, Integrations, Storage, Notifications, Style Bibles)
+  previously reinvented their own typography, spacing and colors,
+  and Storage had a visible CSS bug where the input and Save button
+  rendered unstyled. Added a unified primitive set in `index.css`:
+  `.settings-panel`, `.settings-panel-header`, `.settings-group`,
+  `.settings-group-header`, `.settings-card` (+ `-muted`),
+  `.settings-grid` (2-col responsive), `.settings-row`,
+  `.settings-row-label/control/actions/hint`, `.settings-text-input`,
+  `.settings-feedback` (error/success), `.settings-definitions`
+  (definition list), and `.settings-button` (-primary/-ghost).
+  Two media queries collapse the 2-col grid under 1100px and the
+  row layout under 720px so the drawer stays usable on tablets and
+  small windows.
+- **Performance reorganized into 7 named groups** with descriptions:
+  Appearance, Storage (Storage Manager entry), Enabled Models,
+  Linked Model Folders, Hardware & Auto-Tune, Advanced (collapsed
+  by default when Auto is on), and Output Codecs. Each group
+  carries the shared header pattern with icon + title + 1-line
+  hint.
+- **Integrations reorganized** with the same shared header pattern
+  (Cable icon + title + descriptive paragraph). LLM Configuration,
+  Studio Prompt Enhancer, Director Architecture, FlashVSR Upscaling
+  and API Keys now sit inside their own `.settings-card`.
+- **Notifications** keeps its 1-col flow (the content is intrinsically
+  sequential: alerts → sound → push). Cards now share the panel
+  chrome, so the Browser / Host / Push sections look like peers.
+- **Style Bibles** header now matches the other panels. Action
+  buttons (Refresh / New Bible) routed through `.settings-button`.
+- **Storage bug fixed.** The `settings-row` / `settings-text-input`
+  classes that the Storage panel shipped with now have actual CSS,
+  so the input has its bordered card surface and the Save button
+  has its accent-blue primary style instead of naked labels.
+- Sidebar counter option was deliberately skipped per the user's
+  preference for a clean look.
+- Tests unchanged: 6 store suites, 2 control phases, 188 pytest.
+
 ## Feature — 2026-09-14 (configurable projects folder)
 
 - **Configurable projects folder.** New `GET/PUT /api/v1/settings/projects-root`
