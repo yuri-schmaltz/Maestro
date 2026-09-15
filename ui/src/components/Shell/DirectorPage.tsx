@@ -49,21 +49,55 @@ export function DirectorStageToggle() {
  */
 export function DirectorPage() {
   const stage = useStore(s => s.workspaceStage)
+  const openPlanning = useStore(s => s.openDirectorStage)
+  const openStudio = useStore(s => s.closeDirectorStage)
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {/* Sub-header de navegação proeminente de workflow */}
+      <div className="flex items-center justify-between px-4 py-2 bg-bg-secondary/90 border-b border-border/80 backdrop-blur-sm z-10 select-none">
+        <div className="flex items-center gap-2">
+          <div className="inline-flex p-0.5 rounded-lg bg-bg-tertiary border border-border/60">
+            <button
+              type="button"
+              onClick={openPlanning}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                stage === 'director'
+                  ? 'bg-accent-blue text-white shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              }`}
+              data-testid="subnav-director-planning"
+            >
+              <Clapperboard size={14} />
+              <span>Direção & Roteiro (Planning)</span>
+            </button>
+            <button
+              type="button"
+              onClick={openStudio}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                stage === 'studio'
+                  ? 'bg-accent-blue text-white shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              }`}
+              data-testid="subnav-director-studio"
+            >
+              <SlidersHorizontal size={14} />
+              <span>Laboratório Manual (Studio)</span>
+            </button>
+          </div>
+        </div>
+        <div className="text-2xs text-text-muted hidden sm:block">
+          {stage === 'director' ? 'Planejamento autônomo com IA e geração de cenas' : 'Controles granulares e geração cirúrgica de takes'}
+        </div>
+      </div>
+
       {stage === 'director' ? (
-        <div className="director-layout">
-          <div className="director-stage-pane">
+        <div className="director-layout flex-1 min-h-0">
+          <div className="director-stage-pane h-full">
             <DirectorStage />
           </div>
         </div>
       ) : (
-        // Studio mode renders the legacy layout (Sidebar + MainContent)
-        // side-by-side. The media-preview toggle that used to live in
-        // the section toolbar is gone — its only job was flipping
-        // the mobile breakpoint between preview and controls, and now
-        // that the toolbar is empty we always show the controls.
         <div className="flex min-h-0 flex-1">
           <div className="flex h-full min-w-0 w-full md:w-auto">
             <Sidebar />
@@ -76,3 +110,4 @@ export function DirectorPage() {
     </div>
   )
 }
+

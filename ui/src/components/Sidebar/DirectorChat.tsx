@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Mic, Send, Users, FileText, ListVideo } from 'lucide-react'
+import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Mic, Send, Users, FileText, ListVideo, Lock, Unlock } from 'lucide-react'
 import { useStore, directorModelUsesFixedMediaStrength, resolveResolution } from '../../stores/useStore'
 import { fetchModelOptions, getFileUrl } from '../../api/client'
 import { DirectorLoraSelector } from '../SettingsDrawer/DirectorLoraSelector'
@@ -2467,6 +2467,7 @@ function DirectorLoraAccordion() {
 }
 
 export function DirectorGenerationOptions() {
+  const [optionsViewMode, setOptionsViewMode] = useState<'basic' | 'expert'>('basic')
   const audioFile = useStore(s => s.directorAudioFile)
   const fixedMediaStrength = useStore(s => {
     const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
@@ -2476,29 +2477,59 @@ export function DirectorGenerationOptions() {
 
   return (
     <div className="space-y-3">
-      {/* Header matches the section header style used in the middle
-          column (CLIP STRUCTURE / Scene description / etc.) so all
-          three columns share the same visual hierarchy: an uppercase
-          tracked h3 introducing a card body. */}
-      <header className="flex items-center justify-between gap-2">
-        <h3 className="text-xs text-text-muted uppercase tracking-wider">
-          Generation Options
+      <header className="flex items-center justify-between gap-2 border-b border-border/50 pb-2">
+        <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+          Opções de Geração
         </h3>
+        {/* Toggle Básico vs Avançado */}
+        <div className="inline-flex p-0.5 rounded-md bg-bg-tertiary border border-border/60 text-2xs">
+          <button
+            type="button"
+            onClick={() => setOptionsViewMode('basic')}
+            className={`px-2 py-0.5 rounded font-medium transition-colors ${
+              optionsViewMode === 'basic'
+                ? 'bg-accent-blue text-white shadow-xs'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            Básico
+          </button>
+          <button
+            type="button"
+            onClick={() => setOptionsViewMode('expert')}
+            className={`px-2 py-0.5 rounded font-medium transition-colors ${
+              optionsViewMode === 'expert'
+                ? 'bg-accent-blue text-white shadow-xs'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            Avançado
+          </button>
+        </div>
       </header>
+
+      {/* Controles de LoRAs (sempre úteis) */}
       <DirectorLoraAccordion />
-      <DirectorAdvancedAccordion />
+
+      {/* Em modo Básico, os parâmetros profundos de atenção e multiplicadores ficam recolhidos; em Expert, abertos para edição */}
+      {optionsViewMode === 'expert' ? (
+        <DirectorAdvancedAccordion />
+      ) : (
+        <div className="rounded-lg border border-border/40 bg-bg-tertiary/40 p-2 text-2xs text-text-muted text-center">
+          Modo Básico ativo: parâmetros de atenção e latência usam as melhores recomendações automáticas do modelo.
+        </div>
+      )}
+
       {audioFile && !fixedMediaStrength && (
         <div className="pt-2 border-t border-border/50">
           <AudioScaleSlider />
         </div>
       )}
-      {/* Reference-photo strength slider moved from the left-column
-          ReferenceImageUpload card to here so the chat column stays
-          focused on inputs. Self-gates on referenceImage being set. */}
       <ReferenceImageStrengthSlider />
     </div>
   )
 }
+
 
 export function StyleForm({
   speakers, speakerMappings, speakerSamples, setSpeakerMapping, insertSpeakerMention, isActive, isShortFilm, isStoryPath,
@@ -2658,34 +2689,49 @@ export function ImagePromptsReview({
                 ? 'generating'
                 : 'pending'
           return (
-            <div key={i} className="bg-bg-tertiary rounded-lg p-2 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-2xs text-text-muted">
-                <span className="font-medium text-text-secondary">{isShortFilm ? 'Shot' : 'Clip'} {i + 1}</span>
-                <ShotStatus status={status} />
-                {clip && (
-                  <>
-                    <span>{formatTime(clip.start)}-{formatTime(clip.end)}</span>
-                    {!isShortFilm && <span>{clip.beat_count}b</span>}
-                    <SectionBadge label={clip.section_label} />
-                    {!isShortFilm && <EnergyDot energy={clip.energy} />}
-                    {clip.dominant_speaker && (
-                      <span className="text-accent-blue">
-                        {speakerMappings.find(m => m.speakerId === clip.dominant_speaker)?.name || clip.dominant_speaker}
-                      </span>
-                    )}
-                  </>
-                )}
+            <div key={i} className="bg-bg-tertiary rounded-lg p-3 space-y-2 border border-border/80 hover:border-border transition-colors shadow-xs">
+              <div className="flex items-center justify-between gap-1.5 text-2xs text-text-muted">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-semibold text-text-primary px-1.5 py-0.5 rounded bg-bg-secondary border border-border text-2xs">
+                    {isShortFilm ? 'Shot' : 'Clip'} {i + 1}
+                  </span>
+                  <ShotStatus status={status} />
+                  {clip && (
+                    <>
+                      <span className="tabular-nums font-mono text-text-secondary">{formatTime(clip.start)}–{formatTime(clip.end)}</span>
+                      {!isShortFilm && <span className="text-text-muted">{clip.beat_count}b</span>}
+                      <SectionBadge label={clip.section_label} />
+                      {!isShortFilm && <EnergyDot energy={clip.energy} />}
+                      {clip.dominant_speaker && (
+                        <span className="text-accent-blue font-medium">
+                          {speakerMappings.find(m => m.speakerId === clip.dominant_speaker)?.name || clip.dominant_speaker}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
-              {/* AutoResizeTextarea grows with content — no internal
-                  scroll on long prompts. rows={4} provides a sensible
-                  initial height before content is loaded. */}
-              <AutoResizeTextarea
-                value={plan.image_prompt}
-                onChange={e => editClipPlan(i, 'image_prompt', e.target.value)}
-                rows={4}
-                disabled={!isActive}
-                className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-60"
-              />
+              <div className="flex gap-2.5 items-start">
+                {image && (
+                  <div className="relative shrink-0 w-16 h-16 rounded overflow-hidden border border-border/80 bg-black/40">
+                    <img
+                      src={image.file ? URL.createObjectURL(image.file) : getFileUrl(image.filename)}
+                      alt={`Shot ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <AutoResizeTextarea
+                    value={plan.image_prompt}
+                    onChange={e => editClipPlan(i, 'image_prompt', e.target.value)}
+                    rows={3}
+                    disabled={!isActive}
+                    placeholder="Descreva o enquadramento e elementos visuais da cena inicial..."
+                    className="w-full bg-bg-secondary border border-border rounded px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-muted/60 resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-60"
+                  />
+                </div>
+              </div>
             </div>
           )
         })}
@@ -2695,11 +2741,11 @@ export function ImagePromptsReview({
         <button
           onClick={generateStartImages}
           disabled={loading}
-          className="w-full py-2 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-1.5"
+          className="w-full py-2.5 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-1.5 shadow-xs"
         >
           {/* Always available now — directorGenerateStartImages generates an
               establishing/anchor image first when no reference was provided. */}
-          <ImageIcon size={12} /> Generate Start Images
+          <ImageIcon size={13} /> Generate Start Images
         </button>
       )}
     </div>
@@ -2911,22 +2957,26 @@ export function VideoPromptsReview({
                 ? 'generating'
                 : 'pending'
           return (
-            <div key={i} className="bg-bg-tertiary rounded-lg p-2 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-2xs text-text-muted">
-                <span className="font-medium text-text-secondary">{isShortFilm ? 'Shot' : 'Clip'} {i + 1}</span>
-                <ShotStatus status={status} />
-                {totalClips && <span>{i + 1}/{totalClips}</span>}
-                {clip && (
-                  <>
-                    <span>{formatTime(clip.start)}-{formatTime(clip.end)}</span>
-                    <SectionBadge label={clip.section_label} />
-                    {clip.dominant_speaker && (
-                      <span className="text-accent-blue">
-                        {speakerMappings.find(m => m.speakerId === clip.dominant_speaker)?.name || clip.dominant_speaker}
-                      </span>
-                    )}
-                  </>
-                )}
+            <div key={i} className="bg-bg-tertiary rounded-lg p-3 space-y-2 border border-border/80 hover:border-border transition-colors shadow-xs">
+              <div className="flex items-center justify-between gap-1.5 text-2xs text-text-muted">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-semibold text-text-primary px-1.5 py-0.5 rounded bg-bg-secondary border border-border text-2xs">
+                    {isShortFilm ? 'Shot' : 'Clip'} {i + 1}
+                  </span>
+                  <ShotStatus status={status} />
+                  {totalClips && <span className="tabular-nums font-mono text-text-muted">{i + 1}/{totalClips}</span>}
+                  {clip && (
+                    <>
+                      <span className="tabular-nums font-mono text-text-secondary">{formatTime(clip.start)}–{formatTime(clip.end)}</span>
+                      <SectionBadge label={clip.section_label} />
+                      {clip.dominant_speaker && (
+                        <span className="text-accent-blue font-medium">
+                          {speakerMappings.find(m => m.speakerId === clip.dominant_speaker)?.name || clip.dominant_speaker}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               {allowSceneImageUploads && (
                 <div className="flex items-center gap-2 rounded-md border border-border bg-bg-secondary p-1.5">
@@ -2970,12 +3020,26 @@ export function VideoPromptsReview({
                   )}
                 </div>
               )}
-              <AutoResizeTextarea
-                value={plan.video_prompt}
-                onChange={e => editClipPlan(i, 'video_prompt', e.target.value)}
-                rows={4}
-                className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary resize-none focus:outline-none focus:border-accent-blue transition-colors"
-              />
+              <div className="flex gap-2.5 items-start">
+                {!allowSceneImageUploads && clipImage && (
+                  <div className="relative shrink-0 w-16 h-16 rounded overflow-hidden border border-border/80 bg-black/40">
+                    <img
+                      src={clipImage.file ? URL.createObjectURL(clipImage.file) : getFileUrl(clipImage.filename)}
+                      alt={`Clip ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <AutoResizeTextarea
+                    value={plan.video_prompt}
+                    onChange={e => editClipPlan(i, 'video_prompt', e.target.value)}
+                    rows={3}
+                    placeholder="Descreva o movimento de câmera e ação do vídeo..."
+                    className="w-full bg-bg-secondary border border-border rounded px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-muted/60 resize-none focus:outline-none focus:border-accent-blue transition-colors"
+                  />
+                </div>
+              </div>
             </div>
           )
         })}
