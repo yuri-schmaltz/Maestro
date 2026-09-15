@@ -5383,11 +5383,17 @@ def stop_pipeline(pid: str) -> bool:
         }
     _abort_pipeline_jobs(pid)
     persisted = _save_pipeline_state(pid)
+    try:
+        from shared.utils.gpu_cleanup import force_cuda_cleanup
+        force_cuda_cleanup()
+    except Exception:
+        pass
     with _pipeline_lock:
         current = _pipelines.get(pid)
         if current is not None:
             current["_state_persisted"] = persisted
     return True
+
 
 
 def _run_pipeline(pid: str, resume: bool = False):
@@ -5429,22 +5435,29 @@ def _run_pipeline(pid: str, resume: bool = False):
         pipeline_type = params.get("pipeline_type", "music_video")  # music_video | short_film_audio | short_film_story
         auto_mode = params.get("auto_mode", True)
 
-        # ── Disk preflight ─────────────────────────────────────────────
+        # ── Disk preflight (Dynamic sizing based on clips & resolution) ──
         # A Director run writes gigabytes (per-clip images + video + the
-        # final concat). Fail fast with a clear message instead of dying
+        # final concat). Fail fast with an accurate estimate instead of dying
         # halfway through with a truncated "No space left on device" write.
         try:
-            import shutil as _shutil
-            free_gb = _shutil.disk_usage(pipeline_out_dir).free / (1024 ** 3)
-            if free_gb < 3:
+            from shared.utils.gpu_cleanup import estimate_required_disk_gb, check_disk_space, force_cuda_cleanup
+            planned_count = len(params.get("planned_clips") or params.get("prepared_clip_plans") or [1])
+            resolution_preset = str(params.get("director_resolution_preset") or "720p")
+            required_space_gb = estimate_required_disk_gb(planned_count, resolution_preset=resolution_preset)
+            has_space, free_gb, needed_gb = check_disk_space(pipeline_out_dir, required_space_gb)
+            if not has_space:
                 raise RuntimeError(
-                    f"Only {free_gb:.1f} GB free on the output drive — not "
-                    f"enough for a Director run. Free up space and try again."
+                    f"Only {free_gb:.1f} GB free on output drive — estimated {needed_gb:.1f} GB "
+                    f"needed for this {planned_count}-shot ({resolution_preset}) Director run. "
+                    f"Free up disk space and try again."
                 )
+            # Limpeza preventiva de VRAM no início
+            force_cuda_cleanup()
         except RuntimeError:
             raise
         except Exception:
             pass  # disk_usage can fail on odd mounts; don't block on the check itself
+
 
         # ── Wait for GPU if jobs are running ────────────────────────────
         # LLM needs GPU (CUDA), so we must wait for generation queue to drain.
@@ -5759,8 +5772,11 @@ def _run_pipeline(pid: str, resume: bool = False):
         try:
             if llm_service.is_loaded():
                 llm_service.unload_model()
+            from shared.utils.gpu_cleanup import force_cuda_cleanup
+            force_cuda_cleanup()
         except Exception as e:
             print(f"[Pipeline] LLM unload warning (non-fatal): {e}")
+
 
         # On resume, reuse the start images that already generated before the
         # crash — but only if every file still exists (a wiped/half-written
@@ -5838,10 +5854,17 @@ def _run_pipeline(pid: str, resume: bool = False):
             return
 
         # ── Phase 3: Generate Video ─────────────────────────────────────
+        try:
+            from shared.utils.gpu_cleanup import force_cuda_cleanup
+            force_cuda_cleanup()
+        except Exception:
+            pass
+
         _update_pipeline(pid, phase="generating_video",
                          progress={"current": 0, "total": 1, "message": "Generating video...", "step": 0, "total_steps": 0})
 
         output_files = _run_video_generation(pid, params, clip_plans, planned_clips, clip_images, clip_keyframes, out_dir=pipeline_out_dir, workspace=pipeline_workspace)
+
 
         # A Stop during the video phase lands here after the abort. Record
         # whatever clips finished (the Dashboard can rerun/rejoin them),
