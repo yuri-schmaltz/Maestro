@@ -6,6 +6,9 @@ app/env-sol/
 app/env-ltx25/
 app/env-ltx25-*/
 app/temp/
+.venv/
+maestro.egg-info/
+uv.lock
 
 # Node.js dependencies
 ui/node_modules/
