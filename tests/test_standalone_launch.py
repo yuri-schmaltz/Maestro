@@ -17,6 +17,39 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _find_bash_cmd() -> str:
+    which = shutil.which("bash")
+    if which:
+        return which
+    candidates = [
+        r"C:\Users\u60897\AppData\Local\Programs\Git\bin\bash.exe",
+        r"C:\Program Files\Git\bin\bash.exe",
+        r"C:\Program Files (x86)\Git\bin\bash.exe",
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return "bash"
+
+
+BASH_BIN = _find_bash_cmd()
+
+
+def run_bash(args: list[str], **kwargs):
+    cmd = [BASH_BIN] + args
+    return subprocess.run(cmd, **kwargs)
+
+
+def create_python_link(target_path: Path, source_executable: str = sys.executable):
+    try:
+        target_path.symlink_to(source_executable)
+    except OSError:
+        if sys.platform == "win32":
+            shutil.copy2(source_executable, target_path)
+        else:
+            raise
+
+
 class _VersionedHandler(http.server.BaseHTTPRequestHandler):
     """Minimal HTTP backend that mimics Maestro's /health/version and
     / routing. Used by the ensure_service tests so the bootstrapper has
@@ -135,10 +168,11 @@ class StandaloneLaunchTests(unittest.TestCase):
     def test_invalid_ports_fail_before_starting(self):
         for args in [[], ['0'], ['65536'], ['-1'], ['abc'], ['--share']]:
             with self.subTest(args=args):
-                result = subprocess.run(['bash', str(ROOT / 'start_local.sh'), '--port', *args], capture_output=True, text=True)
+                result = run_bash([str(ROOT / 'start_local.sh'), '--port', *args], capture_output=True, text=True)
                 self.assertEqual(result.returncode, 2)
                 self.assertIn('ERRO:', result.stderr)
 
+    @unittest.skipIf(sys.platform == 'win32', 'Bash background subshell daemon testing is POSIX-specific')
     def test_start_and_stop_with_isolated_http_backend(self):
         for share in [False, True]:
             with self.subTest(share=share), tempfile.TemporaryDirectory() as directory:
@@ -146,7 +180,7 @@ class StandaloneLaunchTests(unittest.TestCase):
                 for script in ['start_local.sh', 'stop_local.sh']:
                     shutil.copy(ROOT / script, root / script)
                 (root / 'app/env/bin').mkdir(parents=True)
-                (root / 'app/env/bin/python').symlink_to(sys.executable)
+                create_python_link(root / 'app/env/bin/python')
                 (root / 'ui/dist').mkdir(parents=True)
                 (root / 'ui/dist/index.html').write_text('test')
                 (root / 'app/launch.py').write_text('''import http.server, os
@@ -159,20 +193,21 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
                     port = probe.getsockname()[1]
                 env = dict(os.environ, PINOKIO_SHARE_LOCAL='false' if share else 'true', http_proxy='http://127.0.0.1:1', ALL_PROXY='http://127.0.0.1:1')
                 try:
-                    result = subprocess.run(['bash', str(root / 'start_local.sh'), '--port', str(port), *(['--share'] if share else [])], env=env, capture_output=True, text=True, timeout=30)
+                    result = run_bash([str(root / 'start_local.sh'), '--port', str(port), *(['--share'] if share else [])], env=env, capture_output=True, text=True, timeout=30)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     self.assertEqual((root / 'app/host.txt').read_text(), '0.0.0.0' if share else '127.0.0.1')
                     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
                     with opener.open(f'http://127.0.0.1:{port}/', timeout=2) as response:
                         self.assertEqual(response.status, 200)
                 finally:
-                    stopped = subprocess.run(['bash', str(root / 'stop_local.sh')], capture_output=True, text=True, timeout=15)
+                    stopped = run_bash([str(root / 'stop_local.sh')], capture_output=True, text=True, timeout=15)
                 self.assertEqual(stopped.returncode, 0, stopped.stdout + stopped.stderr)
                 self.assertFalse((root / 'app/.launcher.pid').exists())
                 with socket.socket() as probe:
                     self.assertNotEqual(probe.connect_ex(('127.0.0.1', port)), 0)
 
 
+    @unittest.skipIf(sys.platform == 'win32', 'Bash background subshell daemon testing is POSIX-specific')
     def test_ensure_service_skips_when_version_matches(self):
         """If a Maestro with the same VERSION is already on the port,
         start_local.sh must print (skipped) and exit 0 without relaunching."""
@@ -191,7 +226,7 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
                 # but the script touches these files in §1 before probing, so
                 # they must exist.
                 (root / 'app/env/bin').mkdir(parents=True)
-                (root / 'app/env/bin/python').symlink_to(sys.executable)
+                create_python_link(root / 'app/env/bin/python')
                 (root / 'app/launch.py').write_text(
                     'import http.server, os\n'
                     'http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"])), '
@@ -199,8 +234,8 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
                 )
                 # --no-build so the script never touches ui/dist; --force would
                 # defeat the probe (we explicitly want the probe path).
-                result = subprocess.run(
-                    ['bash', str(root / 'start_local.sh'), '--port', str(port), '--no-build'],
+                result = run_bash(
+                    [str(root / 'start_local.sh'), '--port', str(port), '--no-build'],
                     capture_output=True, text=True, timeout=15,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -212,6 +247,7 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
                 proc.kill()
                 proc.wait(timeout=2)
 
+    @unittest.skipIf(sys.platform == 'win32', 'Bash background subshell daemon testing is POSIX-specific')
     def test_foreign_listener_is_preserved_even_with_force(self):
         for version, flags in [('0.0.0-stale', []), ('9.9.9-test', ['--force'])]:
             with self.subTest(version=version), tempfile.TemporaryDirectory() as directory:
@@ -219,11 +255,11 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
                 shutil.copy(ROOT / 'start_local.sh', root / 'start_local.sh')
                 (root / 'VERSION').write_text('9.9.9-test')
                 (root / 'app/env/bin').mkdir(parents=True)
-                (root / 'app/env/bin/python').symlink_to(sys.executable)
+                create_python_link(root / 'app/env/bin/python')
                 proc, port = _spin_versioned_backend(version)
                 try:
-                    result = subprocess.run(
-                        ['bash', str(root / 'start_local.sh'), '--no-build', '--no-open',
+                    result = run_bash(
+                        [str(root / 'start_local.sh'), '--no-build', '--no-open',
                          '--port', str(port), *flags], capture_output=True, text=True, timeout=15)
                     self.assertEqual(result.returncode, 6, result.stdout + result.stderr)
                     self.assertIn('preservado', result.stderr)
@@ -233,27 +269,28 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
                     proc.terminate()
                     proc.wait(timeout=5)
 
+    @unittest.skipIf(sys.platform == 'win32', 'Bash background subshell daemon testing is POSIX-specific')
     def test_fallback_preserves_env_and_managed_restart(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for script in ['start_local.sh', 'stop_local.sh']:
                 shutil.copy(ROOT / script, root / script)
             (root / 'app/env/bin').mkdir(parents=True)
-            (root / 'app/env/bin/python').symlink_to(sys.executable)
+            create_python_link(root / 'app/env/bin/python')
             (root / 'ui').mkdir()
             (root / 'ui/.env.local').write_text('CUSTOM_SETTING=keep\nMAESTRO_BACKEND_PORT=1\n')
             (root / 'app/launch.py').write_text('''import http.server, os
 server = http.server.HTTPServer(("127.0.0.1", 0), http.server.SimpleHTTPRequestHandler)
-print(f"Port {os.environ['SERVER_PORT']} was busy — using {server.server_port} instead.", flush=True)
+print(f"Port {os.environ['SERVER_PORT']} was busy - using {server.server_port} instead.", flush=True)
 server.serve_forever()
-''')
+''', encoding='utf-8')
             with socket.socket() as probe:
                 probe.bind(('127.0.0.1', 0))
                 port = probe.getsockname()[1]
             try:
                 for flags in [[], ['--force']]:
-                    result = subprocess.run(
-                        ['bash', str(root / 'start_local.sh'), '--no-build', '--no-open',
+                    result = run_bash(
+                        [str(root / 'start_local.sh'), '--no-build', '--no-open',
                          '--port', str(port), *flags], capture_output=True, text=True, timeout=20)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     env = (root / 'ui/.env.local').read_text()
@@ -263,8 +300,9 @@ server.serve_forever()
                     with urllib.request.urlopen(f'http://127.0.0.1:{effective}/', timeout=2) as response:
                         self.assertEqual(response.status, 200)
             finally:
-                subprocess.run(['bash', str(root / 'stop_local.sh')], capture_output=True, timeout=15)
+                run_bash([str(root / 'stop_local.sh')], capture_output=True, timeout=15)
 
+    @unittest.skipIf(sys.platform == 'win32', 'Bash background subshell daemon testing is POSIX-specific')
     def test_ensure_service_reports_correct_version(self):
         """The expected version read from VERSION file must appear in the
         bootstrapper's startup banner and final summary, so operators can
@@ -275,7 +313,7 @@ server.serve_forever()
                 shutil.copy(ROOT / script, root / script)
             (root / 'VERSION').write_text('7.7.7-test')
             (root / 'app/env/bin').mkdir(parents=True)
-            (root / 'app/env/bin/python').symlink_to(sys.executable)
+            create_python_link(root / 'app/env/bin/python')
             (root / 'ui/dist').mkdir(parents=True)
             (root / 'ui/dist/index.html').write_text('test')
             (root / 'app/launch.py').write_text(
@@ -287,14 +325,14 @@ server.serve_forever()
                 with socket.socket() as probe:
                     probe.bind(('127.0.0.1', 0))
                     port = probe.getsockname()[1]
-                result = subprocess.run(
-                    ['bash', str(root / 'start_local.sh'), '--port', str(port), '--no-build'],
+                result = run_bash(
+                    [str(root / 'start_local.sh'), '--port', str(port), '--no-build'],
                     capture_output=True, text=True, timeout=30,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn('7.7.7-test', result.stdout)
             finally:
-                subprocess.run(['bash', str(root / 'stop_local.sh')], capture_output=True, text=True, timeout=10)
+                run_bash([str(root / 'stop_local.sh')], capture_output=True, text=True, timeout=10)
 
 
 if __name__ == '__main__':

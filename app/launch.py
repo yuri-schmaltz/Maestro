@@ -29382,31 +29382,6 @@ if __name__ == "__main__":
         pinokio_share = (os.environ.get("PINOKIO_SHARE_LOCAL") or "").strip().lower()
         host = "0.0.0.0" if pinokio_share == "true" else "127.0.0.1"
 
-    # Configure security based on flags, environment and network binding
-    from services.security import configure_security
-    import argparse
-    parser = argparse.ArgumentParser(description="Cue Studio / Maestro Server")
-    parser.add_argument("--api-key", type=str, default=None, help="Secret API Bearer token for authentication")
-    parser.add_argument("--require-auth", action="store_true", help="Force API token authentication even for local loopback")
-    parser.add_argument("--port", type=int, default=port, help="Port to bind")
-    parser.add_argument("--share", action="store_true", help="Bind to 0.0.0.0 for LAN access")
-    known_args, _ = parser.parse_known_args()
-
-    if known_args.port:
-        port = known_args.port
-    if known_args.share:
-        host = "0.0.0.0"
-
-    # Em modo --share, a autenticação por token é ativada por padrão para segurança na rede
-    is_shared = (host == "0.0.0.0")
-    should_require_auth = known_args.require_auth or is_shared
-    active_token = configure_security(
-        api_key=known_args.api_key,
-        require_auth=should_require_auth,
-        allow_unauthenticated_local=not known_args.require_auth,
-    )
-
-
     # Port resolution: Pinokio hands us a free port via SERVER_PORT, but a
     # stale prior instance or another app can still be holding it by the time
     # we bind — and an uncaught bind failure makes the launcher report a
@@ -29449,6 +29424,23 @@ if __name__ == "__main__":
             flush=True,
         )
         port = resolved_port
+
+    # Configure security based on flags, environment and network binding
+    from services.security import configure_security
+    import argparse
+    parser = argparse.ArgumentParser(description="Cue Studio / Maestro Server")
+    parser.add_argument("--api-key", type=str, default=None, help="Secret API Bearer token for authentication")
+    parser.add_argument("--require-auth", action="store_true", help="Force API token authentication even for local loopback")
+    known_args, _ = parser.parse_known_args()
+
+    # Em modo --share / 0.0.0.0, a autenticação por token é ativada por padrão para segurança na rede
+    is_shared = (host == "0.0.0.0")
+    should_require_auth = known_args.require_auth or is_shared
+    active_token = configure_security(
+        api_key=known_args.api_key,
+        require_auth=should_require_auth,
+        allow_unauthenticated_local=not known_args.require_auth,
+    )
 
     # Browsers can't navigate to 0.0.0.0 (it's a non-routable bind
     # address), so when binding wider we still SURFACE the loopback

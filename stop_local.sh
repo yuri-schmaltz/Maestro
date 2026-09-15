@@ -33,8 +33,25 @@ if [[ ! -f "$PIDFILE" ]]; then
   exit 0
 fi
 
+# Detect python binary
+PY=""
+for candidate in env-sol env-rtx50 env; do
+  if [[ -x "$APP_DIR/$candidate/bin/python" ]]; then
+    PY="$APP_DIR/$candidate/bin/python"
+    break
+  fi
+done
+if [[ -z "$PY" ]]; then
+  if command -v python3 >/dev/null 2>&1; then
+    PY="python3"
+  elif command -v python >/dev/null 2>&1; then
+    PY="python"
+  fi
+fi
+
 is_managed_process() {
-  python3 - "$1" "$APP_DIR" <<'PYPROC'
+  if [[ -n "$PY" ]]; then
+    "$PY" - "$1" "$APP_DIR" <<'PYPROC'
 import os, sys
 from pathlib import Path
 try:
@@ -48,6 +65,9 @@ except (OSError, ValueError):
     valid = False
 sys.exit(0 if valid else 1)
 PYPROC
+  else
+    return 0
+  fi
 }
 
 PID=$(cat "$PIDFILE")
