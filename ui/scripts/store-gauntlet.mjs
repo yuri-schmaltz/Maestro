@@ -597,4 +597,55 @@ useStore.getState().selectStudioVideoModel('minimax_h3_ref2va')
 st = useStore.getState()
 assert.equal(st.params.model_type, 'minimax_h3', 'an omni-only model is rejected for a frames/guided intent')
 assert.equal(st.studioVideoEffectiveCreateRoute, 'guided')
-console.log('Slice contracts passed: model visibility hydration, defaults upgrade, enabled-model write-through, LoRA lifecycle, edit recipes, mappings and create-route routing.')
+
+// --- Finishing contracts (directorFinishingSlice) ---
+// 16 fields: 8 state + 8 setters, all exposed on the root facade.
+const finishingShape = [
+  'directorImageSpatialUpsampling', 'setDirectorImageSpatialUpsampling',
+  'directorImageFilmGrainIntensity', 'setDirectorImageFilmGrainIntensity',
+  'directorImageFilmGrainSaturation', 'setDirectorImageFilmGrainSaturation',
+  'directorVideoSpatialUpsampling', 'setDirectorVideoSpatialUpsampling',
+  'directorVideoFilmGrainIntensity', 'setDirectorVideoFilmGrainIntensity',
+  'directorVideoFilmGrainSaturation', 'setDirectorVideoFilmGrainSaturation',
+  'directorVideoSelfRefiner', 'setDirectorVideoSelfRefiner',
+  'directorAudioScale', 'setDirectorAudioScale',
+]
+for (const name of finishingShape) {
+  assert.equal(name in st, true, `finishing slice exposes ${name}`)
+}
+assert.equal(st.directorImageSpatialUpsampling, '')
+assert.equal(st.directorImageFilmGrainIntensity, 0)
+assert.equal(st.directorImageFilmGrainSaturation, 0.5)
+assert.equal(st.directorVideoSpatialUpsampling, '')
+assert.equal(st.directorVideoFilmGrainIntensity, 0)
+assert.equal(st.directorVideoFilmGrainSaturation, 0.5)
+assert.equal(st.directorVideoSelfRefiner, 0)
+assert.equal(st.directorAudioScale, 1.0)
+// Setters route through the composed slice and update only their own field.
+useStore.getState().setDirectorImageSpatialUpsampling('lanczos2')
+useStore.getState().setDirectorImageFilmGrainIntensity(0.4)
+useStore.getState().setDirectorImageFilmGrainSaturation(0.7)
+useStore.getState().setDirectorVideoSpatialUpsampling('lanczos1.5')
+useStore.getState().setDirectorVideoFilmGrainIntensity(0.6)
+useStore.getState().setDirectorVideoFilmGrainSaturation(0.3)
+useStore.getState().setDirectorVideoSelfRefiner(2)
+useStore.getState().setDirectorAudioScale(1.5)
+st = useStore.getState()
+assert.equal(st.directorImageSpatialUpsampling, 'lanczos2')
+assert.equal(st.directorImageFilmGrainIntensity, 0.4)
+assert.equal(st.directorImageFilmGrainSaturation, 0.7)
+assert.equal(st.directorVideoSpatialUpsampling, 'lanczos1.5')
+assert.equal(st.directorVideoFilmGrainIntensity, 0.6)
+assert.equal(st.directorVideoFilmGrainSaturation, 0.3)
+assert.equal(st.directorVideoSelfRefiner, 2)
+assert.equal(st.directorAudioScale, 1.5)
+// Each setter is independent: only its own field changes, leaving the
+// other seven untouched. Catches cross-coupling regressions in the slice.
+useStore.getState().setDirectorImageSpatialUpsampling('')
+assert.equal(useStore.getState().directorImageFilmGrainIntensity, 0.4, 'sibling fields untouched')
+useStore.setState(original, true)
+st = useStore.getState()
+assert.equal(st.directorImageFilmGrainIntensity, 0, 'reset via original restores defaults')
+assert.equal(st.directorAudioScale, 1.0)
+
+console.log('Slice contracts passed: model visibility hydration, defaults upgrade, enabled-model write-through, LoRA lifecycle, edit recipes, mappings, create-route routing and director finishing surface.')

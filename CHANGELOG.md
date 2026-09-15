@@ -1,5 +1,28 @@
 # Maestro Changelog
 
+## Retomada de estabilização — 2026-09-14 (continuação)
+
+- **Director finishing extraído para slice.** Os 8 campos + 8 setters
+  de pós-processamento do Director (image/video spatial upsampling,
+  film grain intensity/saturation, H3 self-refiner, audio scale) que
+  ainda viviam no root do `useStore.ts` foram movidos para
+  `ui/src/stores/directorFinishingSlice.ts`. Composto via
+  `createDirectorFinishingSlice(set)` no root, preservando os nomes
+  públicos em `AppState`. Quinto suíte de contratos no `test:store`:
+  forma da superfície, valores default e independência entre setters.
+- **Director HTTP extraction — primeiro corte.** O endpoint
+  `GET /api/v1/director/skills` foi extraído para
+  `app/services/director/http.py` como um sub-router montado via
+  `api.include_router(build_skills_router())` em `launch.py`. Wire
+  contract preservado (verificado contra as duas instâncias de backend
+  ativas). Coberto por 3 testes novos em
+  `tests/test_director_http_extraction.py`. Os outros ~39 endpoints
+  Director continuam no `launch.py` por dependerem de estado per-
+  request (registry `_jobs`, `_ensure_llm_loaded`, cancellation event
+  bus) — extração incremental conforme documentado em §P2 do TODO.
+- **Suite Python: 174 passed (171 → 174).** 3 novos testes do contrato
+  do sub-router. Build/lint/test:store/test:control todos verdes.
+
 ## Retomada de estabilização — 2026-09-14 (working tree)
 
 - **Cancel actions para os três fluxos do Director.** Implementadas as

@@ -10322,12 +10322,13 @@ def delete_pipeline_endpoint(pid: str):
 
 
 # ── Director Skills Catalog ───────────────────────────────────────────────
-
-@api.get("/api/v1/director/skills")
-async def director_skills():
-    """Expose the Director skill catalog from a single registry."""
-    from services.director.registry import list_skills
-    return {"skills": list_skills()}
+# Moved to services.director.http.build_skills_router() and mounted below
+# via api.include_router(). The catalog is the only Director endpoint
+# with zero per-request state dependencies; the rest still live here
+# because they need the launch.py _jobs registry and per-request LLM
+# hooks. See services/director/http.py for the split rationale.
+from services.director.http import build_skills_router
+api.include_router(build_skills_router())
 
 
 # ── Director V2 Planning ─────────────────────────────────────────────────

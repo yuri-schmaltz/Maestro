@@ -1,6 +1,7 @@
 import { createStudioModelSlice } from './studioModelSlice'
 import { studioModelRuntime } from './studioModelRuntime'
 import { createStudioModeSlice } from './studioModeSlice'
+import { createDirectorFinishingSlice } from './directorFinishingSlice'
 import { trackAnalysisProgress } from './analysisProgress'
 import type { SceneSlot } from '../lib/directorTimeline'
 import { create } from 'zustand'
@@ -4242,22 +4243,10 @@ export const useStore = create<AppState>((set, get, store) => ({
   },
 
   // Director-mode post-processing (separate image/video)
-  directorImageSpatialUpsampling: '',
-  setDirectorImageSpatialUpsampling: (v) => set({ directorImageSpatialUpsampling: v }),
-  directorImageFilmGrainIntensity: 0,
-  setDirectorImageFilmGrainIntensity: (v) => set({ directorImageFilmGrainIntensity: v }),
-  directorImageFilmGrainSaturation: 0.5,
-  setDirectorImageFilmGrainSaturation: (v) => set({ directorImageFilmGrainSaturation: v }),
-  directorVideoSpatialUpsampling: '',
-  setDirectorVideoSpatialUpsampling: (v) => set({ directorVideoSpatialUpsampling: v }),
-  directorVideoFilmGrainIntensity: 0,
-  setDirectorVideoFilmGrainIntensity: (v) => set({ directorVideoFilmGrainIntensity: v }),
-  directorVideoFilmGrainSaturation: 0.5,
-  setDirectorVideoFilmGrainSaturation: (v) => set({ directorVideoFilmGrainSaturation: v }),
-  directorVideoSelfRefiner: 0,
-  setDirectorVideoSelfRefiner: (v) => set({ directorVideoSelfRefiner: v }),
-  directorAudioScale: 1.0,
-  setDirectorAudioScale: (v) => set({ directorAudioScale: v }),
+  // State and setters moved to directorFinishingSlice and composed via
+  // createDirectorFinishingSlice below. The names on AppState remain the
+  // same so callers don't migrate.
+  ...createDirectorFinishingSlice(set),
 
   audioGuideFilename: null,
   setAudioGuideFilename: (name) => set({ audioGuideFilename: name }),

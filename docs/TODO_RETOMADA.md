@@ -55,9 +55,8 @@ Evidências desta etapa:
 | `npm run test:control` | Aprovado |
 | `pytest tests/ -q` | 171 passed, 2 skipped, 4 deselected, 33 subtests |
 
-Próximas ações: extrair `setParam`/`params` e finishing fields do root;
-sincronizar pidfile stale; promover VERSION para 2.1.0; extrair
-Director HTTP backend; validar CI em ambiente limpo.
+Próximas ações: extrair mais endpoints Director HTTP; CI em ambiente
+limpo; geração real.
 
 ## Execução em andamento — 2026-09-13 (extração de persistência)
 
