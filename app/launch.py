@@ -525,20 +525,14 @@ def _safe_join(base: str, *parts: str) -> str | None:
     paths, symlinks escaping the base, etc.). Use for any endpoint that
     accepts a user-supplied filename."""
     try:
-        base_real = os.path.realpath(base)
-        joined = os.path.realpath(os.path.join(base_real, *parts))
-        # On Windows, realpath is case-insensitive at the FS layer but
-        # commonpath is case-sensitive — normalize both sides.
-        if os.name == "nt":
-            if os.path.normcase(joined) != os.path.normcase(base_real) and \
-               not os.path.normcase(joined).startswith(os.path.normcase(base_real) + os.sep):
-                return None
-        else:
-            if joined != base_real and not joined.startswith(base_real + os.sep):
-                return None
-        return joined
+        from shared.utils.path_safety import is_safe_subpath
+        target = os.path.join(base, *parts)
+        if not is_safe_subpath(target, base):
+            return None
+        return os.path.realpath(target)
     except (ValueError, OSError):
         return None
+
 
 # CORS — restricted to localhost (the Vite dev server + the bundled UI
 # served from the same FastAPI process + Pinokio's HTTPS proxy at
@@ -551,6 +545,23 @@ api.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# API Security & Authentication Middleware
+from services.security import verify_api_key
+
+@api.middleware("http")
+async def security_authentication_middleware(request: Request, call_next):
+    from fastapi.responses import JSONResponse
+    try:
+        await verify_api_key(request)
+    except HTTPException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=exc.headers or {},
+        )
+    return await call_next(request)
+
 
 # --- Generation job tracking ---
 from services.job_lifecycle import (
@@ -29371,6 +29382,31 @@ if __name__ == "__main__":
         pinokio_share = (os.environ.get("PINOKIO_SHARE_LOCAL") or "").strip().lower()
         host = "0.0.0.0" if pinokio_share == "true" else "127.0.0.1"
 
+    # Configure security based on flags, environment and network binding
+    from services.security import configure_security
+    import argparse
+    parser = argparse.ArgumentParser(description="Cue Studio / Maestro Server")
+    parser.add_argument("--api-key", type=str, default=None, help="Secret API Bearer token for authentication")
+    parser.add_argument("--require-auth", action="store_true", help="Force API token authentication even for local loopback")
+    parser.add_argument("--port", type=int, default=port, help="Port to bind")
+    parser.add_argument("--share", action="store_true", help="Bind to 0.0.0.0 for LAN access")
+    known_args, _ = parser.parse_known_args()
+
+    if known_args.port:
+        port = known_args.port
+    if known_args.share:
+        host = "0.0.0.0"
+
+    # Em modo --share, a autenticação por token é ativada por padrão para segurança na rede
+    is_shared = (host == "0.0.0.0")
+    should_require_auth = known_args.require_auth or is_shared
+    active_token = configure_security(
+        api_key=known_args.api_key,
+        require_auth=should_require_auth,
+        allow_unauthenticated_local=not known_args.require_auth,
+    )
+
+
     # Port resolution: Pinokio hands us a free port via SERVER_PORT, but a
     # stale prior instance or another app can still be holding it by the time
     # we bind — and an uncaught bind failure makes the launcher report a
@@ -29423,13 +29459,17 @@ if __name__ == "__main__":
 
     print(f"\n{'='*50}")
     print(f"  Maestro UI:    http://{display_host}:{port}/")
-    # The Classic UI entry used to live here too — the Gradio mount was
-    # removed earlier, so the `/classic` route now 404s. Keep the banner
-    # clean so users don't try to open a URL that no longer exists.
     print(f"  API docs:      http://{display_host}:{port}/docs")
     if host == "0.0.0.0":
         print(f"  (Bound to {host} — LAN-accessible via this machine's IP)")
+    if should_require_auth:
+        print(f"  Security:      AUTH REQUIRED (Bearer Token)")
+        if active_token:
+            print(f"  Token:         {active_token}")
+    else:
+        print(f"  Security:      Local loopback (Unauthenticated)")
     print(f"{'='*50}\n")
+
 
     # Confirm the polling filter immediately before Uvicorn configures logging.
     install_quiet_access_filter()

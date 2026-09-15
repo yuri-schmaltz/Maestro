@@ -2,6 +2,46 @@ import type { DirectorModelCompatibility, H3WindowPlan, LTXWindowPlan, MiniMaxH3
 
 const BASE = ''  // same origin in production; Vite proxy handles /api in dev
 
+// Token storage key and retrieval helper for API authentication
+const API_KEY_STORAGE_KEY = 'cue_api_key'
+
+export function getApiKey(): string | null {
+  try {
+    return localStorage.getItem(API_KEY_STORAGE_KEY) || (window as unknown as { __CUE_API_KEY__?: string }).__CUE_API_KEY__ || null
+  } catch {
+    return null
+  }
+}
+
+export function setApiKey(token: string | null): void {
+  try {
+    if (token) {
+      localStorage.setItem(API_KEY_STORAGE_KEY, token)
+    } else {
+      localStorage.removeItem(API_KEY_STORAGE_KEY)
+    }
+  } catch {
+    // LocalStorage indisponível em alguns ambientes restritos
+  }
+}
+
+// Monkey-patch nativo do fetch no escopo do client para garantir que todas as chamadas
+// transparentemente recebam o Bearer token quando configurado.
+const _originalFetch = window.fetch.bind(window)
+window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const token = getApiKey()
+  if (!token) return _originalFetch(input, init)
+
+  const modifiedInit: RequestInit = { ...(init || {}) }
+  const headers = new Headers(modifiedInit.headers || {})
+  if (!headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+  modifiedInit.headers = headers
+  return _originalFetch(input, modifiedInit)
+}
+
+
 export interface ApiModel {
   model_type: string
   name: string
